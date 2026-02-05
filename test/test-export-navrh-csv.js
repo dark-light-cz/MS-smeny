@@ -20,10 +20,10 @@
       }
     },
     {
-      name: 'navrhToCsv vrací CSV s hlavičkou Den;Čas;Místo;Osoby',
+      name: 'navrhToCsv vrací CSV s hlavičkou Den;Zaměstnanec;Čas;Místo',
       run: function () {
         var csv = EI.navrhToCsv([], {});
-        T.assert(csv.indexOf('Den;Čas;Místo;Osoby') === 0, 'hlavička');
+        T.assert(csv.indexOf('Den;Zaměstnanec;Čas;Místo') === 0, 'hlavička');
       }
     },
     {

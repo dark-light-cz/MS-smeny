@@ -1,6 +1,6 @@
 /**
  * Export výsledku návrhu směn jako CSV (D2c).
- * Sloupce: Den, Čas, Místo, Osoby. Oddělovač ; (běžný v CZ Excelu).
+ * Sloupce: Den, Zaměstnanec, Čas, Místo. Oddělovač ; (běžný v CZ Excelu).
  */
 (function (global) {
   'use strict';
@@ -21,23 +21,27 @@
   }
 
   /**
-   * Vrátí návrh směn jako CSV řetězec (sloupce Den, Čas, Místo, Osoby).
-   * @param {Array} prirazeni - z vypocetSmen (nebo prázdné)
+   * Vrátí návrh směn jako CSV řetězec.
+   * Sloupce: Den;Zaměstnanec;Čas;Místo
+   * @param {Array} prirazeni - z vypocetSmen (nový formát: { den, zamestnanecId, segmenty })
    * @param {Object} data - konfigurace (pro názvy)
-   * @param {{ chybiPozice?: Object }} opts - volitelně chybiPozice pro řádek „Chybějící úvazek“
    * @returns {string} CSV s hlavičkou a řádky
    */
-  function navrhToCsv(prirazeni, data, opts) {
+  function navrhToCsv(prirazeni, data) {
     var UI = global.MSemenyNavrhSmenUI;
     if (!UI || !UI.getNavrhRows) {
-      return 'Den;Čas;Místo;Osoby\n';
+      return 'Den;Zaměstnanec;Čas;Místo\n';
     }
-    var rows = UI.getNavrhRows(prirazeni || [], data || {}, opts || {});
-    var lines = ['Den;Čas;Místo;Osoby'];
+    var rows = UI.getNavrhRows(prirazeni || [], data || {});
+    var lines = ['Den;Zaměstnanec;Čas;Místo'];
     for (var i = 0; i < rows.length; i += 1) {
       var r = rows[i];
-      var osoby = (r.jmena && r.jmena.length) ? r.jmena.join(', ') : '';
-      lines.push(csvEscape(r.denLabel) + ';' + csvEscape(r.cas) + ';' + csvEscape(r.misto) + ';' + csvEscape(osoby));
+      lines.push(
+        csvEscape(r.denLabel) + ';' +
+        csvEscape(r.zamestnanec) + ';' +
+        csvEscape(r.cas) + ';' +
+        csvEscape(r.misto)
+      );
     }
     return lines.join('\n');
   }
@@ -46,12 +50,11 @@
    * Stáhne návrh směn jako CSV soubor.
    * @param {Array} prirazeni - z vypocetSmen
    * @param {Object} data - konfigurace
-   * @param {{ chybiPozice?: Object }} opts - volitelně
    * @param {string} [nazevSouboru] - volitelný název souboru
    */
-  function stahnoutNavrhCsv(prirazeni, data, opts, nazevSouboru) {
+  function stahnoutNavrhCsv(prirazeni, data, nazevSouboru) {
     var nazev = (nazevSouboru && typeof nazevSouboru === 'string') ? nazevSouboru : DEFAULT_NAZEV_SOUBORU;
-    var csv = navrhToCsv(prirazeni, data, opts);
+    var csv = navrhToCsv(prirazeni, data);
     var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv; charset=utf-8' });
     var url = global.URL.createObjectURL(blob);
     var a = document.createElement('a');

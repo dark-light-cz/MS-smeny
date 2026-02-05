@@ -1,21 +1,21 @@
 /**
- * Výpočet návrhu směn (D1, D3).
- * Min/max na budovu a třídu, úvazky. D3: překryv v třídě, kmenové/vykrývací, rotace.
+ * Výpočet návrhu směn (přepracovaná verze).
+ * Plánuje souvislé směny zaměstnanců a přiřazuje je na místa (třídy/budovy).
+ * Sloty (minMaxSloty) jsou kontrolní pravidla (ne přímá přiřazení):
+ *   „v každém okamžiku daného úseku musí být splněn min. počet osob".
+ * Zaměstnanec pracuje v rámci dne jeden souvislý blok bez mezer.
  */
 (function (global) {
   'use strict';
 
-  function parseTime(hhmm) {
-    if (!hhmm || typeof hhmm !== 'string') return { h: 0, m: 0 };
-    var parts = hhmm.split(':');
-    var h = parseInt(parts[0], 10) || 0;
-    var m = parseInt(parts[1], 10) || 0;
-    return { h: h, m: m };
-  }
+  var STEP = 15; // granularita posunu začátku směny (minuty)
+
+  /* === Utility funkce === */
 
   function timeToMinuty(hhmm) {
-    var t = parseTime(hhmm);
-    return t.h * 60 + t.m;
+    if (!hhmm || typeof hhmm !== 'string') return 0;
+    var parts = hhmm.split(':');
+    return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
   }
 
   function minutyToHhmm(minuty) {
@@ -24,130 +24,490 @@
     return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
   }
 
-  /** Délka slotu v minutách. */
-  function slotDurationMinuty(slot) {
-    var od = timeToMinuty(slot.od);
-    var do_ = timeToMinuty(slot.do);
-    var d = do_ - od;
-    return d > 0 ? d : 0;
-  }
-
-  /** Slot platí pro daný den (1–5). Prázdné dny = všechny. */
+  /** Slot platí pro daný den (1–5). Prázdné dny = všechny pracovní dny. */
   function slotPlatnyProDen(slot, den) {
     var dny = slot.dny;
     if (!Array.isArray(dny) || dny.length === 0) return true;
     return dny.indexOf(den) >= 0;
   }
 
-  /**
-   * Vrátí seznam „pozic“ pro slot: každá pozice = jedna osoba na budovu nebo na třídu.
-   * @returns {Array<{ budovaId: string|null, tridaId: string|null }>}
-   */
-  function positionsProSlot(slot, budovy) {
-    var list = [];
-    var minB = (slot.minNaBudovu != null) ? parseInt(slot.minNaBudovu, 10) : 0;
-    var minT = (slot.minNaTridu != null) ? parseInt(slot.minNaTridu, 10) : 0;
-    var b, t, i, j;
-    if (minB > 0 && Array.isArray(budovy)) {
-      for (i = 0; i < budovy.length; i += 1) {
-        b = budovy[i];
-        if (b && b.id) {
-          for (j = 0; j < minB; j += 1) {
-            list.push({ budovaId: b.id, tridaId: null });
-          }
-        }
+  /** Délka slotu v minutách (legacy helper). */
+  function slotDurationMinuty(slot) {
+    var od = timeToMinuty(slot.od);
+    var doM = timeToMinuty(slot.do);
+    return Math.max(0, doM - od);
+  }
+
+  /** Vytvoří pole délky n naplněné hodnotou val. */
+  function makeArray(n, val) {
+    var arr = [];
+    for (var i = 0; i < n; i++) arr.push(val);
+    return arr;
+  }
+
+  /* === Fáze 0: Otevírací doba === */
+
+  /** Zjistí rozsah otevírací doby (min od, max do) ze všech budov. */
+  function getOpeningRange(budovy) {
+    var start = 24 * 60, end = 0;
+    for (var i = 0; i < (budovy || []).length; i++) {
+      var b = budovy[i];
+      if (b.oteviraciDoba) {
+        var od = timeToMinuty(b.oteviraciDoba.od);
+        var doM = timeToMinuty(b.oteviraciDoba.do);
+        if (od < start) start = od;
+        if (doM > end) end = doM;
       }
     }
-    if (minT > 0 && Array.isArray(budovy)) {
-      for (i = 0; i < budovy.length; i += 1) {
-        b = budovy[i];
-        if (b && b.tridy) {
-          for (j = 0; j < b.tridy.length; j += 1) {
-            t = b.tridy[j];
-            if (t && t.id) {
-              for (var k = 0; k < minT; k += 1) {
-                list.push({ budovaId: null, tridaId: t.id });
-              }
+    if (start >= end) { start = 7 * 60; end = 17 * 60; }
+    return { start: start, end: end };
+  }
+
+  /* === Fáze 1: Požadavky na obsazení (demand) === */
+
+  /**
+   * Vytvoří per-minute demand pole pro daný den.
+   * Pro každou budovu a třídu: kolik osob tam musí být v každé minutě.
+   */
+  function buildDemand(den, sloty, budovy, pravidla) {
+    var range = getOpeningRange(budovy);
+    var dayLen = range.end - range.start;
+
+    // Init demand arrays (index = minuta relativně k range.start)
+    var budovaDemand = {}; // budovaId → [dayLen]
+    var tridaDemand = {};  // tridaId → [dayLen]
+    var tridaBudova = {};  // tridaId → budovaId
+    var i, j, m;
+
+    for (i = 0; i < budovy.length; i++) {
+      budovaDemand[budovy[i].id] = makeArray(dayLen, 0);
+      var tridy = budovy[i].tridy || [];
+      for (j = 0; j < tridy.length; j++) {
+        tridaDemand[tridy[j].id] = makeArray(dayLen, 0);
+        tridaBudova[tridy[j].id] = budovy[i].id;
+      }
+    }
+
+    // Aplikovat slot requirements
+    for (i = 0; i < sloty.length; i++) {
+      var slot = sloty[i];
+      if (!slotPlatnyProDen(slot, den)) continue;
+      var od = Math.max(0, timeToMinuty(slot.od) - range.start);
+      var doM = Math.min(dayLen, timeToMinuty(slot.do) - range.start);
+      var minB = parseInt(slot.minNaBudovu, 10) || 0;
+      var minT = parseInt(slot.minNaTridu, 10) || 0;
+
+      for (m = od; m < doM; m++) {
+        if (minB > 0) {
+          for (j = 0; j < budovy.length; j++) {
+            var bId = budovy[j].id;
+            if (budovaDemand[bId][m] < minB) budovaDemand[bId][m] = minB;
+          }
+        }
+        if (minT > 0) {
+          for (var tId in tridaDemand) {
+            if (tridaDemand.hasOwnProperty(tId)) {
+              if (tridaDemand[tId][m] < minT) tridaDemand[tId][m] = minT;
             }
           }
         }
       }
     }
-    return list;
+
+    // Překryv: min 2 na třídu po stanovenou dobu (od 9:00)
+    var prekryvMin = parseInt((pravidla && pravidla.minimalniPrekryvMinuty) || 0, 10);
+    if (prekryvMin > 0) {
+      var overlapOd = Math.max(0, 9 * 60 - range.start);
+      var overlapDo = Math.min(dayLen, 9 * 60 + prekryvMin - range.start);
+      for (var tId2 in tridaDemand) {
+        if (tridaDemand.hasOwnProperty(tId2)) {
+          for (m = overlapOd; m < overlapDo; m++) {
+            if (tridaDemand[tId2][m] < 2) tridaDemand[tId2][m] = 2;
+          }
+        }
+      }
+    }
+
+    return {
+      range: range,
+      dayLen: dayLen,
+      budovaDemand: budovaDemand,
+      tridaDemand: tridaDemand,
+      tridaBudova: tridaBudova
+    };
   }
 
-  /** Klíč pozice pro rotaci (stejná pozice = stejný slot + místo). */
-  function posKey(pos) {
-    return (pos.budovaId || '') + '|' + (pos.tridaId || '');
+  /**
+   * Spočítá celkovou křivku poptávky (kolik lidí celkem potřeba v každé minutě).
+   * Osoba ve třídě pokrývá i požadavek na budovu.
+   */
+  function totalDemandCurve(demandInfo, budovy) {
+    var dayLen = demandInfo.dayLen;
+    var curve = makeArray(dayLen, 0);
+    var m, i, j;
+
+    for (m = 0; m < dayLen; m++) {
+      var total = 0;
+      for (i = 0; i < budovy.length; i++) {
+        var b = budovy[i];
+        var bDem = demandInfo.budovaDemand[b.id][m] || 0;
+        var classSum = 0;
+        var tridy = b.tridy || [];
+        for (j = 0; j < tridy.length; j++) {
+          var td = demandInfo.tridaDemand[tridy[j].id];
+          if (td) classSum += td[m];
+        }
+        // Osoby ve třídách pokrývají i budovu → efektivní potřeba = max(budova, součet tříd)
+        total += Math.max(bDem, classSum);
+      }
+      curve[m] = total;
+    }
+    return curve;
   }
 
-  /** Popis místa pro hlášku (budovy = data.budovy). */
-  function mistoLabel(budovy, pos) {
-    if (!pos) return '';
-    if (pos.tridaId) {
-      for (var bi = 0; bi < (budovy || []).length; bi += 1) {
-        var b = budovy[bi];
-        if (b.tridy) {
-          for (var ti = 0; ti < b.tridy.length; ti += 1) {
-            if (b.tridy[ti].id === pos.tridaId) {
-              return (b.tridy[ti].nazev || '(třída)') + ' (' + (b.nazev || '') + ')';
+  /* === Fáze 2: Umístění směn (kdy pracují) === */
+
+  /**
+   * Greedy: seřadí zaměstnance od nejdelší směny, každému přiřadí optimální začátek
+   * tak, aby co nejlépe pokryl zbývající poptávku.
+   */
+  function placeShifts(empDaily, curve, dayLen) {
+    var sorted = empDaily.slice().sort(function (a, b) {
+      return b.dailyMin - a.dailyMin;
+    });
+
+    var coverage = makeArray(dayLen, 0);
+    var shifts = [];
+
+    for (var ei = 0; ei < sorted.length; ei++) {
+      var z = sorted[ei];
+      var dm = z.dailyMin;
+      if (dm <= 0) continue;
+      if (dm > dayLen) dm = dayLen;
+
+      var bestStart = 0;
+      var bestScore = -Infinity;
+
+      // Zkusit pozice s krokem STEP
+      for (var s = 0; s <= dayLen - dm; s += STEP) {
+        var score = 0;
+        for (var m = s; m < s + dm; m++) {
+          var residual = curve[m] - coverage[m];
+          score += (residual > 0) ? residual : -1;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestStart = s;
+        }
+      }
+
+      // Zkusit i pozici zarovnanou na konec dne
+      var lastStart = dayLen - dm;
+      if (lastStart >= 0 && lastStart % STEP !== 0) {
+        var score2 = 0;
+        for (var m2 = lastStart; m2 < lastStart + dm; m2++) {
+          var r2 = curve[m2] - coverage[m2];
+          score2 += (r2 > 0) ? r2 : -1;
+        }
+        if (score2 > bestScore) {
+          bestStart = lastStart;
+        }
+      }
+
+      // Umístit směnu
+      for (var m3 = bestStart; m3 < bestStart + dm; m3++) {
+        coverage[m3] += 1;
+      }
+      shifts.push({ zamestnanecId: z.id, start: bestStart, end: bestStart + dm });
+    }
+
+    return { shifts: shifts, coverage: coverage };
+  }
+
+  /* === Fáze 3: Přiřazení míst (kde pracují) === */
+
+  /**
+   * Minute-by-minute přiřazení zaměstnanců na místa (třída/budova).
+   * Preferuje kontinuitu (kdo byl ve třídě, zůstane tam).
+   */
+  function assignLocations(shifts, demandInfo, budovy, zamestnanci, pravidla, omezeni) {
+    var dayLen = demandInfo.dayLen;
+    var empMap = {};
+    var i, j, m;
+    for (i = 0; i < zamestnanci.length; i++) empMap[zamestnanci[i].id] = zamestnanci[i];
+
+    // Ne-dohromady lookup
+    var neDohromady = {};
+    for (i = 0; i < (omezeni || []).length; i++) {
+      var o = omezeni[i];
+      if (!neDohromady[o.osoba1Id]) neDohromady[o.osoba1Id] = [];
+      neDohromady[o.osoba1Id].push(o.osoba2Id);
+      if (!neDohromady[o.osoba2Id]) neDohromady[o.osoba2Id] = [];
+      neDohromady[o.osoba2Id].push(o.osoba1Id);
+    }
+
+    var maxPresun = (pravidla && pravidla.vykryvaciMaxPresun != null)
+      ? parseInt(pravidla.vykryvaciMaxPresun, 10) : 1;
+
+    // zamestnanecId → Array[dayLen] of { budovaId, tridaId } | null
+    var assignments = {};
+    for (i = 0; i < shifts.length; i++) {
+      assignments[shifts[i].zamestnanecId] = makeArray(dayLen, null);
+    }
+
+    // Množina tříd a budov
+    var tridaIds = [];
+    for (var tk in demandInfo.tridaDemand) {
+      if (demandInfo.tridaDemand.hasOwnProperty(tk)) tridaIds.push(tk);
+    }
+    var budovaIds = [];
+    for (var bk in demandInfo.budovaDemand) {
+      if (demandInfo.budovaDemand.hasOwnProperty(bk)) budovaIds.push(bk);
+    }
+
+    // Sledování přesunů za den
+    var transitions = {}; // zamestnanecId → počet změn lokace
+    for (i = 0; i < shifts.length; i++) transitions[shifts[i].zamestnanecId] = 0;
+
+    // Pomocná: byl zaměstnanec nedávno na daném místě?
+    function wasRecentlyAt(zId, locId, type, currentM) {
+      if (!assignments[zId]) return false;
+      var lookback = Math.min(currentM, 60);
+      for (var k = currentM - 1; k >= currentM - lookback; k--) {
+        var a = assignments[zId][k];
+        if (!a) continue;
+        if (type === 'trida' && a.tridaId === locId) return true;
+        if (type === 'budova' && a.budovaId === locId) return true;
+      }
+      return false;
+    }
+
+    // Hlavní smyčka: po minutách
+    for (m = 0; m < dayLen; m++) {
+      // Kdo je ve směně
+      var onShift = [];
+      for (i = 0; i < shifts.length; i++) {
+        if (m >= shifts[i].start && m < shifts[i].end) onShift.push(shifts[i].zamestnanecId);
+      }
+      if (onShift.length === 0) continue;
+
+      // Aktuální demand
+      var classDem = {};
+      for (i = 0; i < tridaIds.length; i++) classDem[tridaIds[i]] = demandInfo.tridaDemand[tridaIds[i]][m] || 0;
+      var buildDem = {};
+      for (i = 0; i < budovaIds.length; i++) buildDem[budovaIds[i]] = demandInfo.budovaDemand[budovaIds[i]][m] || 0;
+
+      // Tracking přiřazení
+      var assigned = {};      // zamestnanecId → { budovaId, tridaId }
+      var classCount = {};    // tridaId → počet přiřazených
+      var buildingCount = {}; // budovaId → počet přiřazených (přímo + přes třídy)
+      for (i = 0; i < tridaIds.length; i++) classCount[tridaIds[i]] = 0;
+      for (i = 0; i < budovaIds.length; i++) buildingCount[budovaIds[i]] = 0;
+
+      function doAssign(zId, bId, tId) {
+        assigned[zId] = { budovaId: bId || null, tridaId: tId || null };
+        if (tId) {
+          classCount[tId] = (classCount[tId] || 0) + 1;
+          var parentBud = demandInfo.tridaBudova[tId];
+          if (parentBud) buildingCount[parentBud] = (buildingCount[parentBud] || 0) + 1;
+        } else if (bId) {
+          buildingCount[bId] = (buildingCount[bId] || 0) + 1;
+        }
+      }
+
+      // Krok 1: Kmenové → jejich třída (mají absolutní přednost)
+      for (i = 0; i < onShift.length; i++) {
+        var zId1 = onShift[i];
+        var emp1 = empMap[zId1];
+        if (emp1 && emp1.kmenovaVykryvaci === 'kmenová' && emp1.tridaId) {
+          if (classDem[emp1.tridaId] > 0 && classCount[emp1.tridaId] < classDem[emp1.tridaId]) {
+            doAssign(zId1, null, emp1.tridaId);
+          }
+        }
+      }
+
+      // Krok 2: Sticky — pokračovat v předchozí lokaci, pokud tam je stále demand
+      // Ale nepřekročit potřebný počet (uvolnit přebytečné)
+      if (m > 0) {
+        // Spočítat sticky zájemce per lokace
+        var stickyPerLoc = {}; // 't:id' nebo 'b:id' → [zamIds]
+        for (i = 0; i < onShift.length; i++) {
+          var zIdS = onShift[i];
+          if (assigned[zIdS]) continue;
+          var prev = assignments[zIdS] ? assignments[zIdS][m - 1] : null;
+          if (!prev) continue;
+          var locKey = prev.tridaId ? 't:' + prev.tridaId : 'b:' + prev.budovaId;
+          if (!stickyPerLoc[locKey]) stickyPerLoc[locKey] = [];
+          stickyPerLoc[locKey].push(zIdS);
+        }
+        // Pro každou lokaci: přiřadit jen tolik, kolik je potřeba (s ohledem na již přiřazené)
+        for (var locKey2 in stickyPerLoc) {
+          if (!stickyPerLoc.hasOwnProperty(locKey2)) continue;
+          var isClass = locKey2.charAt(0) === 't';
+          var locId = locKey2.substring(2);
+          var demand = isClass ? (classDem[locId] || 0) : (buildDem[locId] || 0);
+          var alreadyAssigned = isClass ? (classCount[locId] || 0) : (buildingCount[locId] || 0);
+          var stickyList = stickyPerLoc[locKey2];
+          var keepCount = Math.max(0, demand - alreadyAssigned);
+
+          // Seřadit: kmenové první, pak podle přesunů (méně = lepší)
+          stickyList.sort(function (a, b) {
+            var za = empMap[a], zb = empMap[b];
+            var aK = za && za.kmenovaVykryvaci === 'kmenová' && isClass && za.tridaId === locId;
+            var bK = zb && zb.kmenovaVykryvaci === 'kmenová' && isClass && zb.tridaId === locId;
+            if (aK !== bK) return aK ? -1 : 1;
+            return (transitions[a] || 0) - (transitions[b] || 0);
+          });
+
+          for (var si = 0; si < keepCount && si < stickyList.length; si++) {
+            if (isClass) {
+              doAssign(stickyList[si], null, locId);
+            } else {
+              doAssign(stickyList[si], locId, null);
             }
           }
         }
       }
-      return '(třída ' + pos.tridaId + ')';
-    }
-    if (pos.budovaId) {
-      for (var i = 0; i < (budovy || []).length; i += 1) {
-        if (budovy[i].id === pos.budovaId) return budovy[i].nazev || '(budova)';
-      }
-      return '(budova ' + pos.budovaId + ')';
-    }
-    return '';
-  }
 
-  /**
-   * Vybere nejvhodnější osobu pro pozici (D3: kmenová u své třídy, vykrývací max přesun, rotace).
-   */
-  function vyberOsobu(zamestnanci, pos, assignedThisSlot, remaining, duration, tridaIdsDnes, pravidla, slot, rotacePocet) {
-    var maxPresun = (pravidla && pravidla.vykryvaciMaxPresun != null) ? parseInt(pravidla.vykryvaciMaxPresun, 10) : 1;
-    var maxTridPerDay = maxPresun + 1;
-    var key = slot.id + '|' + posKey(pos);
-    var candidates = [];
-    zamestnanci.forEach(function (z) {
-      if (assignedThisSlot[z.id]) return;
-      var r = remaining[z.id] || 0;
-      if (r < duration) return;
-      if (pos.tridaId) {
-        var tridy = tridaIdsDnes[z.id] || [];
-        if (z.kmenovaVykryvaci === 'vykrývací' && tridy.indexOf(pos.tridaId) < 0) {
-          var uniq = tridy.slice();
-          uniq.push(pos.tridaId);
-          if (uniq.length > maxTridPerDay) return;
+      // Krok 3: Zaplnit neobsazené třídy
+      for (i = 0; i < tridaIds.length; i++) {
+        var tIdFill = tridaIds[i];
+        var need = (classDem[tIdFill] || 0) - (classCount[tIdFill] || 0);
+        if (need <= 0) continue;
+
+        // Najít dostupné zaměstnance
+        var avail = [];
+        for (j = 0; j < onShift.length; j++) {
+          var zIdA = onShift[j];
+          if (assigned[zIdA]) continue;
+          // Ne-dohromady
+          var forbidden = false;
+          if (neDohromady[zIdA]) {
+            for (var fi = 0; fi < neDohromady[zIdA].length; fi++) {
+              var forbId = neDohromady[zIdA][fi];
+              if (assigned[forbId] && assigned[forbId].tridaId === tIdFill) { forbidden = true; break; }
+            }
+          }
+          if (forbidden) continue;
+          // Vykrývací max přesunů
+          var empA = empMap[zIdA];
+          if (empA && empA.kmenovaVykryvaci === 'vykrývací') {
+            var prevA = (m > 0 && assignments[zIdA]) ? assignments[zIdA][m - 1] : null;
+            if (prevA && prevA.tridaId !== tIdFill && (transitions[zIdA] || 0) >= maxPresun) continue;
+          }
+          avail.push(zIdA);
+        }
+
+        // Seřadit: nedávno v této třídě → kmenová → méně přesunů
+        avail.sort(function (a, b) {
+          var aR = wasRecentlyAt(a, tIdFill, 'trida', m) ? 0 : 1;
+          var bR = wasRecentlyAt(b, tIdFill, 'trida', m) ? 0 : 1;
+          if (aR !== bR) return aR - bR;
+          return (transitions[a] || 0) - (transitions[b] || 0);
+        });
+
+        for (j = 0; j < need && j < avail.length; j++) {
+          doAssign(avail[j], null, tIdFill);
         }
       }
-      var kmenovaMatch = pos.tridaId && z.kmenovaVykryvaci === 'kmenová' && z.tridaId === pos.tridaId;
-      var rotaceCount = (rotacePocet && rotacePocet[key] && rotacePocet[key][z.id]) ? rotacePocet[key][z.id] : 0;
-      candidates.push({
-        id: z.id,
-        remaining: r,
-        kmenovaMatch: !!kmenovaMatch,
-        rotaceCount: rotaceCount
-      });
-    });
-    if (candidates.length === 0) return null;
-    candidates.sort(function (a, b) {
-      if (a.kmenovaMatch !== b.kmenovaMatch) return a.kmenovaMatch ? -1 : 1;
-      if (slot.rotace && a.rotaceCount !== b.rotaceCount) return a.rotaceCount - b.rotaceCount;
-      return b.remaining - a.remaining;
-    });
-    return candidates[0].id;
+
+      // Krok 4: Zaplnit neobsazené budovy (osoby ve třídách se počítají)
+      for (i = 0; i < budovaIds.length; i++) {
+        var bIdFill = budovaIds[i];
+        var bNeed = (buildDem[bIdFill] || 0) - (buildingCount[bIdFill] || 0);
+        if (bNeed <= 0) continue;
+        for (j = 0; j < onShift.length; j++) {
+          if (bNeed <= 0) break;
+          if (!assigned[onShift[j]]) {
+            doAssign(onShift[j], bIdFill, null);
+            bNeed--;
+          }
+        }
+      }
+
+      // Krok 5: Zbylí nepřiřazení → zůstat kde byli, nebo první třída/budova
+      for (i = 0; i < onShift.length; i++) {
+        var zIdR = onShift[i];
+        if (assigned[zIdR]) continue;
+        var prevR = (m > 0 && assignments[zIdR]) ? assignments[zIdR][m - 1] : null;
+        if (prevR) {
+          doAssign(zIdR, prevR.budovaId, prevR.tridaId);
+        } else if (tridaIds.length > 0) {
+          doAssign(zIdR, null, tridaIds[0]);
+        } else if (budovaIds.length > 0) {
+          doAssign(zIdR, budovaIds[0], null);
+        }
+      }
+
+      // Uložit a sledovat přesuny
+      for (i = 0; i < onShift.length; i++) {
+        var zIdW = onShift[i];
+        var asg = assigned[zIdW] || null;
+        assignments[zIdW][m] = asg;
+        if (m > 0 && asg) {
+          var prevW = assignments[zIdW][m - 1];
+          if (prevW && (prevW.tridaId !== asg.tridaId || prevW.budovaId !== asg.budovaId)) {
+            transitions[zIdW] = (transitions[zIdW] || 0) + 1;
+          }
+        }
+      }
+    }
+
+    return assignments;
   }
 
+  /* === Fáze 4: Převod na segmenty === */
+
+  /** Převede minutové přiřazení na seznam segmentů per zaměstnanec. */
+  function buildSegments(assignments, shifts, dayStart) {
+    var result = [];
+    for (var si = 0; si < shifts.length; si++) {
+      var s = shifts[si];
+      var ass = assignments[s.zamestnanecId];
+      if (!ass) continue;
+      var segments = [];
+      var current = null;
+
+      for (var m = s.start; m < s.end; m++) {
+        var a = ass[m];
+        if (!a) continue;
+        var sameLoc = current
+          && current.budovaId === (a.budovaId || null)
+          && current.tridaId === (a.tridaId || null);
+        if (sameLoc) {
+          current.doM = m + 1;
+        } else {
+          if (current) segments.push(current);
+          current = { odM: m, doM: m + 1, budovaId: a.budovaId || null, tridaId: a.tridaId || null };
+        }
+      }
+      if (current) segments.push(current);
+
+      var segmentyHhmm = [];
+      for (var si2 = 0; si2 < segments.length; si2++) {
+        segmentyHhmm.push({
+          od: minutyToHhmm(segments[si2].odM + dayStart),
+          do: minutyToHhmm(segments[si2].doM + dayStart),
+          budovaId: segments[si2].budovaId,
+          tridaId: segments[si2].tridaId
+        });
+      }
+      if (segmentyHhmm.length > 0) {
+        result.push({ zamestnanecId: s.zamestnanecId, segmenty: segmentyHhmm });
+      }
+    }
+    return result;
+  }
+
+  /* === Hlavní funkce === */
+
   /**
-   * Vypočte jeden návrh směn (D1 + D3).
-   * @param {Object} data - konfigurace (zamestnanci, budovy, minMaxSloty, pravidla)
-   * @returns {{ ok: boolean, prirazeni?: Array<...>, chyba?: string }}
+   * Vypočte návrh směn.
+   * @param {Object} data - konfigurace (zamestnanci, budovy, minMaxSloty, pravidla, omezeniNeDohromady)
+   * @returns {{ ok: boolean, prirazeni?: Array, chyba?: string, varovani?: Array }}
+   *
+   * Nový formát prirazeni:
+   *   [{ den: 1–5, zamestnanecId: string, segmenty: [{ od, do, budovaId, tridaId }] }]
    */
   function vypocetSmen(data) {
     var zamestnanci = (data.zamestnanci || []).filter(function (z) {
@@ -155,33 +515,8 @@
     });
     var budovy = data.budovy || [];
     var pravidla = data.pravidla || {};
-    var sloty = (data.minMaxSloty || []).slice().sort(function (a, b) {
-      return (a.od || '').localeCompare(b.od || '');
-    });
-
-    var prekryvMin = (pravidla.minimalniPrekryvMinuty != null) ? parseInt(pravidla.minimalniPrekryvMinuty, 10) : 0;
-    if (prekryvMin > 0 && budovy.length > 0) {
-      var hasTridy = false;
-      for (var bi = 0; bi < budovy.length; bi += 1) {
-        if (budovy[bi].tridy && budovy[bi].tridy.length > 0) { hasTridy = true; break; }
-      }
-      if (hasTridy) {
-        var odMin = 9 * 60;
-        var doMin = odMin + prekryvMin;
-        sloty.push({
-          id: 'overlap-prekryv',
-          od: minutyToHhmm(odMin),
-          do: minutyToHhmm(doMin),
-          minNaBudovu: 0,
-          maxNaBudovu: null,
-          minNaTridu: 2,
-          maxNaTridu: null,
-          dny: [],
-          rotace: false
-        });
-        sloty.sort(function (a, b) { return (a.od || '').localeCompare(b.od || ''); });
-      }
-    }
+    var sloty = data.minMaxSloty || [];
+    var omezeni = data.omezeniNeDohromady || [];
 
     if (zamestnanci.length === 0) {
       return { ok: false, chyba: 'Přidejte alespoň jednoho zaměstnance s úvazkem.' };
@@ -189,87 +524,78 @@
     if (sloty.length === 0) {
       return { ok: false, chyba: 'Přidejte alespoň jeden časový slot v Pravidlech.' };
     }
+    if (budovy.length === 0) {
+      return { ok: false, chyba: 'Přidejte alespoň jednu budovu.' };
+    }
 
-    var remaining = {};
-    zamestnanci.forEach(function (z) {
-      remaining[z.id] = (z.uvazekMinutyTyden != null) ? parseInt(z.uvazekMinutyTyden, 10) : 0;
-    });
+    // Denní minuty zaměstnanců (úvazek / 5 pracovních dní)
+    var empDaily = [];
+    for (var ei = 0; ei < zamestnanci.length; ei++) {
+      var weekly = parseInt(zamestnanci[ei].uvazekMinutyTyden, 10) || 0;
+      empDaily.push({ id: zamestnanci[ei].id, dailyMin: Math.round(weekly / 5) });
+    }
 
     var prirazeni = [];
-    var rotacePocet = {};
-    var den, slot, duration, positions, pos, assignedThisSlot, bestId, i, j, tridaIdsDnes, pk;
+    var allWarnings = [];
+    var den;
 
-    for (den = 1; den <= 5; den += 1) {
-      tridaIdsDnes = {};
-      for (i = 0; i < sloty.length; i += 1) {
-        slot = sloty[i];
-        if (!slotPlatnyProDen(slot, den)) continue;
+    for (den = 1; den <= 5; den++) {
+      var demandInfo = buildDemand(den, sloty, budovy, pravidla);
+      var curve = totalDemandCurve(demandInfo, budovy);
+      var placed = placeShifts(empDaily, curve, demandInfo.dayLen);
+      var locAssignments = assignLocations(
+        placed.shifts, demandInfo, budovy, zamestnanci, pravidla, omezeni
+      );
+      var segments = buildSegments(locAssignments, placed.shifts, demandInfo.range.start);
 
-        duration = slotDurationMinuty(slot);
-        positions = positionsProSlot(slot, budovy);
-        if (positions.length === 0) continue;
-
-        assignedThisSlot = {};
-        for (j = 0; j < positions.length; j += 1) {
-          pos = positions[j];
-          bestId = vyberOsobu(zamestnanci, pos, assignedThisSlot, remaining, duration, tridaIdsDnes, pravidla, slot, rotacePocet);
-          if (bestId == null) {
-            var denLabel = den === 1 ? 'Po' : den === 2 ? 'Út' : den === 3 ? 'St' : den === 4 ? 'Čt' : 'Pá';
-            var slotCas = (slot.od || '') + '–' + (slot.do || '');
-            var misto = mistoLabel(budovy, pos);
-            var sVolnymUvazkem = 0;
-            var sVolnymANeprirazenych = 0;
-            zamestnanci.forEach(function (z) {
-              if ((remaining[z.id] || 0) >= duration) {
-                sVolnymUvazkem += 1;
-                if (!assignedThisSlot[z.id]) sVolnymANeprirazenych += 1;
-              }
-            });
-            var duvod;
-            if (sVolnymUvazkem === 0) {
-              duvod = 'Žádný zaměstnanec nemá dostatek volného úvazku (pro tento slot je potřeba ' + duration + ' min). Zvažte zvýšení úvazků nebo snížení požadovaných pozic.';
-            } else if (sVolnymANeprirazenych === 0) {
-              duvod = 'Všechny osoby s dostatkem úvazku jsou v tomto slotu již přiřazeny – požaduje se více pozic než dostupných osob. Snižte min. počet na budovu/třídu nebo přidejte zaměstnance.';
-            } else {
-              duvod = 'Žádná vhodná osoba (omezení pro vykrývací – max. přesunů mezi třídami, nebo jiné pravidlo). Zkontrolujte pravidla vykrývacích.';
-            }
-            var chybaText = 'Pro ' + denLabel + ', slot ' + slotCas + (misto ? ', místo „' + misto + '": ' : ': ') + duvod;
-            var chybiPozice = {
-              den: den,
-              slotId: slot.id,
-              slotOdDo: slotCas,
-              budovaId: pos.budovaId || null,
-              tridaId: pos.tridaId || null,
-              mistoLabel: misto
-            };
-            return {
-              ok: false,
-              chyba: chybaText,
-              prirazeni: prirazeni,
-              chybiPozice: chybiPozice
-            };
-          }
-          prirazeni.push({
-            den: den,
-            slotId: slot.id,
-            budovaId: pos.budovaId || undefined,
-            tridaId: pos.tridaId || undefined,
-            zamestnanecId: bestId
-          });
-          assignedThisSlot[bestId] = true;
-          remaining[bestId] -= duration;
-          if (pos.tridaId) {
-            if (!tridaIdsDnes[bestId]) tridaIdsDnes[bestId] = [];
-            if (tridaIdsDnes[bestId].indexOf(pos.tridaId) < 0) tridaIdsDnes[bestId].push(pos.tridaId);
-          }
-          pk = slot.id + '|' + posKey(pos);
-          if (!rotacePocet[pk]) rotacePocet[pk] = {};
-          rotacePocet[pk][bestId] = (rotacePocet[pk][bestId] || 0) + 1;
-        }
+      for (var si = 0; si < segments.length; si++) {
+        prirazeni.push({
+          den: den,
+          zamestnanecId: segments[si].zamestnanecId,
+          segmenty: segments[si].segmenty
+        });
       }
     }
 
-    return { ok: true, prirazeni: prirazeni };
+    if (prirazeni.length === 0) {
+      return { ok: false, chyba: 'Nepodařilo se vytvořit žádné přiřazení. Zkontrolujte konfiguraci.' };
+    }
+
+    return {
+      ok: true,
+      prirazeni: prirazeni,
+      varovani: allWarnings.length > 0 ? allWarnings : undefined
+    };
+  }
+
+  /** Legacy: positions for slot (pro zpětnou kompatibilitu). */
+  function positionsProSlot(slot, budovy) {
+    var list = [];
+    var minB = (slot.minNaBudovu != null) ? parseInt(slot.minNaBudovu, 10) : 0;
+    var minT = (slot.minNaTridu != null) ? parseInt(slot.minNaTridu, 10) : 0;
+    var i, j, k, b, t;
+    if (minB > 0 && Array.isArray(budovy)) {
+      for (i = 0; i < budovy.length; i++) {
+        b = budovy[i];
+        if (b && b.id) {
+          for (j = 0; j < minB; j++) list.push({ budovaId: b.id, tridaId: null });
+        }
+      }
+    }
+    if (minT > 0 && Array.isArray(budovy)) {
+      for (i = 0; i < budovy.length; i++) {
+        b = budovy[i];
+        if (b && b.tridy) {
+          for (j = 0; j < b.tridy.length; j++) {
+            t = b.tridy[j];
+            if (t && t.id) {
+              for (k = 0; k < minT; k++) list.push({ budovaId: null, tridaId: t.id });
+            }
+          }
+        }
+      }
+    }
+    return list;
   }
 
   global.MSemenyVypocetSmen = {

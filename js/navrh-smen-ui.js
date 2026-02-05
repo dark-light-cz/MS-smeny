@@ -1,5 +1,6 @@
 /**
  * Sekce Návrh směn – zobrazení výsledku výpočtu a tlačítko Přepočítat (D2).
+ * Přizpůsobeno novému formátu výstupu: prirazeni = [{ den, zamestnanecId, segmenty }].
  */
 (function (global) {
   'use strict';
@@ -44,24 +45,6 @@
     return '(?)';
   }
 
-  function casSlotu(sloty, slotId, data) {
-    if (slotId === 'overlap-prekryv' && data && data.pravidla) {
-      var min = parseInt(data.pravidla.minimalniPrekryvMinuty, 10) || 120;
-      var odM = 9 * 60;
-      var doM = odM + min;
-      var od = (Math.floor(odM / 60) < 10 ? '0' : '') + Math.floor(odM / 60) + ':' + (odM % 60 < 10 ? '0' : '') + (odM % 60);
-      var do_ = (Math.floor(doM / 60) < 10 ? '0' : '') + Math.floor(doM / 60) + ':' + (doM % 60 < 10 ? '0' : '') + (doM % 60);
-      return 'Překryv (' + od + '–' + do_ + ')';
-    }
-    for (var i = 0; i < (sloty || []).length; i += 1) {
-      if (sloty[i].id === slotId) {
-        var s = sloty[i];
-        return (s.od || '') + '–' + (s.do || '');
-      }
-    }
-    return slotId || '';
-  }
-
   function jmenoZamestnance(zamestnanci, id) {
     for (var i = 0; i < (zamestnanci || []).length; i += 1) {
       if (zamestnanci[i].id === id) return zamestnanci[i].jmeno || '(bez jména)';
@@ -69,135 +52,81 @@
     return '(?)';
   }
 
-  /** Seřadí sloty podle času od. */
-  function seradSloty(sloty) {
-    return (sloty || []).slice().sort(function (a, b) {
-      return (a.od || '').localeCompare(b.od || '');
-    });
+  function mistoLabel(budovy, seg) {
+    if (seg.tridaId) return 'Třída: ' + nazevTridy(budovy, seg.tridaId);
+    if (seg.budovaId) return 'Budova: ' + nazevBudovy(budovy, seg.budovaId);
+    return '';
   }
 
   /**
    * Vrátí seznam řádků návrhu (pro tabulku i CSV). Bez DOM.
-   * @param {Array} prirazeni - z vypocetSmen
+   * Nový formát: jeden řádek = jeden segment jednoho zaměstnance.
+   * @param {Array} prirazeni - z vypocetSmen (nový formát: { den, zamestnanecId, segmenty })
    * @param {Object} data - konfigurace (pro názvy)
-   * @param {{ chybiPozice?: { den, slotId, slotOdDo, mistoLabel, tridaId } }} opts - volitelně chybějící pozice
-   * @returns {Array<{ den, denLabel, cas, misto, jmena, chybiRow }>}
+   * @returns {Array<{ den, denLabel, zamestnanec, cas, misto }>}
    */
-  function getNavrhRows(prirazeni, data, opts) {
-    opts = opts || {};
-    var chybiPozice = opts.chybiPozice;
+  function getNavrhRows(prirazeni, data) {
     var budovy = (data && data.budovy) || [];
     var zamestnanci = (data && data.zamestnanci) || [];
-    var sloty = seradSloty(data && data.minMaxSloty);
-
-    var group = {};
-    var key, item, den, slotId, budovaId, tridaId, ids, names, row, rows = [];
+    var rows = [];
 
     for (var i = 0; i < (prirazeni || []).length; i += 1) {
-      item = prirazeni[i];
-      den = item.den;
-      slotId = item.slotId;
-      budovaId = item.budovaId || '';
-      tridaId = item.tridaId || '';
-      key = den + '|' + slotId + '|' + budovaId + '|' + tridaId;
-      if (!group[key]) group[key] = { den: den, slotId: slotId, budovaId: budovaId || null, tridaId: tridaId || null, zamestnanci: [] };
-      group[key].zamestnanci.push(item.zamestnanecId);
-    }
-
-    for (key in group) {
-      if (!group.hasOwnProperty(key)) continue;
-      row = group[key];
-      den = row.den;
-      slotId = row.slotId;
-      budovaId = row.budovaId;
-      tridaId = row.tridaId;
-      ids = row.zamestnanci;
-      names = ids.map(function (id) { return jmenoZamestnance(zamestnanci, id); });
-      var misto = tridaId
-        ? ('Třída: ' + nazevTridy(budovy, tridaId))
-        : ('Budova: ' + nazevBudovy(budovy, budovaId));
-      var slotOrder = 0;
-      if (slotId === 'overlap-prekryv') {
-        slotOrder = 1;
-      } else {
-        for (var si = 0; si < sloty.length; si += 1) {
-          if (sloty[si].id === slotId) { slotOrder = si; break; }
-        }
+      var p = prirazeni[i];
+      var jmeno = jmenoZamestnance(zamestnanci, p.zamestnanecId);
+      var segs = p.segmenty || [];
+      for (var j = 0; j < segs.length; j += 1) {
+        var seg = segs[j];
+        rows.push({
+          den: p.den,
+          denLabel: NAZVY_DNU[p.den] || '',
+          zamestnanec: jmeno,
+          cas: (seg.od || '') + '–' + (seg.do || ''),
+          misto: mistoLabel(budovy, seg),
+          // Pomocné pro řazení
+          _od: seg.od || '',
+          _zamId: p.zamestnanecId
+        });
       }
-      rows.push({
-        den: den,
-        denLabel: NAZVY_DNU[den],
-        cas: casSlotu(sloty, slotId, data),
-        slotOrder: slotOrder,
-        misto: misto,
-        jmena: names,
-        chybiRow: false
-      });
     }
 
-    if (chybiPozice) {
-      var cp = chybiPozice;
-      var mistoChybi = cp.tridaId ? ('Třída: ' + (cp.mistoLabel || '')) : ('Budova: ' + (cp.mistoLabel || ''));
-      var slotOrderChybi = (cp.slotId === 'overlap-prekryv') ? 1 : 0;
-      if (cp.slotId !== 'overlap-prekryv' && sloty.length) {
-        for (var s = 0; s < sloty.length; s += 1) {
-          if (sloty[s].id === cp.slotId) { slotOrderChybi = s; break; }
-        }
-      }
-      rows.push({
-        den: cp.den,
-        denLabel: NAZVY_DNU[cp.den],
-        cas: cp.slotOdDo || '',
-        slotOrder: slotOrderChybi,
-        misto: mistoChybi,
-        jmena: ['Chybějící úvazek'],
-        chybiRow: true
-      });
-    }
-
+    // Řazení: den → čas od → jméno
     rows.sort(function (a, b) {
       if (a.den !== b.den) return a.den - b.den;
-      if (a.slotOrder !== b.slotOrder) return a.slotOrder - b.slotOrder;
-      return (a.misto || '').localeCompare(b.misto || '');
+      if (a._od !== b._od) return a._od.localeCompare(b._od);
+      return a.zamestnanec.localeCompare(b.zamestnanec);
     });
+
     return rows;
   }
 
   /**
    * Vykreslí tabulku návrhu do #navrh-vysledek.
-   * @param {Array} prirazeni - z vypocetSmen
+   * @param {Array} prirazeni - z vypocetSmen (nový formát)
    * @param {Object} data - konfigurace (pro názvy)
-   * @param {{ chybiPozice?: { den, slotId, slotOdDo, mistoLabel, tridaId } }} opts - volitelně chybějící pozice (červený řádek)
    */
-  function vykresliNavrh(prirazeni, data, opts) {
+  function vykresliNavrh(prirazeni, data) {
     var el = document.getElementById('navrh-vysledek');
     if (!el) return;
 
-    opts = opts || {};
-    var chybiPozice = opts.chybiPozice;
-
     if (!prirazeni || prirazeni.length === 0) {
-      if (!chybiPozice) {
-        el.innerHTML = '<p class="navrh-prazdno">Žádné přiřazení (prázdné sloty nebo konfigurace).</p>';
-        return;
-      }
+      el.innerHTML = '<p class="navrh-prazdno">Žádné přiřazení (prázdné sloty nebo konfigurace).</p>';
+      return;
     }
 
-    var rows = getNavrhRows(prirazeni, data, opts);
+    var rows = getNavrhRows(prirazeni, data);
 
     var html = [
       '<table class="tabulka-navrh">',
-      '<thead><tr><th>Den</th><th>Čas</th><th>Místo</th><th>Osoby</th></tr></thead>',
+      '<thead><tr><th>Den</th><th>Zaměstnanec</th><th>Čas</th><th>Místo</th></tr></thead>',
       '<tbody>'
     ];
     for (var i = 0; i < rows.length; i += 1) {
       var row = rows[i];
-      var trClass = row.chybiRow ? ' class="navrh-radek-chybi"' : '';
-      html.push('<tr' + trClass + '>');
+      html.push('<tr>');
       html.push('<td>' + escapeHtml(row.denLabel) + '</td>');
+      html.push('<td>' + escapeHtml(row.zamestnanec) + '</td>');
       html.push('<td>' + escapeHtml(row.cas) + '</td>');
       html.push('<td>' + escapeHtml(row.misto) + '</td>');
-      html.push('<td>' + escapeHtml(row.jmena.join(', ')) + '</td>');
       html.push('</tr>');
     }
     html.push('</tbody></table>');
@@ -232,19 +161,16 @@
 
     if (result.ok) {
       zobrazUspech('Návrh byl přepočítán.');
-      lastNavrhResult = { prirazeni: result.prirazeni, data: data, opts: {} };
+      lastNavrhResult = { prirazeni: result.prirazeni, data: data };
       vykresliNavrh(result.prirazeni, data);
       zobrazTlacitkoCsv(true);
     } else {
       zobrazChybu(result.chyba || 'Výpočet se nezdařil.');
-      if (result.chybiPozice) {
-        lastNavrhResult = { prirazeni: result.prirazeni || [], data: data, opts: { chybiPozice: result.chybiPozice } };
-        vykresliNavrh(result.prirazeni || [], data, { chybiPozice: result.chybiPozice });
-        zobrazTlacitkoCsv(true);
-      } else {
-        lastNavrhResult = null;
-        zobrazTlacitkoCsv(false);
-        document.getElementById('navrh-vysledek').innerHTML = '<p class="navrh-prazdno">' + escapeHtml(result.chyba || '') + '</p>';
+      lastNavrhResult = null;
+      zobrazTlacitkoCsv(false);
+      var vysledekEl = document.getElementById('navrh-vysledek');
+      if (vysledekEl) {
+        vysledekEl.innerHTML = '<p class="navrh-prazdno">' + escapeHtml(result.chyba || '') + '</p>';
       }
     }
   }
@@ -253,8 +179,7 @@
     if (!lastNavrhResult || !global.MSemenyExportNavrhCsv || !global.MSemenyExportNavrhCsv.stahnoutNavrhCsv) return;
     global.MSemenyExportNavrhCsv.stahnoutNavrhCsv(
       lastNavrhResult.prirazeni,
-      lastNavrhResult.data,
-      lastNavrhResult.opts
+      lastNavrhResult.data
     );
   }
 
@@ -275,7 +200,7 @@
 
     var el = document.getElementById('navrh-vysledek');
     if (el && !el.innerHTML.trim()) {
-      el.innerHTML = '<p class="navrh-prazdno">Klikněte na „Přepočítat“, aby se vygeneroval návrh směn podle aktuální konfigurace.</p>';
+      el.innerHTML = '<p class="navrh-prazdno">Klikněte na „Přepočítat", aby se vygeneroval návrh směn podle aktuální konfigurace.</p>';
     }
   }
 
