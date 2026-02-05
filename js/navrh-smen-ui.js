@@ -6,6 +6,8 @@
 
   var Storage = global.MSemenyStorage;
   var Vypocet = global.MSemenyVypocetSmen;
+  /** Poslední zobrazený výsledek návrhu (pro export CSV). */
+  var lastNavrhResult = null;
 
   function getData() {
     return Storage ? Storage.getData() : { zamestnanci: [], budovy: [], minMaxSloty: [] };
@@ -75,27 +77,23 @@
   }
 
   /**
-   * Vykreslí tabulku návrhu do #navrh-vysledek.
+   * Vrátí seznam řádků návrhu (pro tabulku i CSV). Bez DOM.
    * @param {Array} prirazeni - z vypocetSmen
    * @param {Object} data - konfigurace (pro názvy)
+   * @param {{ chybiPozice?: { den, slotId, slotOdDo, mistoLabel, tridaId } }} opts - volitelně chybějící pozice
+   * @returns {Array<{ den, denLabel, cas, misto, jmena, chybiRow }>}
    */
-  function vykresliNavrh(prirazeni, data) {
-    var el = document.getElementById('navrh-vysledek');
-    if (!el) return;
-
-    if (!prirazeni || prirazeni.length === 0) {
-      el.innerHTML = '<p class="navrh-prazdno">Žádné přiřazení (prázdné sloty nebo konfigurace).</p>';
-      return;
-    }
-
-    var budovy = data.budovy || [];
-    var zamestnanci = data.zamestnanci || [];
-    var sloty = seradSloty(data.minMaxSloty);
+  function getNavrhRows(prirazeni, data, opts) {
+    opts = opts || {};
+    var chybiPozice = opts.chybiPozice;
+    var budovy = (data && data.budovy) || [];
+    var zamestnanci = (data && data.zamestnanci) || [];
+    var sloty = seradSloty(data && data.minMaxSloty);
 
     var group = {};
     var key, item, den, slotId, budovaId, tridaId, ids, names, row, rows = [];
 
-    for (var i = 0; i < prirazeni.length; i += 1) {
+    for (var i = 0; i < (prirazeni || []).length; i += 1) {
       item = prirazeni[i];
       den = item.den;
       slotId = item.slotId;
@@ -132,7 +130,28 @@
         cas: casSlotu(sloty, slotId, data),
         slotOrder: slotOrder,
         misto: misto,
-        jmena: names
+        jmena: names,
+        chybiRow: false
+      });
+    }
+
+    if (chybiPozice) {
+      var cp = chybiPozice;
+      var mistoChybi = cp.tridaId ? ('Třída: ' + (cp.mistoLabel || '')) : ('Budova: ' + (cp.mistoLabel || ''));
+      var slotOrderChybi = (cp.slotId === 'overlap-prekryv') ? 1 : 0;
+      if (cp.slotId !== 'overlap-prekryv' && sloty.length) {
+        for (var s = 0; s < sloty.length; s += 1) {
+          if (sloty[s].id === cp.slotId) { slotOrderChybi = s; break; }
+        }
+      }
+      rows.push({
+        den: cp.den,
+        denLabel: NAZVY_DNU[cp.den],
+        cas: cp.slotOdDo || '',
+        slotOrder: slotOrderChybi,
+        misto: mistoChybi,
+        jmena: ['Chybějící úvazek'],
+        chybiRow: true
       });
     }
 
@@ -141,15 +160,40 @@
       if (a.slotOrder !== b.slotOrder) return a.slotOrder - b.slotOrder;
       return (a.misto || '').localeCompare(b.misto || '');
     });
+    return rows;
+  }
+
+  /**
+   * Vykreslí tabulku návrhu do #navrh-vysledek.
+   * @param {Array} prirazeni - z vypocetSmen
+   * @param {Object} data - konfigurace (pro názvy)
+   * @param {{ chybiPozice?: { den, slotId, slotOdDo, mistoLabel, tridaId } }} opts - volitelně chybějící pozice (červený řádek)
+   */
+  function vykresliNavrh(prirazeni, data, opts) {
+    var el = document.getElementById('navrh-vysledek');
+    if (!el) return;
+
+    opts = opts || {};
+    var chybiPozice = opts.chybiPozice;
+
+    if (!prirazeni || prirazeni.length === 0) {
+      if (!chybiPozice) {
+        el.innerHTML = '<p class="navrh-prazdno">Žádné přiřazení (prázdné sloty nebo konfigurace).</p>';
+        return;
+      }
+    }
+
+    var rows = getNavrhRows(prirazeni, data, opts);
 
     var html = [
       '<table class="tabulka-navrh">',
       '<thead><tr><th>Den</th><th>Čas</th><th>Místo</th><th>Osoby</th></tr></thead>',
       '<tbody>'
     ];
-    for (i = 0; i < rows.length; i += 1) {
+    for (var i = 0; i < rows.length; i += 1) {
       row = rows[i];
-      html.push('<tr>');
+      var trClass = row.chybiRow ? ' class="navrh-radek-chybi"' : '';
+      html.push('<tr' + trClass + '>');
       html.push('<td>' + escapeHtml(row.denLabel) + '</td>');
       html.push('<td>' + escapeHtml(row.cas) + '</td>');
       html.push('<td>' + escapeHtml(row.misto) + '</td>');
@@ -188,16 +232,46 @@
 
     if (result.ok) {
       zobrazUspech('Návrh byl přepočítán.');
+      lastNavrhResult = { prirazeni: result.prirazeni, data: data, opts: {} };
       vykresliNavrh(result.prirazeni, data);
+      zobrazTlacitkoCsv(true);
     } else {
       zobrazChybu(result.chyba || 'Výpočet se nezdařil.');
-      document.getElementById('navrh-vysledek').innerHTML = '<p class="navrh-prazdno">' + escapeHtml(result.chyba || '') + '</p>';
+      if (result.chybiPozice) {
+        lastNavrhResult = { prirazeni: result.prirazeni || [], data: data, opts: { chybiPozice: result.chybiPozice } };
+        vykresliNavrh(result.prirazeni || [], data, { chybiPozice: result.chybiPozice });
+        zobrazTlacitkoCsv(true);
+      } else {
+        lastNavrhResult = null;
+        zobrazTlacitkoCsv(false);
+        document.getElementById('navrh-vysledek').innerHTML = '<p class="navrh-prazdno">' + escapeHtml(result.chyba || '') + '</p>';
+      }
     }
+  }
+
+  function stahnoutCsv() {
+    if (!lastNavrhResult || !global.MSemenyExportNavrhCsv || !global.MSemenyExportNavrhCsv.stahnoutNavrhCsv) return;
+    global.MSemenyExportNavrhCsv.stahnoutNavrhCsv(
+      lastNavrhResult.prirazeni,
+      lastNavrhResult.data,
+      lastNavrhResult.opts
+    );
+  }
+
+  function zobrazTlacitkoCsv(zobrazit) {
+    var btn = document.getElementById('navrh-stahnout-csv');
+    if (btn) btn.hidden = !zobrazit;
   }
 
   function init() {
     var btn = document.getElementById('navrh-prepocitat');
     if (btn) btn.addEventListener('click', prepocitat);
+
+    var btnCsv = document.getElementById('navrh-stahnout-csv');
+    if (btnCsv) {
+      btnCsv.addEventListener('click', stahnoutCsv);
+      btnCsv.hidden = true;
+    }
 
     var el = document.getElementById('navrh-vysledek');
     if (el && !el.innerHTML.trim()) {
@@ -213,6 +287,7 @@
 
   global.MSemenyNavrhSmenUI = {
     prepocitat: prepocitat,
-    vykresliNavrh: vykresliNavrh
+    vykresliNavrh: vykresliNavrh,
+    getNavrhRows: getNavrhRows
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -81,6 +81,31 @@
     return (pos.budovaId || '') + '|' + (pos.tridaId || '');
   }
 
+  /** Popis místa pro hlášku (budovy = data.budovy). */
+  function mistoLabel(budovy, pos) {
+    if (!pos) return '';
+    if (pos.tridaId) {
+      for (var bi = 0; bi < (budovy || []).length; bi += 1) {
+        var b = budovy[bi];
+        if (b.tridy) {
+          for (var ti = 0; ti < b.tridy.length; ti += 1) {
+            if (b.tridy[ti].id === pos.tridaId) {
+              return (b.tridy[ti].nazev || '(třída)') + ' (' + (b.nazev || '') + ')';
+            }
+          }
+        }
+      }
+      return '(třída ' + pos.tridaId + ')';
+    }
+    if (pos.budovaId) {
+      for (var i = 0; i < (budovy || []).length; i += 1) {
+        if (budovy[i].id === pos.budovaId) return budovy[i].nazev || '(budova)';
+      }
+      return '(budova ' + pos.budovaId + ')';
+    }
+    return '';
+  }
+
   /**
    * Vybere nejvhodnější osobu pro pozici (D3: kmenová u své třídy, vykrývací max přesun, rotace).
    */
@@ -189,9 +214,39 @@
           pos = positions[j];
           bestId = vyberOsobu(zamestnanci, pos, assignedThisSlot, remaining, duration, tridaIdsDnes, pravidla, slot, rotacePocet);
           if (bestId == null) {
+            var denLabel = den === 1 ? 'Po' : den === 2 ? 'Út' : den === 3 ? 'St' : den === 4 ? 'Čt' : 'Pá';
+            var slotCas = (slot.od || '') + '–' + (slot.do || '');
+            var misto = mistoLabel(budovy, pos);
+            var sVolnymUvazkem = 0;
+            var sVolnymANeprirazenych = 0;
+            zamestnanci.forEach(function (z) {
+              if ((remaining[z.id] || 0) >= duration) {
+                sVolnymUvazkem += 1;
+                if (!assignedThisSlot[z.id]) sVolnymANeprirazenych += 1;
+              }
+            });
+            var duvod;
+            if (sVolnymUvazkem === 0) {
+              duvod = 'Žádný zaměstnanec nemá dostatek volného úvazku (pro tento slot je potřeba ' + duration + ' min). Zvažte zvýšení úvazků nebo snížení požadovaných pozic.';
+            } else if (sVolnymANeprirazenych === 0) {
+              duvod = 'Všechny osoby s dostatkem úvazku jsou v tomto slotu již přiřazeny – požaduje se více pozic než dostupných osob. Snižte min. počet na budovu/třídu nebo přidejte zaměstnance.';
+            } else {
+              duvod = 'Žádná vhodná osoba (omezení pro vykrývací – max. přesunů mezi třídami, nebo jiné pravidlo). Zkontrolujte pravidla vykrývacích.';
+            }
+            var chybaText = 'Pro ' + denLabel + ', slot ' + slotCas + (misto ? ', místo „' + misto + '": ' : ': ') + duvod;
+            var chybiPozice = {
+              den: den,
+              slotId: slot.id,
+              slotOdDo: slotCas,
+              budovaId: pos.budovaId || null,
+              tridaId: pos.tridaId || null,
+              mistoLabel: misto
+            };
             return {
               ok: false,
-              chyba: 'Nedostatek osob nebo úvazků pro ' + (den === 1 ? 'Po' : den === 2 ? 'Út' : den === 3 ? 'St' : den === 4 ? 'Čt' : 'Pá') + ', slot ' + (slot.od || '') + '–' + (slot.do || '') + '.'
+              chyba: chybaText,
+              prirazeni: prirazeni,
+              chybiPozice: chybiPozice
             };
           }
           prirazeni.push({

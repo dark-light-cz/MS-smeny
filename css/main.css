@@ -559,6 +559,12 @@ header {
   background: #fafafa;
 }
 
+.tabulka-navrh tr.navrh-radek-chybi td {
+  background: #fce8e8;
+  color: #b71c1c;
+  font-weight: 500;
+}
+
 /* Minimální překryv v třídě */
 .pravidla-prekryv .prekryv-form {
   margin-top: 0.5rem;
