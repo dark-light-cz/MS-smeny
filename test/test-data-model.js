@@ -61,6 +61,26 @@
       }
     },
     {
+      name: 'vytvorZamestnance s kmenová/vykrývací a tridaId (C2)',
+      run: function () {
+        var zK = M.vytvorZamestnance('Kmenová', 480, M.ROLE.UCITELKA, 'kmenová', 'trida-1');
+        T.assert(zK.kmenovaVykryvaci === 'kmenová', 'kmenová kategorie');
+        T.assert(zK.tridaId === 'trida-1', 'přiřazená třída');
+        var zV = M.vytvorZamestnance('Vykrývací', 300, M.ROLE.UCITELKA, 'vykrývací');
+        T.assert(zV.kmenovaVykryvaci === 'vykrývací', 'vykrývací kategorie');
+        T.assert(zV.tridaId === null, 'vykrývací bez třídy');
+      }
+    },
+    {
+      name: 'vychoziPravidla obsahuje pravidla pro vykrývací a kmenové (C2)',
+      run: function () {
+        var p = M.vychoziPravidla();
+        T.assert(p.vykryvaciBezMezer === true, 'vykryvaciBezMezer');
+        T.assert(p.vykryvaciMaxPresun === 1, 'vykryvaciMaxPresun');
+        T.assert(p.minKmenovychNaTridu === 2 && p.maxKmenovychNaTridu === 3, 'min/max kmenových na třídu');
+      }
+    },
+    {
       name: 'vytvorBudovu vytvoří budovu s tridy a oteviraciDoba',
       run: function () {
         var b = M.vytvorBudovu('Pavilon A');

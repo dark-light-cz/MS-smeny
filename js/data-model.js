@@ -80,12 +80,16 @@
   }
 
   /**
-   * Výchozí pravidla (minimální překryv v minutách, atd.).
+   * Výchozí pravidla (minimální překryv, kmenové/vykrývací, atd.).
    * @returns {Object}
    */
   function vychoziPravidla() {
     return {
-      minimalniPrekryvMinuty: 120
+      minimalniPrekryvMinuty: 120,
+      vykryvaciBezMezer: true,
+      vykryvaciMaxPresun: 1,
+      minKmenovychNaTridu: 2,
+      maxKmenovychNaTridu: 3
     };
   }
 
@@ -125,14 +129,17 @@
   }
 
   /**
-   * Struktura zaměstnance: id, jméno, úvazek v minutách za týden, role.
+   * Struktura zaměstnance: id, jméno, úvazek, role, kmenová/vykrývací, přiřazená třída.
+   * kmenovaVykryvaci: 'kmenová' | 'vykrývací'. tridaId: id třídy (pouze u kmenové).
    */
-  function vytvorZamestnance(jmeno, uvazekMinutyTyden, role) {
+  function vytvorZamestnance(jmeno, uvazekMinutyTyden, role, kmenovaVykryvaci, tridaId) {
     return {
       id: generujId(),
       jmeno: jmeno || '',
       uvazekMinutyTyden: uvazekMinutyTyden != null ? uvazekMinutyTyden : 0,
-      role: role || ROLE.UCITELKA
+      role: role || ROLE.UCITELKA,
+      kmenovaVykryvaci: kmenovaVykryvaci === 'vykrývací' ? 'vykrývací' : 'kmenová',
+      tridaId: (kmenovaVykryvaci === 'kmenová' && tridaId) ? tridaId : null
     };
   }
 

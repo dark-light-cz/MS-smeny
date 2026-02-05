@@ -53,12 +53,55 @@
     zobrazZpravu('Pravidlo překryvu bylo uloženo.');
   }
 
+  function zobrazZpravuVykryvaci(text) {
+    var el = document.getElementById('vykryvaci-zprava');
+    if (!el) return;
+    el.textContent = text || '';
+    el.hidden = !text;
+    if (text) {
+      setTimeout(function () { el.hidden = true; el.textContent = ''; }, 3000);
+    }
+  }
+
+  function vyplnVykryvaciFormular() {
+    var data = getData();
+    var p = data.pravidla || {};
+    var vychozi = Model && Model.vychoziPravidla ? Model.vychoziPravidla() : {};
+    var bezMezer = p.vykryvaciBezMezer != null ? p.vykryvaciBezMezer : vychozi.vykryvaciBezMezer !== false;
+    var maxPresun = p.vykryvaciMaxPresun != null ? p.vykryvaciMaxPresun : (vychozi.vykryvaciMaxPresun != null ? vychozi.vykryvaciMaxPresun : 1);
+    var cb = document.getElementById('vykryvaci-bez-mezer');
+    var inp = document.getElementById('vykryvaci-max-presun');
+    if (cb) cb.checked = !!bezMezer;
+    if (inp) inp.value = Math.max(0, Math.min(10, parseInt(maxPresun, 10) || 0));
+  }
+
+  function odeslatVykryvaciFormular(e) {
+    e.preventDefault();
+    var cb = document.getElementById('vykryvaci-bez-mezer');
+    var inp = document.getElementById('vykryvaci-max-presun');
+    var bezMezer = cb ? !!cb.checked : true;
+    var maxPresun = (inp && inp.value !== '') ? Math.max(0, Math.min(10, parseInt(inp.value, 10) || 0)) : 1;
+    if (!Storage || !Storage.replaceData) return;
+    Storage.replaceData(function (d) {
+      d.pravidla = d.pravidla || {};
+      d.pravidla.vykryvaciBezMezer = bezMezer;
+      d.pravidla.vykryvaciMaxPresun = maxPresun;
+      return d;
+    });
+    zobrazZpravuVykryvaci('Pravidla pro vykrývací byla uložena.');
+  }
+
   function init() {
     if (!Storage) return;
     vyplnFormular();
     var form = document.getElementById('prekryv-form');
     if (form) {
       form.addEventListener('submit', odeslatFormular);
+    }
+    vyplnVykryvaciFormular();
+    var formV = document.getElementById('vykryvaci-form');
+    if (formV) {
+      formV.addEventListener('submit', odeslatVykryvaciFormular);
     }
   }
 

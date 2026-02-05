@@ -66,6 +66,19 @@
               <option value="zástupkyně">zástupkyně</option>
             </select>
           </p>
+          <p>
+            <span class="label-inline">Kategorie</span>
+            <label><input type="radio" name="zamestnanci-kategorie" value="kmenová" id="zamestnanci-kmenova"> Kmenová</label>
+            <label><input type="radio" name="zamestnanci-kategorie" value="vykrývací" id="zamestnanci-vykryvaci"> Vykrývací</label>
+          </p>
+          <p id="zamestnanci-trida-wrapper" class="zamestnanci-trida-wrapper">
+            <label for="zamestnanci-trida">Přiřazená třída</label>
+            <select id="zamestnanci-trida">
+              <option value="">— žádná —</option>
+              <!-- Možnosti doplní JS z budov a tříd -->
+            </select>
+            <span class="hint">Pouze u kmenové: třída, ke které je zaměstnanec přiřazen</span>
+          </p>
           <p class="form-akce">
             <button type="submit" class="btn btn-primarni">Uložit</button>
             <button type="button" id="zamestnanci-form-zrusit" class="btn">Zrušit</button>
@@ -236,7 +249,29 @@
         </form>
       </div>
 
-      <p class="pravidla-dalsi">Další pravidla (kmenové/vykrývací, rotace) budou doplněna v blocích C a D.</p>
+      <div class="pravidla-blok pravidla-vykryvaci">
+        <h3 id="vykryvaci-nadpis">Pravidla pro vykrývací</h3>
+        <p class="pravidla-popis">
+          U vykrývacích zaměstnanců: zda požadovat souvislou pracovní dobu bez mezer (nebo s jedním přesunem) a kolik přesunů mezi třídami v rámci směny je přípustných.
+        </p>
+        <div id="vykryvaci-zprava" class="sloty-zprava sloty-uspech" role="status" aria-live="polite" hidden></div>
+        <form id="vykryvaci-form" class="prekryv-form">
+          <p>
+            <label><input type="checkbox" id="vykryvaci-bez-mezer" checked> Bez mezer</label>
+            <span class="hint">Souvislá pracovní doba nebo max. jeden přesun mezi třídami</span>
+          </p>
+          <p>
+            <label for="vykryvaci-max-presun">Max. přesunů mezi třídami v rámci směny</label>
+            <input type="number" id="vykryvaci-max-presun" min="0" max="10" value="1" aria-describedby="vykryvaci-hint-presun">
+            <span id="vykryvaci-hint-presun" class="hint">0 = žádný přesun, 1 = jeden přijatelný</span>
+          </p>
+          <p class="form-akce">
+            <button type="submit" class="btn btn-primarni">Uložit</button>
+          </p>
+        </form>
+      </div>
+
+      <p class="pravidla-dalsi">Další pravidla (rotace ve slotech) budou doplněna v blocích C a D.</p>
     </section>
     <section id="navrh-smen" class="sekce" aria-labelledby="navrh-nadpis" hidden>
       <h2 id="navrh-nadpis">Návrh směn</h2>

@@ -198,6 +198,15 @@ header {
   margin-right: 0.5rem;
 }
 
+.zamestnanci-formular .label-inline {
+  margin-right: 0.75rem;
+}
+
+.zamestnanci-formular .zamestnanci-trida-wrapper .hint {
+  display: block;
+  margin-top: 0.25rem;
+}
+
 .hint {
   font-size: 0.9rem;
   color: #666;

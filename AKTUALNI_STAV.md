@@ -79,6 +79,8 @@
   - U budovy i u třídy lze v příslušném formuláři nastavit otevírací dobu: výběr dnů (Po–Ne), čas Od a Do (model „po–pá 7:00–17:00“). Uložení do modelu (oteviraciDoba: { dny, od, do }). Třída má v modelu oteviraciDoba (vytvorTridu ji vytvoří s výchozí hodnotou). Při importu JSON se chybějící oteviraciDoba u budov a tříd doplní výchozí hodnotou.
 - **Minimální překryv v třídě (C1):**
   - V sekci Pravidla: blok „Minimální překryv v třídě“ – konfigurovatelná délka překryvu dvou pedagogů (v hodinách, např. 2). Uložení do modelu (pravidla.minimalniPrekryvMinuty v minutách). Formulář s nápovědou a tlačítkem Uložit (js/pravidla-prekryv.js).
+- **Kmenové vs. vykrývací (C2):**
+  - U zaměstnance: kategorie **kmenová** / **vykrývací**; u kmenové volitelný výběr **přiřazené třídy**. V modelu: zaměstnanec má `kmenovaVykryvaci` ('kmenová' | 'vykrývací') a `tridaId` (id třídy nebo null). Pravidla v modelu: `vykryvaciBezMezer`, `vykryvaciMaxPresun`, `minKmenovychNaTridu`, `maxKmenovychNaTridu`. V sekci Pravidla: blok „Pravidla pro vykrývací“ – checkbox „Bez mezer“, pole „Max. přesunů mezi třídami“ (0–10). Formulář zaměstnance rozšířen o kategorii a select třídy (zobrazí se jen u kmenové). Export/import doplňuje u zaměstnanců chybějící kmenovaVykryvaci a tridaId a sloučí pravidla (js/zamestnanci.js, js/pravidla-prekryv.js).
 - **Min/max počet osob v čase (B4):**
   - V sekci Pravidla: konfigurace časových slotů (od–do) a pro každý slot minimální a maximální počet osob na budovu a na třídu. Přehledné formuláře s nápovědami („Prázdné = bez omezení“), validace (čas Do později než Od, nezáporné počty, min ≤ max). Chyby a potvrzení se zobrazují na stránce (bez alertů), úspěch mizí po 3 s. Tabulka slotů řazená podle času, přidat / upravit / smazat. Model: vytvorMinMaxSlot(), minMaxSloty v úložišti.
 - **Export/import – UI (E1):**
@@ -105,6 +107,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Implementován úkol C2 – kmenové vs. vykrývací: u zaměstnance kategorie a přiřazená třída; v Pravidlech blok „Pravidla pro vykrývací“ (bez mezer, max. přesunů); model a export/import doplněny; testy rozšířeny.
 - 2025-02-05: Implementován úkol C1 – minimální překryv v třídě (konfigurace v sekci Pravidla, uložení pravidla.minimalniPrekryvMinuty).
 - 2025-02-05: Implementován úkol B1b – řazení tabulky zaměstnanců podle role a jména.
 - 2025-02-05: Implementován úkol E1 – export/import UI (tlačítka na Přehledu, obnova pohledů po importu).

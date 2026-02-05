@@ -111,6 +111,36 @@
         T.assert(d.budovy[0].oteviraciDoba.od === '07:00' && d.budovy[0].oteviraciDoba.do === '17:00', 'budova od-do');
         T.assert(d.budovy[0].tridy.length === 1 && d.budovy[0].tridy[0].oteviraciDoba, 'třída má oteviraciDoba');
       }
+    },
+    {
+      name: 'import doplní zaměstnancům kmenovaVykryvaci a tridaId (C2)',
+      run: function () {
+        S.resetCache();
+        var importData = {
+          zamestnanci: [
+            { id: 'z1', jmeno: 'Bez kategorie', uvazekMinutyTyden: 480, role: 'učitelka' },
+            { id: 'z2', jmeno: 'Kmenová', uvazekMinutyTyden: 480, role: 'učitelka', kmenovaVykryvaci: 'kmenová', tridaId: 't1' }
+          ],
+          budovy: []
+        };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.zamestnanci[0].kmenovaVykryvaci === 'kmenová' && d.zamestnanci[0].tridaId === null, 'doplněno kmenová, null třída');
+        T.assert(d.zamestnanci[1].kmenovaVykryvaci === 'kmenová' && d.zamestnanci[1].tridaId === 't1', 'zachováno kmenová + tridaId');
+      }
+    },
+    {
+      name: 'import sloučí pravidla včetně vykryvaciBezMezer a vykryvaciMaxPresun (C2)',
+      run: function () {
+        S.resetCache();
+        var importData = { zamestnanci: [], budovy: [], pravidla: { vykryvaciBezMezer: false, vykryvaciMaxPresun: 2 } };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.pravidla.vykryvaciBezMezer === false && d.pravidla.vykryvaciMaxPresun === 2, 'pravidla vykrývací sloučena');
+        T.assert(d.pravidla.minimalniPrekryvMinuty != null, 'ostatní pravidla doplněna');
+      }
     }
   ];
 

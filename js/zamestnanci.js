@@ -34,6 +34,59 @@
     return h * 60 + min;
   }
 
+  /** Vrátí všechny třídy z budov jako pole { id, nazev, budovaNazev }. */
+  function vsechnyTridy() {
+    var data = Storage ? Storage.getData() : { budovy: [] };
+    var out = [];
+    var b, t, i, j;
+    for (i = 0; i < (data.budovy || []).length; i += 1) {
+      b = data.budovy[i];
+      for (j = 0; j < (b.tridy || []).length; j += 1) {
+        t = b.tridy[j];
+        out.push({ id: t.id, nazev: t.nazev || '(bez názvu)', budovaNazev: b.nazev || '' });
+      }
+    }
+    return out;
+  }
+
+  /** Vrátí název třídy podle id (nebo prázdný řetězec). */
+  function nazevTridy(tridaId) {
+    if (!tridaId) return '';
+    var tridy = vsechnyTridy();
+    var i;
+    for (i = 0; i < tridy.length; i += 1) {
+      if (tridy[i].id === tridaId) return tridy[i].nazev;
+    }
+    return '';
+  }
+
+  /** Naplní select „Přiřazená třída“ a nastaví vybranou hodnotu. */
+  function naplnSelectTridy(vybranId) {
+    var sel = document.getElementById('zamestnanci-trida');
+    if (!sel) return;
+    var tridy = vsechnyTridy();
+    sel.innerHTML = '';
+    var opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = '— žádná —';
+    sel.appendChild(opt0);
+    var i, opt;
+    for (i = 0; i < tridy.length; i += 1) {
+      opt = document.createElement('option');
+      opt.value = tridy[i].id;
+      opt.textContent = tridy[i].budovaNazev ? tridy[i].nazev + ' (' + tridy[i].budovaNazev + ')' : tridy[i].nazev;
+      if (tridy[i].id === vybranId) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+
+  /** Zobrazí nebo skryje blok „Přiřazená třída“ podle kategorie. */
+  function toggleTridaWrapper() {
+    var kmenova = document.getElementById('zamestnanci-kmenova');
+    var wrap = document.getElementById('zamestnanci-trida-wrapper');
+    if (wrap) wrap.hidden = !(kmenova && kmenova.checked);
+  }
+
   /**
    * Vyplní formulář hodnotami zaměstnance (nebo prázdný při přidávání).
    * @param {Object|null} z - zaměstnanec nebo null
@@ -45,6 +98,13 @@
     document.getElementById('zamestnanci-hodiny').value = uv.hodiny;
     document.getElementById('zamestnanci-minuty').value = uv.minuty;
     document.getElementById('zamestnanci-role').value = z ? z.role : (Model && Model.ROLE ? Model.ROLE.UCITELKA : 'učitelka');
+    var kateg = (z && z.kmenovaVykryvaci === 'vykrývací') ? 'vykrývací' : 'kmenová';
+    var kmenovaEl = document.getElementById('zamestnanci-kmenova');
+    var vykryvaciEl = document.getElementById('zamestnanci-vykryvaci');
+    if (kmenovaEl) kmenovaEl.checked = (kateg === 'kmenová');
+    if (vykryvaciEl) vykryvaciEl.checked = (kateg === 'vykrývací');
+    naplnSelectTridy(z && z.tridaId ? z.tridaId : null);
+    toggleTridaWrapper();
   }
 
   /**
@@ -97,14 +157,15 @@
       return;
     }
 
-    var html = ['<table class="tabulka-zamestnanci"><thead><tr><th>Jméno</th><th>Úvazek (týden)</th><th>Role</th><th>Akce</th></tr></thead><tbody>'];
-    var i, z, uv, btnUpravit, btnSmazat;
+    var html = ['<table class="tabulka-zamestnanci"><thead><tr><th>Jméno</th><th>Úvazek (týden)</th><th>Role</th><th>Kategorie</th><th>Akce</th></tr></thead><tbody>'];
+    var i, z, uv, kategText, btnUpravit, btnSmazat;
     for (i = 0; i < list.length; i += 1) {
       z = list[i];
       uv = minutyNaHodinyMinuty(z.uvazekMinutyTyden);
+      kategText = (z.kmenovaVykryvaci === 'vykrývací') ? 'Vykrývací' : ('Kmenová' + (z.tridaId ? ' (' + escapeHtml(nazevTridy(z.tridaId)) + ')' : ''));
       btnUpravit = '<button type="button" class="btn btn-mala" data-akce="upravit" data-id="' + escapeAttr(z.id) + '">Upravit</button>';
       btnSmazat = '<button type="button" class="btn btn-mala" data-akce="smazat" data-id="' + escapeAttr(z.id) + '">Smazat</button>';
-      html.push('<tr><td>' + escapeHtml(z.jmeno || '') + '</td><td>' + uv.hodiny + ' h ' + uv.minuty + ' min</td><td>' + escapeHtml(z.role || '') + '</td><td>' + btnUpravit + ' ' + btnSmazat + '</td></tr>');
+      html.push('<tr><td>' + escapeHtml(z.jmeno || '') + '</td><td>' + uv.hodiny + ' h ' + uv.minuty + ' min</td><td>' + escapeHtml(z.role || '') + '</td><td>' + kategText + '</td><td>' + btnUpravit + ' ' + btnSmazat + '</td></tr>');
     }
     html.push('</tbody></table>');
     el.innerHTML = html.join('');
@@ -153,6 +214,10 @@
     var minuty = formNaMinuty();
     var roleEl = document.getElementById('zamestnanci-role');
     var role = roleEl ? roleEl.value : (Model && Model.ROLE ? Model.ROLE.UCITELKA : 'učitelka');
+    var kmenovaEl = document.getElementById('zamestnanci-kmenova');
+    var kateg = (kmenovaEl && kmenovaEl.checked) ? 'kmenová' : 'vykrývací';
+    var tridaEl = document.getElementById('zamestnanci-trida');
+    var tridaId = (tridaEl && tridaEl.value && kateg === 'kmenová') ? tridaEl.value.trim() : null;
 
     if (!Storage || !Storage.replaceData) return;
     if (!Model || !Model.vytvorZamestnance) return;
@@ -166,13 +231,15 @@
             zam[i].jmeno = jmeno;
             zam[i].uvazekMinutyTyden = minuty;
             zam[i].role = role;
+            zam[i].kmenovaVykryvaci = kateg;
+            zam[i].tridaId = tridaId;
             break;
           }
         }
         return d;
       });
     } else {
-      var novy = Model.vytvorZamestnance(jmeno, minuty, role);
+      var novy = Model.vytvorZamestnance(jmeno, minuty, role, kateg, tridaId);
       Storage.replaceData(function (d) {
         d.zamestnanci = d.zamestnanci || [];
         d.zamestnanci.push(novy);
@@ -229,6 +296,11 @@
     if (form) {
       form.addEventListener('submit', odeslatFormular);
     }
+
+    var kmenovaEl = document.getElementById('zamestnanci-kmenova');
+    var vykryvaciEl = document.getElementById('zamestnanci-vykryvaci');
+    if (kmenovaEl) kmenovaEl.addEventListener('change', toggleTridaWrapper);
+    if (vykryvaciEl) vykryvaciEl.addEventListener('change', toggleTridaWrapper);
 
     var seznam = document.getElementById('zamestnanci-seznam');
     if (seznam) {

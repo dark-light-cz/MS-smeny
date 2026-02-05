@@ -74,17 +74,34 @@
       });
       return budova;
     });
+    var zamestnanci = (data.zamestnanci || []).map(function (z) {
+      var k = z.kmenovaVykryvaci === 'vykrývací' ? 'vykrývací' : 'kmenová';
+      var tid = (k === 'kmenová' && z.tridaId) ? z.tridaId : null;
+      return {
+        id: z.id,
+        jmeno: z.jmeno != null ? z.jmeno : '',
+        uvazekMinutyTyden: z.uvazekMinutyTyden != null ? z.uvazekMinutyTyden : 0,
+        role: z.role != null ? z.role : 'učitelka',
+        kmenovaVykryvaci: k,
+        tridaId: tid
+      };
+    });
     var out = {
-      zamestnanci: data.zamestnanci,
+      zamestnanci: zamestnanci,
       budovy: budovy
     };
     out.version = data.version != null ? data.version : vychozi.version;
     out.minMaxSloty = Array.isArray(data.minMaxSloty) && data.minMaxSloty.length > 0
       ? data.minMaxSloty
       : vychozi.minMaxSloty;
-    out.pravidla = data.pravidla && typeof data.pravidla === 'object'
-      ? data.pravidla
-      : vychozi.pravidla;
+    var p = data.pravidla && typeof data.pravidla === 'object' ? data.pravidla : {};
+    out.pravidla = {
+      minimalniPrekryvMinuty: p.minimalniPrekryvMinuty != null ? p.minimalniPrekryvMinuty : vychozi.pravidla.minimalniPrekryvMinuty,
+      vykryvaciBezMezer: p.vykryvaciBezMezer != null ? p.vykryvaciBezMezer : vychozi.pravidla.vykryvaciBezMezer,
+      vykryvaciMaxPresun: p.vykryvaciMaxPresun != null ? p.vykryvaciMaxPresun : vychozi.pravidla.vykryvaciMaxPresun,
+      minKmenovychNaTridu: p.minKmenovychNaTridu != null ? p.minKmenovychNaTridu : vychozi.pravidla.minKmenovychNaTridu,
+      maxKmenovychNaTridu: p.maxKmenovychNaTridu != null ? p.maxKmenovychNaTridu : vychozi.pravidla.maxKmenovychNaTridu
+    };
     return out;
   }
 

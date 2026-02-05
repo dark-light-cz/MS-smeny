@@ -48,6 +48,22 @@
       }
     },
     {
+      name: 'replaceData uloží pravidla vykrývací (vykryvaciBezMezer, vykryvaciMaxPresun)',
+      run: function () {
+        S.resetCache();
+        S.setData(M.vychoziStav());
+        S.replaceData(function (d) {
+          d.pravidla = d.pravidla || {};
+          d.pravidla.vykryvaciBezMezer = false;
+          d.pravidla.vykryvaciMaxPresun = 2;
+          return d;
+        });
+        var d = S.getData();
+        T.assert(d.pravidla.vykryvaciBezMezer === false, 'vykryvaciBezMezer uloženo');
+        T.assert(d.pravidla.vykryvaciMaxPresun === 2, 'vykryvaciMaxPresun uloženo');
+      }
+    },
+    {
       name: 'Po setData je obsah v Local Storage',
       run: function () {
         S.resetCache();
