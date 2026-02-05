@@ -18,7 +18,7 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 
 | # | Úkol | Stav | Poznámka |
 |---|------|------|----------|
-| B1 | **Zaměstnanci – seznam a formulář** – zobrazení seznamu zaměstnanců, přidat / upravit / smazat. Pole: jméno, úvazek (hodiny + minuty za týden), role (výběr: učitelka, asistentka pedagoga, školník/školnice, ředitelka, zástupkyně). Ukládání do modelu a Local Storage. | [ ] | |
+| B1 | **Zaměstnanci – seznam a formulář** – zobrazení seznamu zaměstnanců, přidat / upravit / smazat. Pole: jméno, úvazek (hodiny + minuty za týden), role (výběr: učitelka, asistentka pedagoga, školník/školnice, ředitelka, zástupkyně). Ukládání do modelu a Local Storage. | [x] | Sekce Zaměstnanci: tabulka, formulář, tlačítka; js/zamestnanci.js; test-zamestnanci.js. |
 | B2 | **Budovy a třídy – struktura** – CRUD budov, v každé budově CRUD tříd. U budovy/třídy: název. Zobrazení hierarchie (budova → třídy). Ukládání do modelu a Local Storage. | [ ] | |
 | B3 | **Otevírací doba** – u budovy nebo třídy nastavení otevírací doby (např. den v týdnu + od–do, nebo jednoduchý model „po–pá 7:00–17:00“). Uložení do modelu. | [ ] | |
 | B4 | **Min/max počet osob v čase** – konfigurace časových slotů (od–do) a pro každý slot min/max počet osob (na třídu nebo na budovu). Příklad: 7:00–7:45 min 1 na budovu; od 7:45 min 1 na třídu. Uložení do modelu. | [ ] | |

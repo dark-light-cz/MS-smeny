@@ -26,7 +26,42 @@
     </section>
     <section id="zamestnanci" class="sekce" aria-labelledby="zamestnanci-nadpis" hidden>
       <h2 id="zamestnanci-nadpis">Zaměstnanci</h2>
-      <p>Seznam a správa zaměstnanců – bude doplněno v bloku B.</p>
+      <div class="zamestnanci-akce">
+        <button type="button" id="zamestnanci-pridat" class="btn btn-primarni">Přidat zaměstnance</button>
+      </div>
+      <div id="zamestnanci-formular" class="zamestnanci-formular" hidden>
+        <form id="zamestnanci-form" aria-labelledby="zamestnanci-form-nadpis">
+          <h3 id="zamestnanci-form-nadpis" class="visually-hidden">Formulář zaměstnance</h3>
+          <input type="hidden" id="zamestnanci-form-id" value="">
+          <p>
+            <label for="zamestnanci-jmeno">Jméno</label>
+            <input type="text" id="zamestnanci-jmeno" required>
+          </p>
+          <p>
+            <label for="zamestnanci-hodiny">Úvazek za týden</label>
+            <input type="number" id="zamestnanci-hodiny" min="0" max="168" value="0" aria-describedby="zamestnanci-uvazek-hint"> h
+            <input type="number" id="zamestnanci-minuty" min="0" max="59" value="0" aria-describedby="zamestnanci-uvazek-hint"> min
+            <span id="zamestnanci-uvazek-hint" class="hint">(hodiny a minuty týdně)</span>
+          </p>
+          <p>
+            <label for="zamestnanci-role">Role</label>
+            <select id="zamestnanci-role">
+              <option value="učitelka">učitelka</option>
+              <option value="asistentka pedagoga">asistentka pedagoga</option>
+              <option value="školník/školnice">školník/školnice</option>
+              <option value="ředitelka">ředitelka</option>
+              <option value="zástupkyně">zástupkyně</option>
+            </select>
+          </p>
+          <p class="form-akce">
+            <button type="submit" class="btn btn-primarni">Uložit</button>
+            <button type="button" id="zamestnanci-form-zrusit" class="btn">Zrušit</button>
+          </p>
+        </form>
+      </div>
+      <div id="zamestnanci-seznam" class="zamestnanci-seznam" aria-live="polite">
+        <!-- Seznam vykresluje JS -->
+      </div>
     </section>
     <section id="budovy-tridy" class="sekce" aria-labelledby="budovy-nadpis" hidden>
       <h2 id="budovy-nadpis">Budovy a třídy</h2>
@@ -48,6 +83,7 @@
   <script src="js/storage.js"></script>
   <script src="js/export-import.js"></script>
   <script src="js/navigace.js"></script>
+  <script src="js/zamestnanci.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
