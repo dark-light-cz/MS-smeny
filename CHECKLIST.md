@@ -4,6 +4,19 @@ Použití: u každého úkolu je stav `[ ]` (k vykonání) nebo `[x]` (hotovo). 
 
 ---
 
+## Co dál (doporučený postup)
+
+**Právě teď:** Fáze 0 je hotová. Následuje **Fáze 1 – specifikace**.
+
+1. **Nejprve** doplň do **AKTUALNI_STAV.md** sekci „Co aplikace je“ – stačí 1–2 věty (účel aplikace MS-smeny). Tím máme jasno, o čem budeme vibe codovat.
+2. **Pak** zapiš do OPEN_QUESTIONS.md jakékoli nejasnosti (postupně je vyřešíme).
+3. **Potom** vyřeš dotazy jeden po druhém a doplň „Co plánujeme“ v AKTUALNI_STAV.md.
+4. **Nakonec** první implementační úkol: jedna malá, konkrétní funkce od začátku do konce („první vertikální řez“).
+
+V každém okamžiku držíme **AKTUALNI_STAV.md** aktuální – je to přehled toho, co už aplikace umí.
+
+---
+
 ## Fáze 0: Příprava
 
 - [x] **0.1 Založení a propojení s GitHub repozitářem**
@@ -29,20 +42,28 @@ Použití: u každého úkolu je stav `[ ]` (k vykonání) nebo `[x]` (hotovo). 
 
 ## Fáze 1: Specifikace a návrh
 
-- [ ] **1.1 Vyřešení otevřených dotazů**
-  - Projít OPEN_QUESTIONS.md, zodpovědět postupně, zapracovat do specifikace
+- [x] **1.1 Popis účelu aplikace**
+  - Doplnit v AKTUALNI_STAV.md sekci „Co aplikace je“ (1–2 věty)
+  - Poznámka: Zapsána kompletní základní představa (MŠ, směny, konfigurace, výstup).
+
+- [ ] **1.2 Vyřešení otevřených dotazů**
+  - Zapsat nejasnosti do OPEN_QUESTIONS.md, zodpovědět postupně jeden po druhém, zapracovat do specifikace
   - Poznámka: _
 
-- [ ] **1.2 Definice feature setu**
-  - Seznam funkcí a chování aplikace (po vyřešení dotazů)
+- [ ] **1.3 Definice feature setu**
+  - Doplnit v AKTUALNI_STAV.md sekci „Co plánujeme“ – seznam funkcí a chování aplikace (po vyřešení dotazů)
   - Poznámka: _
 
 ---
 
 ## Fáze 2: Implementace jádra
 
-- [ ] **2.1** _Úkol bude doplněn po specifikaci_
-- [ ] **2.2** _
+- [ ] **2.1 První vertikální řez (MVP funkce)**
+  - Zvolit jednu konkrétní funkci z „Co plánujeme“, implementovat ji od začátku do konce (jedna obrazovka / jeden flow)
+  - Po dokončení: aktualizovat AKTUALNI_STAV.md (co aplikace umí)
+  - Poznámka: _
+
+- [ ] **2.2** _Další funkce – doplníme podle feature setu_
 - [ ] **2.3** _
 
 ---

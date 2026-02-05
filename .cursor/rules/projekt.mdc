@@ -27,13 +27,15 @@ alwaysApply: true
   - Pokud odpověď vyvolá nový dotaz, přidat ho do seznamu v OPEN_QUESTIONS.md.
 - **Po vyřešení všech dotazů** – krok zapracování: seznam dotazů a odpovědí zapracovat do dokumentace (specifikace, feature set). Důležitý je **finální stav a funkce**, ne detailní cesta, jak jsme se k tomu dobrali. Cíl: přehlednost aktuálního stavu a feature setu.
 
-## Dokumentace stavu
+## Dokumentace stavu a vibe coding
 
-- Po implementaci funkce nebo fáze aktualizovat popis toho, **co aplikace umí a proč**.
-- Preferovat stručný přehled feature setu a důvodů; ne nutně krok-za-krokem historii změn.
+- **AKTUALNI_STAV.md** je živý dokument – jediný zdroj pravdy pro to, co aplikace je a co umí. V každém okamžiku tam má být kompletní přehled implementované funkčnosti (pro vibe coding).
+- **Po každé dokončené funkci nebo změně chování** aktualizovat AKTUALNI_STAV.md: sekce „Co aplikace aktuálně umí“ a případně „Co plánujeme“. Preferovat stručný přehled; ne nutně krok-za-krokem historii.
+- Kdykoli je z odpovědí uživatele nebo z kontextu něco užitečné pro pravidla, feature set nebo checklist – navrhnout doplnění a zeptat se, zda to zapracovat.
 
 ## Odkazy v projektu
 
+- **AKTUALNI_STAV.md** – co aplikace je, co umí teď, co plánujeme; udržovat vždy aktuální.
 - **PLAN.md** – vysoká úroveň plánu a fáze.
-- **CHECKLIST.md** – co je hotové, co je potřeba dodělat; úkoly plnit postupně.
+- **CHECKLIST.md** – co je hotové, co je potřeba dodělat; úkoly plnit postupně; sekce „Co dál“ pro doporučený postup.
 - **OPEN_QUESTIONS.md** – otevřené dotazy a workflow pro jejich řešení.

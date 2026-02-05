@@ -6,15 +6,16 @@ Tento dokument popisuje vysokou úroveň plánu pro vývoj aplikace v editoru Cu
 
 ## Fáze projektu
 
-### Fáze 0: Příprava (aktuální)
+### Fáze 0: Příprava ✓
 - Základní struktura projektu (HTML, CSS, JS)
 - Konfigurace Cursor AI a pravidel
 - Propojení s GitHub repozitářem
 - Checklist a workflow pro dotazy
 
 ### Fáze 1: Specifikace a návrh
-- Shromáždění a vyřešení otevřených dotazů (OPEN_QUESTIONS.md)
-- Definice funkčních požadavků a feature setu
+- Popis účelu aplikace v AKTUALNI_STAV.md („Co aplikace je“)
+- Shromáždění a vyřešení otevřených dotazů (OPEN_QUESTIONS.md), vždy jeden po druhém
+- Definice feature setu v AKTUALNI_STAV.md („Co plánujeme“)
 - (Volitelně) Návrh struktury stránek / wireframy
 
 ### Fáze 2: Implementace jádra
@@ -38,6 +39,8 @@ Tento dokument popisuje vysokou úroveň plánu pro vývoj aplikace v editoru Cu
 2. **Dílčí zadání** – každý úkol z checklistu může být rozpracován v chatu jako konkrétní zadání (např. „Implementuj úkol X podle CHECKLIST.md“).
 3. **Otevřené dotazy** (OPEN_QUESTIONS.md) – nejasnosti se zapisují sem. Řešíme vždy jeden dotaz; po odpovědi revidujeme zbývající a případně přidáme nové. Po vyřešení všech dotazů provedeme krok „zapracování“ – dokumentace finálního stavu a feature setu.
 4. **Dokumentace stavu** – po dokončení funkce nebo fáze aktualizujeme popis toho, co aplikace umí a proč (ne nutně jak jsme se k tomu dobrali). Důraz na přehlednost a aktuální feature set.
+
+5. **AKTUALNI_STAV.md** – živý dokument (single source of truth) pro vibe coding: v každém okamžiku tam má být kompletní přehled toho, co aplikace je, co už umí a co plánujeme. Po každé dokončené funkci ho aktualizujeme.
 
 ---
 

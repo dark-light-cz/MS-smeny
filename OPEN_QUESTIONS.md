@@ -11,7 +11,7 @@ Nejasnosti a rozhodnutí, která musí padnout na tvou stranu. Workflow:
 
 ## Aktuální seznam dotazů
 
-1. _(zatím žádné – doplníme při prvních nejasnostech)_
+1. **Období a časová granularita:** Návrh směn se má vztahovat na jaké období – jeden den, týden, měsíc (nebo to má být konfigurovatelné)? A v jakých časových blocích se to řeší – po hodinách, po 15 minutách (např. 7:00, 7:15, 7:30…), nebo jinak?
 
 ---
 
