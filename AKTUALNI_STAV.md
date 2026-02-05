@@ -95,6 +95,8 @@
   - Algoritmus na vstupu bere konfiguraci (zaměstnanci, budovy, minMaxSloty, pravidla). Výstup: přiřazení „kdo kdy kde“. D1: min/max v slotech, úvazky. D3: (1) **Minimální překryv** – pokud jsou třídy a pravidla.minimalniPrekryvMinuty > 0, přidá se syntetický slot (např. 09:00–11:00) s minNaTridu 2 v každé třídě. (2) **Kmenové/vykrývací** – při výběru osoby pro třídu se preferuje kmenová přiřazená k té třídě; u vykrývací se respektuje max počet tříd za den (vykryvaciMaxPresun + 1). (3) **Rotace** – u slotu s rotace: true se preferují osoby s menším počtem přiřazení do daného slotu/místa v týdnu. API: `MSemenyVypocetSmen.vypocetSmen(data)` (js/vypocet-smen.js). V návrhu směn se překryv zobrazí jako „Překryv (09:00–11:00)“.
 - **Zobrazení návrhu směn (D2):**
   - Sekce „Návrh směn“: popis, tlačítko „Přepočítat“, po výpočtu tabulka s sloupci Den, Čas, Místo, Osoby. Chyba výpočtu (např. nedostatek úvazků) se zobrazí pod tlačítkem. Prázdný stav před prvním výpočtem (js/navrh-smen-ui.js).
+- **Rozšířené nastavení D3 (propojení Pravidla ↔ výpočet):**
+  - V sekci Pravidla: úvodní text vysvětluje, že nastavení (časové sloty včetně rotace, minimální překryv, pravidla pro vykrývací) ovlivňují výpočet návrhu směn. Na konci sekce odkaz na Návrh směn místo zastaralé poznámky „blok D“.
 - **Export/import – UI (E1):**
   - V sekci Přehled: blok „Záloha a obnova dat“ s textem, že při importu se data nahradí. Tlačítko „Exportovat data“ stáhne JSON soubor. Tlačítko „Importovat data“ otevře výběr souboru; po nahrání platného JSON se data nahradí a zobrazení zaměstnanců, budov a časových slotů se automaticky obnoví. Úspěch a chyby (neplatný soubor) se zobrazují pod tlačítky (js/export-import-ui.js).
 - **Testy:** v prohlížeči se spouštějí otevřením `test/index.html`, nebo `npm test` (Playwright). Testují datový model, Local Storage, export/import JSON, navigaci, zaměstnance, budovy/třídy, časové sloty min/max a pravidlo překryvu; po každém úkolu je vhodné testy znovu spustit a ověřit, že nic nerozbilo.
@@ -119,6 +121,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Rozšířené nastavení D3 – v sekci Pravidla úvodní text propojující nastavení s výpočtem návrhu směn; závěrečný odkaz na Návrh směn.
 - 2025-02-05: Implementován D3 – rozšíření výpočtu: minimální překryv v třídě (syntetický slot), preferování kmenových u své třídy a omezení přesunů u vykrývacích, rotace u slotů. Zobrazení překryvu v tabulce návrhu.
 - 2025-02-05: Implementovány D1 a D2 – výpočet návrhu směn (algoritmus min/max a úvazky, výstup přiřazení) a zobrazení v sekci Návrh směn (tabulka Den/Čas/Místo/Osoby, tlačítko Přepočítat).
 - 2025-02-05: Implementovány úkoly B1c (řazení sloupců zaměstnanců – klik / Shift+klik, ▲/▼ a pořadí kritérií) a B4b (duplikovat řádek u časových slotů – předvyplnění formuláře pro nový slot).

@@ -378,6 +378,12 @@ header {
   margin-bottom: 0.5rem;
 }
 
+.pravidla-uvod {
+  color: #444;
+  margin-bottom: 1.5rem;
+  max-width: 42em;
+}
+
 .pravidla-popis {
   color: #444;
   margin-bottom: 1rem;
