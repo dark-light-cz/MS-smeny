@@ -71,7 +71,9 @@
   - Jedna stránka s hlavičkou (název MS-smeny), hlavní navigací (Přehled, Zaměstnanci, Budovy a třídy, Pravidla, Návrh směn) a obsahovou oblastí s pěti sekcemi. Sekce se přepínají v JS (zobrazení/skrytí), URL hash (#prehled, #zamestnanci, …) se při přepnutí aktualizuje. API: `MSemenyNavigace.zobrazSekci(id)`, `MSemenyNavigace.sekceZHash()`, `MSemenyNavigace.getIdSekci()` (js/navigace.js).
 - **Zaměstnanci – seznam a formulář (B1):**
   - V sekci Zaměstnanci: tabulka zaměstnanců (jméno, úvazek v h/min za týden, role), tlačítko „Přidat zaměstnance“, formulář (jméno, hodiny + minuty týdně, role – učitelka, asistentka pedagoga, školník/školnice, ředitelka, zástupkyně). Akce: přidat, upravit, smazat (s potvrzením). Data se ukládají do modelu a Local Storage (js/zamestnanci.js).
-- **Testy:** v prohlížeči se spouštějí otevřením `test/index.html`, nebo `npm test` (Playwright). Testují datový model, Local Storage, export/import JSON, navigaci a zaměstnance; po každém úkolu je vhodné testy znovu spustit a ověřit, že nic nerozbilo.
+- **Budovy a třídy – struktura (B2):**
+  - V sekci Budovy a třídy: hierarchie budova → třídy. CRUD budov (název), v každé budově CRUD tříd (název). Formuláře pro přidání/úpravu budovy a třídy, u třídy výběr budovy (při úpravě lze přesunout do jiné budovy). Smazání budovy (i se třídami) a smazání třídy s potvrzením. Ukládání do modelu a Local Storage (js/budovy-tridy.js).
+- **Testy:** v prohlížeči se spouštějí otevřením `test/index.html`, nebo `npm test` (Playwright). Testují datový model, Local Storage, export/import JSON, navigaci, zaměstnance a budovy/třídy; po každém úkolu je vhodné testy znovu spustit a ověřit, že nic nerozbilo.
 
 ---
 
@@ -93,6 +95,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Implementován úkol B2 – budovy a třídy: CRUD budov a tříd, hierarchie, ukládání do modelu a Local Storage (js/budovy-tridy.js, test-budovy-tridy.js).
 - 2025-02-05: Implementován úkol B1 – zaměstnanci: seznam, formulář přidat/upravit/smazat, ukládání do modelu a Local Storage (js/zamestnanci.js, test-zamestnanci.js).
 - 2025-02-05: Implementován úkol A3 – kostra stránky a navigace (hlavička, nav s 5 sekcemi, přepínání v JS, hash; js/navigace.js, test-navigace.js).
 - 2025-02-05: Implementován úkol A2 – export a import JSON (js/export-import.js): exportData(), stahnoutExport(), importZeJSON(); testy v test-export-import.js.

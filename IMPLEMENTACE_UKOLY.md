@@ -19,7 +19,7 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 | # | Úkol | Stav | Poznámka |
 |---|------|------|----------|
 | B1 | **Zaměstnanci – seznam a formulář** – zobrazení seznamu zaměstnanců, přidat / upravit / smazat. Pole: jméno, úvazek (hodiny + minuty za týden), role (výběr: učitelka, asistentka pedagoga, školník/školnice, ředitelka, zástupkyně). Ukládání do modelu a Local Storage. | [x] | Sekce Zaměstnanci: tabulka, formulář, tlačítka; js/zamestnanci.js; test-zamestnanci.js. |
-| B2 | **Budovy a třídy – struktura** – CRUD budov, v každé budově CRUD tříd. U budovy/třídy: název. Zobrazení hierarchie (budova → třídy). Ukládání do modelu a Local Storage. | [ ] | |
+| B2 | **Budovy a třídy – struktura** – CRUD budov, v každé budově CRUD tříd. U budovy/třídy: název. Zobrazení hierarchie (budova → třídy). Ukládání do modelu a Local Storage. | [x] | Sekce Budovy a třídy: hierarchie, formuláře budov/tříd; js/budovy-tridy.js; test-budovy-tridy.js. |
 | B3 | **Otevírací doba** – u budovy nebo třídy nastavení otevírací doby (např. den v týdnu + od–do, nebo jednoduchý model „po–pá 7:00–17:00“). Uložení do modelu. | [ ] | |
 | B4 | **Min/max počet osob v čase** – konfigurace časových slotů (od–do) a pro každý slot min/max počet osob (na třídu nebo na budovu). Příklad: 7:00–7:45 min 1 na budovu; od 7:45 min 1 na třídu. Uložení do modelu. | [ ] | |
 
@@ -54,6 +54,8 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 | E1 | **Export/import – UI** – tlačítka nebo menu „Exportovat data“ (stáhnout JSON) a „Importovat data“ (nahrát JSON, nahradit/ sloučit dle dohody). | [ ] | |
 | E2 | **Validace a hlášení chyb** – kontrola vstupů (úvazek, časy, povinná pole), zobrazení srozumitelných hlášek. Při výpočtu např. „nelze najít řešení“ + důvod pokud možno. | [ ] | |
 | E3 | **Doladění UX** – konzistentní styly, přehlednost formulářů a tabulek, základní responzivita. | [ ] | |
+| E4 | **Zobrazovaný název aplikace** – upravit lidský název aplikace zobrazený v hlavičce stránky a v titulku prohlížeče (`<title>`). Jde o to, jak se aplikace jmenuje pro uživatele v UI, ne o název repozitáře na GitHubu. | [ ] | |
+| E5 | **Vylepšit vzhled** – vzhled aplikace: barevné schéma, typografie, vizuální hierarchie a čitelnost; konzistentní vzhled formulářů, tabulek a navigace tak, aby byl celkový dojem přehledný a přívětivý. | [ ] | |
 
 ---
 

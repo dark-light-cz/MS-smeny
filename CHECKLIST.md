@@ -64,7 +64,7 @@ V každém okamžiku držíme **AKTUALNI_STAV.md** aktuální – je to přehled
 - [ ] **2.2 Blok B** – Konfigurace: zaměstnanci, budovy a třídy, otevírací doba, min/max v čase (B1–B4)
 - [ ] **2.3 Blok C** – Pravidla: překryv, kmenové/vykrývací, speciální sloty a rotace (C1–C4)
 - [ ] **2.4 Blok D** – Výpočet návrhu směn a zobrazení výsledku (D1–D4)
-- [ ] **2.5 Blok E** – Export/import UI, validace, doladění UX (E1–E3)
+- [ ] **2.5 Blok E** – Export/import UI, validace, doladění UX, zobrazovaný název aplikace, vylepšení vzhledu (E1–E5)
 
 ---
 

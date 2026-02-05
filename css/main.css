@@ -192,6 +192,71 @@ header {
   background: #fafafa;
 }
 
+/* Sekce Budovy a třídy */
+.budovy-akce {
+  margin-bottom: 1rem;
+}
+
+.budovy-formular {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.budovy-formular p {
+  margin: 0.5rem 0;
+}
+
+.budovy-formular label {
+  display: inline-block;
+  min-width: 8em;
+}
+
+.budovy-formular .form-akce .btn {
+  margin-right: 0.5rem;
+}
+
+.budovy-prazdno {
+  color: #666;
+  font-style: italic;
+}
+
+.budovy-hierarchie {
+  margin-top: 1rem;
+}
+
+.budova-blok {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.budova-hlavicka {
+  margin-bottom: 0.5rem;
+}
+
+.budova-hlavicka .btn-mala {
+  margin-right: 0.25rem;
+}
+
+.budova-tridy {
+  margin: 0.5rem 0 0.75rem 1.5rem;
+  padding: 0;
+  list-style: disc;
+}
+
+.budova-tridy li {
+  margin: 0.25rem 0;
+}
+
+.budova-tridy .btn-mala {
+  margin-left: 0.5rem;
+}
+
 footer {
   margin-top: 2rem;
   border-top: 1px solid var(--color-border);

@@ -65,7 +65,44 @@
     </section>
     <section id="budovy-tridy" class="sekce" aria-labelledby="budovy-nadpis" hidden>
       <h2 id="budovy-nadpis">Budovy a třídy</h2>
-      <p>Struktura budov a tříd – bude doplněno v bloku B.</p>
+      <div class="budovy-akce">
+        <button type="button" id="budovy-pridat" class="btn btn-primarni">Přidat budovu</button>
+      </div>
+      <div id="budovy-formular" class="budovy-formular" hidden>
+        <form id="budovy-form">
+          <h3 class="visually-hidden">Formulář budovy</h3>
+          <input type="hidden" id="budovy-form-id" value="">
+          <p>
+            <label for="budovy-nazev">Název budovy</label>
+            <input type="text" id="budovy-nazev" required>
+          </p>
+          <p class="form-akce">
+            <button type="submit" class="btn btn-primarni">Uložit</button>
+            <button type="button" id="budovy-form-zrusit" class="btn">Zrušit</button>
+          </p>
+        </form>
+      </div>
+      <div id="tridy-formular" class="budovy-formular" hidden>
+        <form id="tridy-form">
+          <h3 class="visually-hidden">Formulář třídy</h3>
+          <input type="hidden" id="tridy-form-id" value="">
+          <p>
+            <label for="tridy-budova">Budova</label>
+            <select id="tridy-budova"></select>
+          </p>
+          <p>
+            <label for="tridy-nazev">Název třídy</label>
+            <input type="text" id="tridy-nazev" required>
+          </p>
+          <p class="form-akce">
+            <button type="submit" class="btn btn-primarni">Uložit</button>
+            <button type="button" id="tridy-form-zrusit" class="btn">Zrušit</button>
+          </p>
+        </form>
+      </div>
+      <div id="budovy-hierarchie" class="budovy-hierarchie" aria-live="polite">
+        <!-- Hierarchie vykresluje JS -->
+      </div>
     </section>
     <section id="pravidla" class="sekce" aria-labelledby="pravidla-nadpis" hidden>
       <h2 id="pravidla-nadpis">Pravidla</h2>
@@ -84,6 +121,7 @@
   <script src="js/export-import.js"></script>
   <script src="js/navigace.js"></script>
   <script src="js/zamestnanci.js"></script>
+  <script src="js/budovy-tridy.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
