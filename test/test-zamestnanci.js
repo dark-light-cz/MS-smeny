@@ -56,6 +56,24 @@
       }
     },
     {
+      name: 'Trojstavové řazení: nahoru → dolu → neřadit (B1c)',
+      run: function () {
+        if (!Z || typeof Z.nastavPrimarniRazeni !== 'function' || typeof Z.getRazeniKriteria !== 'function') return;
+        var k;
+        Z.nastavPrimarniRazeni('jmeno');
+        k = Z.getRazeniKriteria();
+        T.assert(k.length >= 1 && k[0].key === 'jmeno' && k[0].dir === 1, '1. klik: jméno nahoru (▲)');
+        Z.nastavPrimarniRazeni('jmeno');
+        k = Z.getRazeniKriteria();
+        T.assert(k.length >= 1 && k[0].key === 'jmeno' && k[0].dir === -1, '2. klik: jméno dolu (▼)');
+        Z.nastavPrimarniRazeni('jmeno');
+        k = Z.getRazeniKriteria();
+        var hasJmeno = k.some(function (x) { return x.key === 'jmeno'; });
+        T.assert(!hasJmeno, '3. klik: jméno neřadit (odebráno z kritérií)');
+        T.assert(k.length >= 1, 'po odebrání zůstávají výchozí nebo jiná kritéria');
+      }
+    },
+    {
       name: 'minutyNaHodinyMinuty(0) vrací 0 h 0 min',
       run: function () {
         var r = Z.minutyNaHodinyMinuty(0);

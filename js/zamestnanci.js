@@ -457,6 +457,8 @@
     seradZamestnance: seradZamestnance,
     vykresliSeznam: vykresliSeznam,
     zobrazFormular: zobrazFormular,
-    skryjFormular: skryjFormular
+    skryjFormular: skryjFormular,
+    getRazeniKriteria: function () { return razeniKriteria.slice(); },
+    nastavPrimarniRazeni: nastavPrimarniRazeni
   };
 })(typeof window !== 'undefined' ? window : this);
