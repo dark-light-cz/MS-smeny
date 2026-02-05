@@ -36,6 +36,12 @@ alwaysApply: true
   1. **Zhodnotit důvod** – proč by se měl test upravovat (změna chování vs. chyba v testu vs. refaktor).
   2. **Nechat si úpravu potvrdit** uživatelem před provedením změny.
 
+## Upřesnění zadání úkolu
+
+- Kdykoli **uživatel upřesní nebo doplní zadání** konkrétního úkolu (např. během implementace nebo v diskusi), **zapsat to do plánu** – aby se upřesnění neztratilo a další řešitel (nebo AI v jiné session) měl stejnou specifikaci.
+- **Kde zapisovat:** u úkolu v **IMPLEMENTACE_UKOLY.md** – doplnit text úkolu nebo sloupec Poznámka o upřesnění (co má být splněno, jak to má fungovat). Pokud se upřesnění týká celé specifikace, doplnit **AKTUALNI_STAV.md** (Základní představa / Co plánujeme).
+- **Nepředpokládat**, že upřesnění „zůstane v chatu“ – vždy je zapsat do příslušného dokumentu.
+
 ## Dokumentace stavu a vibe coding
 
 - **AKTUALNI_STAV.md** je živý dokument – jediný zdroj pravdy pro to, co aplikace je a co umí. V každém okamžiku tam má být kompletní přehled implementované funkčnosti (pro vibe coding).
