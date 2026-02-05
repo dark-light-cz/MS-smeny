@@ -35,7 +35,7 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 | C1 | **Minimální překryv v třídě** – konfigurovatelná délka (např. 2 hodiny) překryvu dvou pedagogů v každé třídě každý den. Uložení do modelu. | [x] | Sekce Pravidla: blok „Minimální překryv v třídě“, formulář (hodiny), js/pravidla-prekryv.js; pravidla.minimalniPrekryvMinuty; test-pravidla-prekryv.js. |
 | C2 | **Kmenové vs. vykrývací** – u zaměstnance označení kmenová/vykrývací; přiřazení kmenových k jedné třídě (2–3 na třídu). Pravidlo „bez mezer“, „max 1 přesun“ u vykrývací – uložení do modelu, výpočet využije později. | [x] | Model: kmenovaVykryvaci, tridaId; pravidla: vykryvaciBezMezer, vykryvaciMaxPresun, min/maxKmenovychNaTridu. Formulář zaměstnance: kategorie + select třídy. Sekce Pravidla: blok „Pravidla pro vykrývací“. Export/import doplňuje a sloučí. |
 | C3 | **Speciální sloty a rotace** – definice slotů se sníženým počtem osob (např. pátek 15:30–17, 1 osoba na budovu) a příznak „požadovat střídání“ (rotace). Uložení do modelu. | [x] | Slot: volitelná pole dny (1–5), rotace (boolean). Formulář: výběr dnů (Po–Pá), checkbox rotace. Tabulka: sloupce Dny, Rotace. Import normalizuje dny/rotace. |
-| C4 | **Omezení „ne dohromady“** (volitelně později) – výběr dvojic osob, které nemají být spolu v jedné třídě/směně. Uložení do modelu. | [ ] | |
+| C4 | **Omezení „ne dohromady“** (volitelně později) – výběr dvojic osob, které nemají být spolu v jedné třídě/směně. Uložení do modelu. | [x] | Model: omezeniNeDohromady [], vytvorOmezeniNeDohromady(id1, id2). Sekce Pravidla: blok s výběrem dvou osob, seznam dvojic, smazat. Import normalizuje. js/omezeni-ne-dohromady.js. |
 
 ---
 
@@ -59,6 +59,7 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 | E3 | **Doladění UX** – konzistentní styly, přehlednost formulářů a tabulek, základní responzivita. | [ ] | |
 | E4 | **Zobrazovaný název aplikace** – upravit lidský název aplikace zobrazený v hlavičce stránky a v titulku prohlížeče (`<title>`). Jde o to, jak se aplikace jmenuje pro uživatele v UI, ne o název repozitáře na GitHubu. | [ ] | |
 | E5 | **Vylepšit vzhled** – vzhled aplikace: barevné schéma, typografie, vizuální hierarchie a čitelnost; konzistentní vzhled formulářů, tabulek a navigace tak, aby byl celkový dojem přehledný a přívětivý. | [ ] | |
+| E6 | **Nápověda na stránkách nastavení** – zrevidovat a doplnit nápovědu k jednotlivým sekcím a polím (Zaměstnanci, Budovy a třídy, Pravidla) tak, aby bylo nastavení srozumitelné i pro laiky (neodborníky). | [ ] | |
 
 ---
 
