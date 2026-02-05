@@ -102,6 +102,8 @@
   - Algoritmus na vstupu bere konfiguraci (zaměstnanci, budovy, minMaxSloty, pravidla). Výstup: přiřazení „kdo kdy kde“. Každý zaměstnanec má na každý den seznam navazujících segmentů (kde je v daném čase). Sloty jsou kontrolní pravidla (ne přímá přiřazení). Fáze: demand → umístění směn → přiřazení míst → segmenty. D3: (1) **Minimální překryv** – pokud jsou třídy a pravidla.minimalniPrekryvMinuty > 0, přidá se syntetický slot (např. 09:00–11:00) s minNaTridu 2 v každé třídě. (2) **Kmenové/vykrývací** – při výběru osoby pro třídu se preferuje kmenová přiřazená k té třídě; u vykrývací se respektuje max počet tříd za den (vykryvaciMaxPresun + 1). (3) **Rotace** – u slotu s rotace: true se preferují osoby s menším počtem přiřazení do daného slotu/místa v týdnu. API: `MSemenyVypocetSmen.vypocetSmen(data)` (js/vypocet-smen.js). V návrhu směn se překryv zobrazí jako „Překryv (09:00–11:00)“.
 - **Zobrazení návrhu směn (D2):**
   - Sekce „Návrh směn“: popis, tlačítko „Přepočítat“, po výpočtu tabulka se sloupci Den, Zaměstnanec, Čas, Místo. Chyba výpočtu (např. nedostatek úvazků) se zobrazí pod tlačítkem. Prázdný stav před prvním výpočtem (js/navrh-smen-ui.js).
+- **Grafické zobrazení návrhu pracovní doby (D2b):**
+  - Pod tabulkou návrhu: blok s grafem. Každá budova = vlastní blok; v bloku řádek „Budova (společně)“ a po řádku každá třída. Řádek = vodorovná časová osa (od otevírací doby), na ní barevné obdélníky = přiřazení osob (segmenty). Tooltip (title) u segmentu: jméno a časový rozsah (od–do). Legenda barev (kdo jakou barvu má). Výběr dne (Po–Pá) – jeden den = jedna „síť“ budov a tříd. API: `MSemenyNavrhGraf.vykresliNavrhGraf(prirazeni, data, container, vybranyDen)` (js/navrh-graf.js).
 - **Export návrhu směn jako CSV (D2c):**
   - Po přepočtu se v sekci Návrh směn zobrazí tlačítko „Stáhnout CSV“. Stáhne aktuální návrh jako soubor navrh-smen.csv (sloupce Den, Zaměstnanec, Čas, Místo; oddělovač ;, UTF-8 s BOM). API: `MSemenyExportNavrhCsv.navrhToCsv(prirazeni, data)`, `MSemenyExportNavrhCsv.stahnoutNavrhCsv(...)` (js/export-navrh-csv.js). UI používá `MSemenyNavrhSmenUI.getNavrhRows()` pro sdílenou přípravu řádků.
 - **Rozšířené nastavení D3 (propojení Pravidla ↔ výpočet):**
@@ -130,6 +132,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2026-02-05: Implementován D2b – grafické zobrazení návrhu pracovní doby: budovy/třídy, časová osa, barevné segmenty, tooltip, legenda, výběr dne (js/navrh-graf.js, test-navrh-graf.js).
 - 2026-02-05: Přepracován algoritmus výpočtu směn (D1/D3): plánování souvislých směn místo přiřazování do slotů; sloty jsou kontrolní pravidla; výstup = segmenty per zaměstnanec; aktualizovány UI (tabulka Den/Zaměstnanec/Čas/Místo), CSV export a testy.
 - 2026-02-05: Oprava: row is not defined v navrh-smen-ui.js; přidán test vykresliNavrh.
 - 2025-02-05: Implementován D2c – export výsledku návrhu směn jako CSV (tlačítko Stáhnout CSV, js/export-navrh-csv.js, testy).

@@ -163,10 +163,12 @@
       zobrazUspech('Návrh byl přepočítán.');
       lastNavrhResult = { prirazeni: result.prirazeni, data: data };
       vykresliNavrh(result.prirazeni, data);
+      zobrazGraf(result.prirazeni, data);
       zobrazTlacitkoCsv(true);
     } else {
       zobrazChybu(result.chyba || 'Výpočet se nezdařil.');
       lastNavrhResult = null;
+      zobrazGraf([], null);
       zobrazTlacitkoCsv(false);
       var vysledekEl = document.getElementById('navrh-vysledek');
       if (vysledekEl) {
@@ -186,6 +188,13 @@
   function zobrazTlacitkoCsv(zobrazit) {
     var btn = document.getElementById('navrh-stahnout-csv');
     if (btn) btn.hidden = !zobrazit;
+  }
+
+  function zobrazGraf(prirazeni, data) {
+    var Graf = global.MSemenyNavrhGraf;
+    var container = document.getElementById('navrh-graf');
+    if (!Graf || !Graf.vykresliNavrhGraf || !container) return;
+    Graf.vykresliNavrhGraf(prirazeni || [], data || {}, container, 1);
   }
 
   function init() {

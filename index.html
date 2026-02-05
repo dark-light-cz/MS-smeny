@@ -332,6 +332,9 @@
         <button type="button" id="navrh-prepocitat" class="btn btn-primarni">Přepočítat</button>
         <button type="button" id="navrh-stahnout-csv" class="btn btn-sekundarni" hidden>Stáhnout CSV</button>
       </p>
+      <div id="navrh-graf" class="navrh-graf-wrapper" aria-label="Grafické zobrazení návrhu směn" hidden>
+        <!-- Graf budovy / třídy / časová osa vykresluje js/navrh-graf.js -->
+      </div>
       <div id="navrh-vysledek" aria-live="polite">
         <!-- Tabulka nebo prázdný stav vykresluje JS -->
       </div>
@@ -351,6 +354,7 @@
   <script src="js/omezeni-ne-dohromady.js"></script>
   <script src="js/vypocet-smen.js"></script>
   <script src="js/navrh-smen-ui.js"></script>
+  <script src="js/navrh-graf.js"></script>
   <script src="js/export-navrh-csv.js"></script>
   <script src="js/export-import-ui.js"></script>
   <script src="js/main.js"></script>

@@ -565,6 +565,166 @@ header {
   font-weight: 500;
 }
 
+/* Grafické zobrazení návrhu (D2b) */
+.navrh-graf-wrapper {
+  margin-top: 2rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.navrh-graf-hlavicka {
+  margin-bottom: 1rem;
+}
+
+.navrh-graf-label {
+  margin-right: 0.5rem;
+  font-weight: 500;
+}
+
+.navrh-graf-select {
+  padding: 0.35em 0.5em;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: #fff;
+}
+
+/* Časová osa nad bloky */
+.navrh-graf-casova-osa {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.navrh-graf-casova-osa .navrh-graf-osa-label {
+  flex-shrink: 0;
+  width: 10em;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #444;
+}
+
+.navrh-graf-osa-pruh {
+  position: relative;
+  flex: 1;
+  min-height: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.navrh-graf-cas-znacka {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: #666;
+  white-space: nowrap;
+}
+
+.navrh-graf-blok {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.navrh-graf-blok-nadpis {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.navrh-graf-rada {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  min-height: 2rem;
+}
+
+.navrh-graf-rada-label {
+  flex-shrink: 0;
+  width: 10em;
+  font-size: 0.9rem;
+  color: #444;
+  padding-top: 0.25rem;
+}
+
+.navrh-graf-rada-pruhy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.navrh-graf-osa {
+  position: relative;
+  min-height: 1.75rem;
+  background: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.navrh-graf-segment {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  min-width: 4px;
+  border-radius: 3px;
+  cursor: default;
+  font-size: 0.75rem;
+  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.navrh-graf-segment:hover {
+  filter: brightness(1.1);
+  z-index: 1;
+}
+
+.navrh-graf-prazdno {
+  color: #666;
+  font-style: italic;
+  margin: 0;
+}
+
+.navrh-graf-legenda {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.navrh-graf-legenda-nadpis {
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+
+.navrh-graf-legenda-položka {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.navrh-graf-legenda-barvicka {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
 /* Minimální překryv v třídě */
 .pravidla-prekryv .prekryv-form {
   margin-top: 0.5rem;
