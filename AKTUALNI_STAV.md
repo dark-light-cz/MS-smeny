@@ -77,11 +77,13 @@
   - V sekci Budovy a třídy: hierarchie budova → třídy. CRUD budov (název), v každé budově CRUD tříd (název). Formuláře pro přidání/úpravu budovy a třídy, u třídy výběr budovy (při úpravě lze přesunout do jiné budovy). Smazání budovy (i se třídami) a smazání třídy s potvrzením. Ukládání do modelu a Local Storage (js/budovy-tridy.js).
 - **Otevírací doba (B3):**
   - U budovy i u třídy lze v příslušném formuláři nastavit otevírací dobu: výběr dnů (Po–Ne), čas Od a Do (model „po–pá 7:00–17:00“). Uložení do modelu (oteviraciDoba: { dny, od, do }). Třída má v modelu oteviraciDoba (vytvorTridu ji vytvoří s výchozí hodnotou). Při importu JSON se chybějící oteviraciDoba u budov a tříd doplní výchozí hodnotou.
+- **Minimální překryv v třídě (C1):**
+  - V sekci Pravidla: blok „Minimální překryv v třídě“ – konfigurovatelná délka překryvu dvou pedagogů (v hodinách, např. 2). Uložení do modelu (pravidla.minimalniPrekryvMinuty v minutách). Formulář s nápovědou a tlačítkem Uložit (js/pravidla-prekryv.js).
 - **Min/max počet osob v čase (B4):**
   - V sekci Pravidla: konfigurace časových slotů (od–do) a pro každý slot minimální a maximální počet osob na budovu a na třídu. Přehledné formuláře s nápovědami („Prázdné = bez omezení“), validace (čas Do později než Od, nezáporné počty, min ≤ max). Chyby a potvrzení se zobrazují na stránce (bez alertů), úspěch mizí po 3 s. Tabulka slotů řazená podle času, přidat / upravit / smazat. Model: vytvorMinMaxSlot(), minMaxSloty v úložišti.
 - **Export/import – UI (E1):**
   - V sekci Přehled: blok „Záloha a obnova dat“ s textem, že při importu se data nahradí. Tlačítko „Exportovat data“ stáhne JSON soubor. Tlačítko „Importovat data“ otevře výběr souboru; po nahrání platného JSON se data nahradí a zobrazení zaměstnanců, budov a časových slotů se automaticky obnoví. Úspěch a chyby (neplatný soubor) se zobrazují pod tlačítky (js/export-import-ui.js).
-- **Testy:** v prohlížeči se spouštějí otevřením `test/index.html`, nebo `npm test` (Playwright). Testují datový model, Local Storage, export/import JSON, navigaci, zaměstnance, budovy/třídy a časové sloty min/max; po každém úkolu je vhodné testy znovu spustit a ověřit, že nic nerozbilo.
+- **Testy:** v prohlížeči se spouštějí otevřením `test/index.html`, nebo `npm test` (Playwright). Testují datový model, Local Storage, export/import JSON, navigaci, zaměstnance, budovy/třídy, časové sloty min/max a pravidlo překryvu; po každém úkolu je vhodné testy znovu spustit a ověřit, že nic nerozbilo.
 
 ---
 
@@ -103,6 +105,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Implementován úkol C1 – minimální překryv v třídě (konfigurace v sekci Pravidla, uložení pravidla.minimalniPrekryvMinuty).
 - 2025-02-05: Implementován úkol B1b – řazení tabulky zaměstnanců podle role a jména.
 - 2025-02-05: Implementován úkol E1 – export/import UI (tlačítka na Přehledu, obnova pohledů po importu).
 - 2025-02-05: Implementován úkol B4 – min/max počet osob v čase (časové sloty v sekci Pravidla, validace, srozumitelné zprávy, js/min-max-sloty.js).

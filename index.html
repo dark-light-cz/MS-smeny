@@ -218,7 +218,25 @@
         </div>
       </div>
 
-      <p class="pravidla-dalsi">Další pravidla (překryvy, kmenové/vykrývací, rotace) budou doplněna v blocích C a D.</p>
+      <div class="pravidla-blok pravidla-prekryv">
+        <h3 id="prekryv-nadpis">Minimální překryv v třídě</h3>
+        <p class="pravidla-popis">
+          V každé třídě musí každý den po stanovenou dobu být současně přítomni alespoň dva pedagogové (překryv). Zadejte délku tohoto překryvu v hodinách.
+        </p>
+        <div id="prekryv-zprava" class="sloty-zprava sloty-uspech" role="status" aria-live="polite" hidden></div>
+        <form id="prekryv-form" class="prekryv-form">
+          <p>
+            <label for="prekryv-hodiny">Minimální překryv (hodin)</label>
+            <input type="number" id="prekryv-hodiny" min="0" max="24" step="0.5" value="2" aria-describedby="prekryv-hint">
+            <span id="prekryv-hint" class="hint">např. 2 = dvě hodiny současně dva pedagogové v každé třídě</span>
+          </p>
+          <p class="form-akce">
+            <button type="submit" class="btn btn-primarni">Uložit</button>
+          </p>
+        </form>
+      </div>
+
+      <p class="pravidla-dalsi">Další pravidla (kmenové/vykrývací, rotace) budou doplněna v blocích C a D.</p>
     </section>
     <section id="navrh-smen" class="sekce" aria-labelledby="navrh-nadpis" hidden>
       <h2 id="navrh-nadpis">Návrh směn</h2>
@@ -235,6 +253,7 @@
   <script src="js/zamestnanci.js"></script>
   <script src="js/budovy-tridy.js"></script>
   <script src="js/min-max-sloty.js"></script>
+  <script src="js/pravidla-prekryv.js"></script>
   <script src="js/export-import-ui.js"></script>
   <script src="js/main.js"></script>
 </body>

@@ -30,7 +30,7 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 
 | # | Úkol | Stav | Poznámka |
 |---|------|------|----------|
-| C1 | **Minimální překryv v třídě** – konfigurovatelná délka (např. 2 hodiny) překryvu dvou pedagogů v každé třídě každý den. Uložení do modelu. | [ ] | |
+| C1 | **Minimální překryv v třídě** – konfigurovatelná délka (např. 2 hodiny) překryvu dvou pedagogů v každé třídě každý den. Uložení do modelu. | [x] | Sekce Pravidla: blok „Minimální překryv v třídě“, formulář (hodiny), js/pravidla-prekryv.js; pravidla.minimalniPrekryvMinuty; test-pravidla-prekryv.js. |
 | C2 | **Kmenové vs. vykrývací** – u zaměstnance označení kmenová/vykrývací; přiřazení kmenových k jedné třídě (2–3 na třídu). Pravidlo „bez mezer“, „max 1 přesun“ u vykrývací – uložení do modelu, výpočet využije později. | [ ] | |
 | C3 | **Speciální sloty a rotace** – definice slotů se sníženým počtem osob (např. pátek 15:30–17, 1 osoba na budovu) a příznak „požadovat střídání“ (rotace). Uložení do modelu. | [ ] | |
 | C4 | **Omezení „ne dohromady“** (volitelně později) – výběr dvojic osob, které nemají být spolu v jedné třídě/směně. Uložení do modelu. | [ ] | |
