@@ -320,7 +320,17 @@
     </section>
     <section id="navrh-smen" class="sekce" aria-labelledby="navrh-nadpis" hidden>
       <h2 id="navrh-nadpis">Návrh směn</h2>
-      <p>Výpočet a zobrazení návrhu směn – bude doplněno v bloku D.</p>
+      <p class="navrh-popis">
+        Návrh přiřazení osob do budov a tříd podle časových slotů a úvazků. Kliknutím na „Přepočítat“ se vygeneruje nové řešení z aktuální konfigurace.
+      </p>
+      <div id="navrh-zprava" class="sloty-zprava sloty-chyba" role="alert" aria-live="assertive" hidden></div>
+      <div id="navrh-uspech" class="sloty-zprava sloty-uspech" role="status" aria-live="polite" hidden></div>
+      <p class="form-akce">
+        <button type="button" id="navrh-prepocitat" class="btn btn-primarni">Přepočítat</button>
+      </p>
+      <div id="navrh-vysledek" aria-live="polite">
+        <!-- Tabulka nebo prázdný stav vykresluje JS -->
+      </div>
     </section>
   </main>
   <footer>
@@ -335,6 +345,8 @@
   <script src="js/min-max-sloty.js"></script>
   <script src="js/pravidla-prekryv.js"></script>
   <script src="js/omezeni-ne-dohromady.js"></script>
+  <script src="js/vypocet-smen.js"></script>
+  <script src="js/navrh-smen-ui.js"></script>
   <script src="js/export-import-ui.js"></script>
   <script src="js/main.js"></script>
 </body>

@@ -519,6 +519,40 @@ header {
   margin-left: 0.5rem;
 }
 
+/* Návrh směn (D2) */
+.navrh-popis {
+  margin-bottom: 1rem;
+}
+
+.navrh-prazdno {
+  color: #666;
+  font-style: italic;
+  padding: 1rem 0;
+}
+
+.tabulka-navrh {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  margin-top: 1rem;
+}
+
+.tabulka-navrh th,
+.tabulka-navrh td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabulka-navrh th {
+  font-weight: 600;
+  background: var(--color-bg);
+}
+
+.tabulka-navrh tr:hover td {
+  background: #fafafa;
+}
+
 /* Minimální překryv v třídě */
 .pravidla-prekryv .prekryv-form {
   margin-top: 0.5rem;

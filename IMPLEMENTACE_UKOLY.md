@@ -43,8 +43,8 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 
 | # | Úkol | Stav | Poznámka |
 |---|------|------|----------|
-| D1 | **Výpočet – první verze** – algoritmus: na vstupu konfigurace (zaměstnanci, budovy, třídy, otevírací doba, min/max v čase). Výstup: jedno řešení – přiřazení „kdo kdy kde“ tak, aby byly splněny min/max požadavky a úvazky. Zjednodušená verze bez překryvu, kmenových a rotace je OK. | [ ] | |
-| D2 | **Zobrazení návrhu směn** – stránka/sekce „Návrh směn“: zobrazení výsledku výpočtu (tabulka nebo přehled podle dnů/tříd/osob). Tlačítko „Přepočítat“. | [ ] | |
+| D1 | **Výpočet – první verze** – algoritmus: na vstupu konfigurace (zaměstnanci, budovy, třídy, otevírací doba, min/max v čase). Výstup: jedno řešení – přiřazení „kdo kdy kde“ tak, aby byly splněny min/max požadavky a úvazky. Zjednodušená verze bez překryvu, kmenových a rotace je OK. | [x] | js/vypocet-smen.js: vypocetSmen(data) → { ok, prirazeni } nebo { ok: false, chyba }. Respektuje sloty (dny), minNaBudovu/minNaTridu, úvazky. |
+| D2 | **Zobrazení návrhu směn** – stránka/sekce „Návrh směn“: zobrazení výsledku výpočtu (tabulka nebo přehled podle dnů/tříd/osob). Tlačítko „Přepočítat“. | [x] | Sekce Návrh směn: tlačítko Přepočítat, tabulka Den | Čas | Místo | Osoby. js/navrh-smen-ui.js. |
 | D3 | **Rozšíření výpočtu** – zapojení dalších pravidel: minimální překryv v třídě, kmenové/vykrývací (bez mezer, max 1 přesun), rotace ve speciálních slotech. | [ ] | |
 | D4 | **Plánování na týden vs. 14 dní** – pedagogové týdenní opakující se směny; školníci volitelně plán na 14 dní (krátký–dlouhý týden). Zapojit do výpočtu a zobrazení. | [ ] | |
 
