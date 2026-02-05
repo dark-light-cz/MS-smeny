@@ -46,6 +46,7 @@
       var el = document.getElementById('vysledek');
       el.className = 'summary ' + (result.failed === 0 ? 'all-pass' : 'has-fail');
       el.innerHTML = html;
+      window.__MSemenyTestResult = result;
     })();
   </script>
 </body>

@@ -45,20 +45,31 @@ server.listen(PORT, '127.0.0.1', function () {
       return page.goto(url, { waitUntil: 'networkidle' }).then(function () {
         return page.waitForSelector('#vysledek', { timeout: 5000 }).then(function () {
           return page.evaluate(function () {
-            var el = document.getElementById('vysledek');
-            var hasFail = el && el.classList.contains('has-fail');
-            var text = el ? el.innerText : '';
-            return { hasFail: hasFail, text: text };
+            var r = window.__MSemenyTestResult;
+            if (!r) {
+              return { hasFail: true, passed: 0, failed: 0, results: [] };
+            }
+            return {
+              hasFail: r.failed > 0,
+              passed: r.passed,
+              failed: r.failed,
+              results: r.results
+            };
           });
         });
       }).then(function (result) {
         return browser.close().then(function () {
           server.close();
           if (result.hasFail) {
-            console.error('Testy selhaly:\n' + result.text);
+            console.error('Testy selhaly: ' + result.passed + ' prošlo, ' + result.failed + ' selhalo.');
+            result.results.forEach(function (r) {
+              if (!r.ok) {
+                console.error('  ' + r.name + ': ' + (r.error || ''));
+              }
+            });
             process.exit(1);
           }
-          console.log('Všechny testy prošly.\n' + result.text);
+          console.log('Všechny testy prošly (' + result.passed + ').');
           process.exit(0);
         });
       });
