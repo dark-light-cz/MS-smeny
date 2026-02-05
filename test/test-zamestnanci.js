@@ -15,9 +15,31 @@
       name: 'MSemenyZamestnanci existuje a má API',
       run: function () {
         T.assert(Z && typeof Z.minutyNaHodinyMinuty === 'function', 'minutyNaHodinyMinuty');
+        T.assert(typeof Z.seradZamestnance === 'function', 'seradZamestnance');
         T.assert(typeof Z.vykresliSeznam === 'function', 'vykresliSeznam');
         T.assert(typeof Z.zobrazFormular === 'function', 'zobrazFormular');
         T.assert(typeof Z.skryjFormular === 'function', 'skryjFormular');
+      }
+    },
+    {
+      name: 'seradZamestnance řadí nejdřív podle role (ředitelka, zástupkyně, učitelka, asistentka, školník), pak podle jména',
+      run: function () {
+        if (!M || !Z) return;
+        var list = [
+          M.vytvorZamestnance('Anna', 480, M.ROLE.UCITELKA),
+          M.vytvorZamestnance('Béla', 400, M.ROLE.REDITELKA),
+          M.vytvorZamestnance('Cécile', 300, M.ROLE.ASISTENTKA)
+        ];
+        var sorted = Z.seradZamestnance(list);
+        T.assert(sorted[0].jmeno === 'Béla' && sorted[0].role === M.ROLE.REDITELKA, 'první ředitelka');
+        T.assert(sorted[1].jmeno === 'Anna' && sorted[1].role === M.ROLE.UCITELKA, 'druhá učitelka');
+        T.assert(sorted[2].jmeno === 'Cécile' && sorted[2].role === M.ROLE.ASISTENTKA, 'třetí asistentka');
+        var list2 = [
+          M.vytvorZamestnance('Dana', 480, M.ROLE.UCITELKA),
+          M.vytvorZamestnance('Alena', 480, M.ROLE.UCITELKA)
+        ];
+        var sorted2 = Z.seradZamestnance(list2);
+        T.assert(sorted2[0].jmeno === 'Alena' && sorted2[1].jmeno === 'Dana', 'v rámci role podle jména');
       }
     },
     {

@@ -63,14 +63,34 @@
     vykresliSeznam();
   }
 
+  /** Pořadí rolí pro řazení tabulky: ředitelka, zástupkyně, učitelka, asistentka pedagoga, školník/školnice. */
+  var ROLE_RAZENI = ['ředitelka', 'zástupkyně', 'učitelka', 'asistentka pedagoga', 'školník/školnice'];
+
+  function indexRole(role) {
+    var idx = ROLE_RAZENI.indexOf(role || '');
+    return idx >= 0 ? idx : ROLE_RAZENI.length;
+  }
+
   /**
-   * Vykreslí tabulku zaměstnanců do #zamestnanci-seznam.
+   * Seřadí zaměstnance: nejdřív podle role (ROLE_RAZENI), v rámci role podle jména.
+   */
+  function seradZamestnance(list) {
+    return (list || []).slice().sort(function (a, b) {
+      var ra = indexRole(a.role);
+      var rb = indexRole(b.role);
+      if (ra !== rb) return ra - rb;
+      return (a.jmeno || '').localeCompare(b.jmeno || '', 'cs');
+    });
+  }
+
+  /**
+   * Vykreslí tabulku zaměstnanců do #zamestnanci-seznam (řazenou podle role a jména).
    */
   function vykresliSeznam() {
     var el = document.getElementById('zamestnanci-seznam');
     if (!el) return;
     var data = Storage ? Storage.getData() : { zamestnanci: [] };
-    var list = data.zamestnanci || [];
+    var list = seradZamestnance(data.zamestnanci || []);
 
     if (list.length === 0) {
       el.innerHTML = '<p class="zamestnanci-prazdno">Zatím nejsou žádní zaměstnanci. Přidejte prvního tlačítkem výše.</p>';
@@ -226,6 +246,7 @@
 
   global.MSemenyZamestnanci = {
     minutyNaHodinyMinuty: minutyNaHodinyMinuty,
+    seradZamestnance: seradZamestnance,
     vykresliSeznam: vykresliSeznam,
     zobrazFormular: zobrazFormular,
     skryjFormular: skryjFormular
