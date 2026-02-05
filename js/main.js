@@ -6,8 +6,11 @@
   'use strict';
 
   function init() {
-    // Inicializace po načtení DOM
     document.addEventListener('DOMContentLoaded', function () {
+      // Načtení dat z Local Storage (nebo výchozí stav)
+      if (window.MSemenyStorage) {
+        window.MSemenyStorage.nacti();
+      }
       console.log('Aplikace MS-smeny načtena.');
     });
   }

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Testy – MS-smeny</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 1rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.25rem; }
+    .test-ok { color: #0a0; }
+    .test-fail { color: #c00; }
+    .summary { margin: 1rem 0; padding: 0.5rem; border-radius: 4px; }
+    .summary.all-pass { background: #e8f5e9; }
+    .summary.has-fail { background: #ffebee; }
+  </style>
+</head>
+<body>
+  <h1>Testy MS-smeny</h1>
+  <p>Spouštění testů datového modelu a Local Storage. Otevřete konzoli (F12) pro výstup.</p>
+  <div id="vysledek"></div>
+
+  <!-- Pořadí: model → storage → runner → testy -->
+  <script src="../js/data-model.js"></script>
+  <script src="../js/storage.js"></script>
+  <script src="test-runner.js"></script>
+  <script>
+    window.MSemenyTestList = [];
+  </script>
+  <script src="test-data-model.js"></script>
+  <script src="test-storage.js"></script>
+  <script>
+    (function () {
+      var result = window.MSemenyTest.runTests(window.MSemenyTestList);
+      var html = window.MSemenyTest.report(result, true);
+      var el = document.getElementById('vysledek');
+      el.className = 'summary ' + (result.failed === 0 ? 'all-pass' : 'has-fail');
+      el.innerHTML = html;
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+# Seznam implementačních úkolů
+
+Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v pořadí (nebo v logických blocích); po každém dokončeném úkolu aktualizujeme AKTUALNI_STAV.md.
+
+---
+
+## Blok A: Data a kostra aplikace
+
+| # | Úkol | Stav | Poznámka |
+|---|------|------|----------|
+| A1 | **Datový model a Local Storage** – definice struktury dat (zaměstnanci: id, jméno, úvazek v minutách/týden, role; budovy, třídy, otevírací doby, pravidla). Načtení a uložení do Local Storage při změně. | [x] | data-model.js, storage.js; načtení při startu, setData/replaceData/ulozNyni. |
+| A2 | **Export a import JSON** – funkce exportu celých dat do JSON souboru a importu z JSON (obnovení dat). Bez UI zatím jen volatelné z konzole nebo později napojit na tlačítka. | [ ] | |
+| A3 | **Kostra stránky a navigace** – základní rozložení aplikace: hlavička, navigace mezi sekcemi (např. Přehled / Zaměstnanci / Budovy a třídy / Pravidla / Návrh směn), obsahová oblast. Jedna stránka, sekce přepínané v JS (ne více HTML). | [ ] | |
+
+---
+
+## Blok B: Konfigurace – základy
+
+| # | Úkol | Stav | Poznámka |
+|---|------|------|----------|
+| B1 | **Zaměstnanci – seznam a formulář** – zobrazení seznamu zaměstnanců, přidat / upravit / smazat. Pole: jméno, úvazek (hodiny + minuty za týden), role (výběr: učitelka, asistentka pedagoga, školník/školnice, ředitelka, zástupkyně). Ukládání do modelu a Local Storage. | [ ] | |
+| B2 | **Budovy a třídy – struktura** – CRUD budov, v každé budově CRUD tříd. U budovy/třídy: název. Zobrazení hierarchie (budova → třídy). Ukládání do modelu a Local Storage. | [ ] | |
+| B3 | **Otevírací doba** – u budovy nebo třídy nastavení otevírací doby (např. den v týdnu + od–do, nebo jednoduchý model „po–pá 7:00–17:00“). Uložení do modelu. | [ ] | |
+| B4 | **Min/max počet osob v čase** – konfigurace časových slotů (od–do) a pro každý slot min/max počet osob (na třídu nebo na budovu). Příklad: 7:00–7:45 min 1 na budovu; od 7:45 min 1 na třídu. Uložení do modelu. | [ ] | |
+
+---
+
+## Blok C: Konfigurace – pokročilá pravidla
+
+| # | Úkol | Stav | Poznámka |
+|---|------|------|----------|
+| C1 | **Minimální překryv v třídě** – konfigurovatelná délka (např. 2 hodiny) překryvu dvou pedagogů v každé třídě každý den. Uložení do modelu. | [ ] | |
+| C2 | **Kmenové vs. vykrývací** – u zaměstnance označení kmenová/vykrývací; přiřazení kmenových k jedné třídě (2–3 na třídu). Pravidlo „bez mezer“, „max 1 přesun“ u vykrývací – uložení do modelu, výpočet využije později. | [ ] | |
+| C3 | **Speciální sloty a rotace** – definice slotů se sníženým počtem osob (např. pátek 15:30–17, 1 osoba na budovu) a příznak „požadovat střídání“ (rotace). Uložení do modelu. | [ ] | |
+| C4 | **Omezení „ne dohromady“** (volitelně později) – výběr dvojic osob, které nemají být spolu v jedné třídě/směně. Uložení do modelu. | [ ] | |
+
+---
+
+## Blok D: Výpočet a zobrazení návrhu
+
+| # | Úkol | Stav | Poznámka |
+|---|------|------|----------|
+| D1 | **Výpočet – první verze** – algoritmus: na vstupu konfigurace (zaměstnanci, budovy, třídy, otevírací doba, min/max v čase). Výstup: jedno řešení – přiřazení „kdo kdy kde“ tak, aby byly splněny min/max požadavky a úvazky. Zjednodušená verze bez překryvu, kmenových a rotace je OK. | [ ] | |
+| D2 | **Zobrazení návrhu směn** – stránka/sekce „Návrh směn“: zobrazení výsledku výpočtu (tabulka nebo přehled podle dnů/tříd/osob). Tlačítko „Přepočítat“. | [ ] | |
+| D3 | **Rozšíření výpočtu** – zapojení dalších pravidel: minimální překryv v třídě, kmenové/vykrývací (bez mezer, max 1 přesun), rotace ve speciálních slotech. | [ ] | |
+| D4 | **Plánování na týden vs. 14 dní** – pedagogové týdenní opakující se směny; školníci volitelně plán na 14 dní (krátký–dlouhý týden). Zapojit do výpočtu a zobrazení. | [ ] | |
+
+---
+
+## Blok E: Dokončení a UX
+
+| # | Úkol | Stav | Poznámka |
+|---|------|------|----------|
+| E1 | **Export/import – UI** – tlačítka nebo menu „Exportovat data“ (stáhnout JSON) a „Importovat data“ (nahrát JSON, nahradit/ sloučit dle dohody). | [ ] | |
+| E2 | **Validace a hlášení chyb** – kontrola vstupů (úvazek, časy, povinná pole), zobrazení srozumitelných hlášek. Při výpočtu např. „nelze najít řešení“ + důvod pokud možno. | [ ] | |
+| E3 | **Doladění UX** – konzistentní styly, přehlednost formulářů a tabulek, základní responzivita. | [ ] | |
+
+---
+
+## Jak s dokumentem pracovat
+
+- **Zaškrtnutí:** po dokončení úkolu změň `[ ]` na `[x]` a doplň krátkou poznámku.
+- **Po každém dokončeném úkolu:** aktualizuj **AKTUALNI_STAV.md** – sekci „Co aplikace aktuálně umí“.
+- **Odkaz z CHECKLIST.md:** Fáze 2 (Implementace jádra) se plní podle tohoto seznamu; úkol 2.1 = např. A1–A3, pak B1.

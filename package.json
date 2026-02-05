@@ -1,0 +1,12 @@
+{
+  "name": "ms-smeny",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Webová aplikace pro návrh směn v MŠ",
+  "scripts": {
+    "test": "node test/run-in-browser.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
