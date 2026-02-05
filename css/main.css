@@ -1,0 +1,36 @@
+/* Hlavní styly aplikace MS-smeny */
+
+:root {
+  --color-text: #1a1a1a;
+  --color-bg: #f5f5f5;
+  --color-border: #ddd;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.5;
+}
+
+header, main, footer {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+header {
+  border-bottom: 1px solid var(--color-border);
+}
+
+footer {
+  margin-top: 2rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  color: #666;
+}

@@ -1,0 +1,39 @@
+---
+description: Pravidla projektu MS-smeny – jazyk, stack, workflow
+alwaysApply: true
+---
+
+# Pravidla projektu MS-smeny
+
+## Jazyk
+
+- **Commit zprávy**: výhradně v češtině.
+- **Komunikace s vývojářem (uživatelem)**: v češtině – popisy, návrhy, shrnutí.
+- **Komentáře v kódu a dokumentace v repozitáři**: česky.
+
+## Technologický stack
+
+- **HTML** – struktura stránek, sémantické značky.
+- **Čistý JavaScript** – bez frameworků (React, Vue, atd.), bez build stepů, pokud to není výslovně požadováno.
+- **CSS** – styly, preferovat jednoduchost a čitelnost.
+
+## Rozhodování a nejasnosti
+
+- Všechny **nejasnosti rozhoduje uživatel** odpovědí na dotaz.
+- **Jeden dotaz** – vždy se řeší jen jeden dotaz. Na více dotazů najednou neodpovídat.
+- **Seznam dotazů** – nejasnosti se zapisují do OPEN_QUESTIONS.md a odbavují postupně.
+- **Po odpovědi uživatele**:
+  - Zrevidovat zbývající dotazy – dávají ještě smysl, nebo už byly odpovědí vyřešeny?
+  - Pokud odpověď vyvolá nový dotaz, přidat ho do seznamu v OPEN_QUESTIONS.md.
+- **Po vyřešení všech dotazů** – krok zapracování: seznam dotazů a odpovědí zapracovat do dokumentace (specifikace, feature set). Důležitý je **finální stav a funkce**, ne detailní cesta, jak jsme se k tomu dobrali. Cíl: přehlednost aktuálního stavu a feature setu.
+
+## Dokumentace stavu
+
+- Po implementaci funkce nebo fáze aktualizovat popis toho, **co aplikace umí a proč**.
+- Preferovat stručný přehled feature setu a důvodů; ne nutně krok-za-krokem historii změn.
+
+## Odkazy v projektu
+
+- **PLAN.md** – vysoká úroveň plánu a fáze.
+- **CHECKLIST.md** – co je hotové, co je potřeba dodělat; úkoly plnit postupně.
+- **OPEN_QUESTIONS.md** – otevřené dotazy a workflow pro jejich řešení.
