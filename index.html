@@ -144,7 +144,68 @@
     </section>
     <section id="pravidla" class="sekce" aria-labelledby="pravidla-nadpis" hidden>
       <h2 id="pravidla-nadpis">Pravidla</h2>
-      <p>Otevírací doby, min/max počty osob, překryvy a další pravidla – bude doplněno v blocích B a C.</p>
+
+      <div class="pravidla-blok pravidla-sloty">
+        <h3 id="sloty-nadpis">Požadavky na počet osob v čase</h3>
+        <p class="pravidla-popis">
+          Pro každý časový úsek můžete nastavit, kolik <strong>nejméně</strong> a <strong>nejvýše</strong> lidí má být na celou budovu a kolik v každé třídě.
+          Např. ráno 7:00–7:45 stačí jedna osoba na celou budovu; od 7:45 má být v každé třídě alespoň jedna. Pole „max“ nechte prázdné pro neomezeno.
+        </p>
+        <div id="sloty-chyba" class="sloty-zprava sloty-chyba" role="alert" aria-live="assertive" hidden></div>
+        <div id="sloty-uspech" class="sloty-zprava sloty-uspech" role="status" aria-live="polite" hidden></div>
+        <div class="pravidla-akce">
+          <button type="button" id="sloty-pridat" class="btn btn-primarni">Přidat časový slot</button>
+        </div>
+        <div id="sloty-formular" class="sloty-formular" hidden>
+          <form id="sloty-form" aria-labelledby="sloty-form-nadpis">
+            <h4 id="sloty-form-nadpis" class="visually-hidden">Formulář časového slotu</h4>
+            <input type="hidden" id="sloty-form-id" value="">
+            <div class="sloty-cas">
+              <p>
+                <label for="sloty-od">Čas od</label>
+                <input type="time" id="sloty-od" required aria-required="true">
+              </p>
+              <p>
+                <label for="sloty-do">Čas do</label>
+                <input type="time" id="sloty-do" required aria-required="true">
+              </p>
+            </div>
+            <fieldset class="sloty-pocty">
+              <legend>Na budovu (celkem)</legend>
+              <p>
+                <label for="sloty-min-budova">Min. počet osob</label>
+                <input type="number" id="sloty-min-budova" min="0" value="0" aria-describedby="sloty-hint-budova">
+              </p>
+              <p>
+                <label for="sloty-max-budova">Max. počet osob</label>
+                <input type="number" id="sloty-max-budova" min="0" placeholder="neomezeno" aria-describedby="sloty-hint-budova">
+                <span id="sloty-hint-budova" class="hint">Prázdné = bez omezení</span>
+              </p>
+            </fieldset>
+            <fieldset class="sloty-pocty">
+              <legend>Na třídu (v každé)</legend>
+              <p>
+                <label for="sloty-min-trida">Min. počet osob</label>
+                <input type="number" id="sloty-min-trida" min="0" value="0" aria-describedby="sloty-hint-trida">
+              </p>
+              <p>
+                <label for="sloty-max-trida">Max. počet osob</label>
+                <input type="number" id="sloty-max-trida" min="0" placeholder="neomezeno" aria-describedby="sloty-hint-trida">
+                <span id="sloty-hint-trida" class="hint">Prázdné = bez omezení</span>
+              </p>
+            </fieldset>
+            <p class="form-akce">
+              <button type="submit" class="btn btn-primarni">Uložit</button>
+              <button type="button" id="sloty-form-zrusit" class="btn">Zrušit</button>
+            </p>
+          </form>
+        </div>
+        <div id="sloty-seznam" class="sloty-seznam" aria-live="polite">
+          <!-- Seznam slotů vykresluje JS -->
+        </div>
+      </div>
+
+      <p class="pravidla-dalsi">Další pravidla (překryvy, kmenové/vykrývací, rotace) budou doplněna v blocích C a D.</p>
     </section>
     <section id="navrh-smen" class="sekce" aria-labelledby="navrh-nadpis" hidden>
       <h2 id="navrh-nadpis">Návrh směn</h2>
@@ -160,6 +221,7 @@
   <script src="js/navigace.js"></script>
   <script src="js/zamestnanci.js"></script>
   <script src="js/budovy-tridy.js"></script>
+  <script src="js/min-max-sloty.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

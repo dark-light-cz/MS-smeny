@@ -58,6 +58,28 @@
   }
 
   /**
+   * Vytvoří nový časový slot pro min/max počet osob.
+   * @param {string} od - čas od (HH:mm)
+   * @param {string} do_ - čas do (HH:mm)
+   * @param {number|null} minNaBudovu - minimální počet osob na budovu (null/undefined → 0)
+   * @param {number|null} maxNaBudovu - maximální počet na budovu (null/undefined → neomezeno)
+   * @param {number|null} minNaTridu - minimální počet na třídu
+   * @param {number|null} maxNaTridu - maximální počet na třídu
+   * @returns {Object}
+   */
+  function vytvorMinMaxSlot(od, do_, minNaBudovu, maxNaBudovu, minNaTridu, maxNaTridu) {
+    return {
+      id: generujId(),
+      od: od || '07:00',
+      do: do_ || '17:00',
+      minNaBudovu: minNaBudovu != null && minNaBudovu !== '' ? parseInt(minNaBudovu, 10) : 0,
+      maxNaBudovu: (maxNaBudovu != null && maxNaBudovu !== '') ? parseInt(maxNaBudovu, 10) : null,
+      minNaTridu: minNaTridu != null && minNaTridu !== '' ? parseInt(minNaTridu, 10) : 0,
+      maxNaTridu: (maxNaTridu != null && maxNaTridu !== '') ? parseInt(maxNaTridu, 10) : null
+    };
+  }
+
+  /**
    * Výchozí pravidla (minimální překryv v minutách, atd.).
    * @returns {Object}
    */
@@ -126,6 +148,7 @@
     vychoziPravidla: vychoziPravidla,
     vytvorBudovu: vytvorBudovu,
     vytvorTridu: vytvorTridu,
-    vytvorZamestnance: vytvorZamestnance
+    vytvorZamestnance: vytvorZamestnance,
+    vytvorMinMaxSlot: vytvorMinMaxSlot
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -287,6 +287,130 @@ header {
   margin-right: 1rem;
 }
 
+/* Sekce Pravidla – časové sloty min/max */
+.pravidla-blok {
+  margin-bottom: 2rem;
+}
+
+.pravidla-blok h3 {
+  font-size: 1.1rem;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.pravidla-popis {
+  color: #444;
+  margin-bottom: 1rem;
+  max-width: 42em;
+}
+
+.pravidla-dalsi {
+  color: #666;
+  font-size: 0.95rem;
+  margin-top: 2rem;
+}
+
+.pravidla-akce {
+  margin-bottom: 1rem;
+}
+
+.sloty-zprava {
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.sloty-chyba {
+  background: #ffebee;
+  color: #b71c1c;
+  border: 1px solid #ffcdd2;
+}
+
+.sloty-uspech {
+  background: #e8f5e9;
+  color: #1b5e20;
+  border: 1px solid #c8e6c9;
+}
+
+.sloty-formular {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.sloty-formular .sloty-cas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sloty-formular .sloty-cas p {
+  margin: 0;
+}
+
+.sloty-formular .sloty-pocty {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.sloty-formular .sloty-pocty legend {
+  padding: 0 0.25rem;
+  font-weight: 600;
+}
+
+.sloty-formular .sloty-pocty p {
+  margin: 0.5rem 0;
+}
+
+.sloty-formular .sloty-pocty label {
+  display: inline-block;
+  min-width: 10em;
+}
+
+.sloty-formular .sloty-pocty input[type="number"] {
+  width: 4em;
+}
+
+.sloty-prazdno {
+  color: #666;
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+.tabulka-sloty {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--color-border);
+}
+
+.tabulka-sloty th,
+.tabulka-sloty td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabulka-sloty th {
+  font-weight: 600;
+  background: var(--color-bg);
+}
+
+.tabulka-sloty tr:hover td {
+  background: #fafafa;
+}
+
+.tabulka-sloty .btn-mala {
+  margin-right: 0.25rem;
+}
+
 footer {
   margin-top: 2rem;
   border-top: 1px solid var(--color-border);

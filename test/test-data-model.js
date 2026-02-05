@@ -92,6 +92,15 @@
         T.assert(o.dny.length === 5 && o.dny[0] === 1 && o.dny[4] === 5, 'dny 1-5');
         T.assert(o.od === '07:00' && o.do === '17:00', 'od-do');
       }
+    },
+    {
+      name: 'vytvorMinMaxSlot vytvoří slot s od, do a min/max na budovu a třídu',
+      run: function () {
+        var s = M.vytvorMinMaxSlot('07:00', '07:45', 1, null, 0, null);
+        T.assert(s.id && s.od === '07:00' && s.do === '07:45', 'id a časy');
+        T.assert(s.minNaBudovu === 1 && s.maxNaBudovu === null, 'budova min 1 max neomezeno');
+        T.assert(s.minNaTridu === 0 && s.maxNaTridu === null, 'třída');
+      }
     }
   ];
 
