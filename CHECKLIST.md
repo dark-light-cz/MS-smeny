@@ -6,12 +6,12 @@ Použití: u každého úkolu je stav `[ ]` (k vykonání) nebo `[x]` (hotovo). 
 
 ## Co dál (doporučený postup)
 
-**Právě teď:** Fáze 0 je hotová. Následuje **Fáze 1 – specifikace**.
+**Právě teď:** Specifikace máme; následuje **implementace** podle **IMPLEMENTACE_UKOLY.md**.
 
-1. **Nejprve** doplň do **AKTUALNI_STAV.md** sekci „Co aplikace je“ – stačí 1–2 věty (účel aplikace MS-smeny). Tím máme jasno, o čem budeme vibe codovat.
-2. **Pak** zapiš do OPEN_QUESTIONS.md jakékoli nejasnosti (postupně je vyřešíme).
-3. **Potom** vyřeš dotazy jeden po druhém a doplň „Co plánujeme“ v AKTUALNI_STAV.md.
-4. **Nakonec** první implementační úkol: jedna malá, konkrétní funkce od začátku do konce („první vertikální řez“).
+1. Konkrétní pořadí úkolů je v **IMPLEMENTACE_UKOLY.md** (bloky A → B → C → D → E).
+2. Začínáme **Blokem A** (datový model, Local Storage, export/import JSON, kostra stránky a navigace).
+3. Po každém dokončeném úkolu: zaškrtnout v IMPLEMENTACE_UKOLY.md a aktualizovat **AKTUALNI_STAV.md** (co aplikace umí).
+4. Otevřené dotazy (např. období a časová granularita) lze vyřešit průběžně a zapracovat do specifikace.
 
 V každém okamžiku držíme **AKTUALNI_STAV.md** aktuální – je to přehled toho, co už aplikace umí.
 
@@ -58,13 +58,13 @@ V každém okamžiku držíme **AKTUALNI_STAV.md** aktuální – je to přehled
 
 ## Fáze 2: Implementace jádra
 
-- [ ] **2.1 První vertikální řez (MVP funkce)**
-  - Zvolit jednu konkrétní funkci z „Co plánujeme“, implementovat ji od začátku do konce (jedna obrazovka / jeden flow)
-  - Po dokončení: aktualizovat AKTUALNI_STAV.md (co aplikace umí)
-  - Poznámka: _
+Úkoly jsou rozepsány v **IMPLEMENTACE_UKOLY.md** (bloky A–E). Plníme je v pořadí; každý dokončený úkol zaškrtneme tam a aktualizujeme AKTUALNI_STAV.md.
 
-- [ ] **2.2** _Další funkce – doplníme podle feature setu_
-- [ ] **2.3** _
+- [ ] **2.1 Blok A** – Datový model, Local Storage, export/import JSON, kostra stránky a navigace (úkoly A1–A3)
+- [ ] **2.2 Blok B** – Konfigurace: zaměstnanci, budovy a třídy, otevírací doba, min/max v čase (B1–B4)
+- [ ] **2.3 Blok C** – Pravidla: překryv, kmenové/vykrývací, speciální sloty a rotace (C1–C4)
+- [ ] **2.4 Blok D** – Výpočet návrhu směn a zobrazení výsledku (D1–D4)
+- [ ] **2.5 Blok E** – Export/import UI, validace, doladění UX (E1–E3)
 
 ---
 
