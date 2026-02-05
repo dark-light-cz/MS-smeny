@@ -247,6 +247,27 @@ header {
   background: var(--color-bg);
 }
 
+.tabulka-zamestnanci th.th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.tabulka-zamestnanci th.th-sortable:hover {
+  background: #e8e8e8;
+}
+
+.tabulka-zamestnanci .sort-order {
+  font-size: 0.75rem;
+  color: #666;
+  margin-left: 0.2em;
+}
+
+.tabulka-zamestnanci .sort-none {
+  color: #999;
+  font-size: 0.85rem;
+  margin-left: 0.15em;
+}
+
 .tabulka-zamestnanci tr:hover td {
   background: #fafafa;
 }

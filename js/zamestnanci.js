@@ -132,19 +132,125 @@
   }
 
   /**
-   * Seřadí zaměstnance: nejdřív podle role (ROLE_RAZENI), v rámci role podle jména.
+   * Uživatelské řazení – seznam kritérií (B1c). Každé: { key: string, dir: number } (dir 1 = vzestupně, -1 = sestupně).
    */
-  function seradZamestnance(list) {
-    return (list || []).slice().sort(function (a, b) {
-      var ra = indexRole(a.role);
-      var rb = indexRole(b.role);
-      if (ra !== rb) return ra - rb;
-      return (a.jmeno || '').localeCompare(b.jmeno || '', 'cs');
-    });
+  var razeniKriteria = [
+    { key: 'role', dir: 1 },
+    { key: 'jmeno', dir: 1 }
+  ];
+
+  function getCompareForKey(key) {
+    switch (key) {
+      case 'jmeno':
+        return function (a, b) { return (a.jmeno || '').localeCompare(b.jmeno || '', 'cs'); };
+      case 'uvazek':
+        return function (a, b) {
+          var ua = (a.uvazekMinutyTyden != null) ? a.uvazekMinutyTyden : 0;
+          var ub = (b.uvazekMinutyTyden != null) ? b.uvazekMinutyTyden : 0;
+          return ua - ub;
+        };
+      case 'role':
+        return function (a, b) { return indexRole(a.role) - indexRole(b.role); };
+      case 'kategorie':
+        return function (a, b) {
+          var ka = (a.kmenovaVykryvaci === 'vykrývací') ? 1 : 0;
+          var kb = (b.kmenovaVykryvaci === 'vykrývací') ? 1 : 0;
+          if (ka !== kb) return ka - kb;
+          return (nazevTridy(a.tridaId) || '').localeCompare(nazevTridy(b.tridaId) || '', 'cs');
+        };
+      default:
+        return function () { return 0; };
+    }
   }
 
   /**
-   * Vykreslí tabulku zaměstnanců do #zamestnanci-seznam (řazenou podle role a jména).
+   * Seřadí zaměstnance podle zadaných kritérií (nebo výchozích: role, jméno).
+   */
+  function seradZamestnance(list, kriteria) {
+    var k = kriteria && kriteria.length > 0 ? kriteria : razeniKriteria;
+    return (list || []).slice().sort(function (a, b) {
+      var i, cmp, res;
+      for (i = 0; i < k.length; i += 1) {
+        cmp = getCompareForKey(k[i].key)(a, b);
+        res = cmp * (k[i].dir || 1);
+        if (res !== 0) return res;
+      }
+      return 0;
+    });
+  }
+
+  /** Výchozí kritéria, když uživatel všechna odebere (neřadit). */
+  function vychoziRazeniKriteria() {
+    return [{ key: 'role', dir: 1 }, { key: 'jmeno', dir: 1 }];
+  }
+
+  /**
+   * Klik na záhlaví (primární): cyklus nahoru → dolu → neřadit → nahoru …
+   * Je-li sloupec už primární a je dolu (▼), další klik ho odebere z kritérií.
+   */
+  function nastavPrimarniRazeni(key) {
+    var idx = -1;
+    for (var i = 0; i < razeniKriteria.length; i += 1) {
+      if (razeniKriteria[i].key === key) { idx = i; break; }
+    }
+    if (idx === 0) {
+      if (razeniKriteria[0].dir === 1) {
+        razeniKriteria[0].dir = -1;
+      } else {
+        razeniKriteria.splice(0, 1);
+        if (razeniKriteria.length === 0) {
+          razeniKriteria = vychoziRazeniKriteria();
+        }
+      }
+    } else {
+      if (idx > 0) razeniKriteria.splice(idx, 1);
+      razeniKriteria.unshift({ key: key, dir: 1 });
+      if (razeniKriteria.length > 4) razeniKriteria.pop();
+    }
+  }
+
+  /**
+   * Shift+klik: přidat jako další kritérium nebo u již řazeného sloupce cyklus nahoru → dolu → neřadit.
+   */
+  function pridejSekundarniRazeni(key) {
+    var idx = -1;
+    for (var i = 0; i < razeniKriteria.length; i += 1) {
+      if (razeniKriteria[i].key === key) { idx = i; break; }
+    }
+    if (idx >= 0) {
+      if (razeniKriteria[idx].dir === 1) {
+        razeniKriteria[idx].dir = -1;
+      } else {
+        razeniKriteria.splice(idx, 1);
+        if (razeniKriteria.length === 0) {
+          razeniKriteria = vychoziRazeniKriteria();
+        }
+      }
+    } else {
+      razeniKriteria.push({ key: key, dir: 1 });
+      if (razeniKriteria.length > 4) razeniKriteria.shift();
+    }
+  }
+
+  function thRazeni(key, label) {
+    var order = -1;
+    var dir = 0;
+    for (var i = 0; i < razeniKriteria.length; i += 1) {
+      if (razeniKriteria[i].key === key) {
+        order = i + 1;
+        dir = razeniKriteria[i].dir;
+        break;
+      }
+    }
+    var title = 'Klik: nahoru → dolu → neřadit. Shift+klik: přidat další kritérium (nebo stejný cyklus).';
+    var arrow = dir === 1 ? ' ▲' : (dir === -1 ? ' ▼' : '');
+    var orderStr = order >= 0 ? ' <span class="sort-order">' + order + '</span>' : '';
+    var neřaditHint = order < 0 ? ' <span class="sort-none" aria-hidden="true">—</span>' : '';
+    return '<th class="th-sortable" data-sort="' + escapeAttr(key) + '" title="' + escapeAttr(title) + '">' + escapeHtml(label) + orderStr + arrow + neřaditHint + '</th>';
+  }
+
+  /**
+   * Vykreslí tabulku zaměstnanců do #zamestnanci-seznam (řazenou podle aktuálních kritérií).
    */
   function vykresliSeznam() {
     var el = document.getElementById('zamestnanci-seznam');
@@ -157,7 +263,16 @@
       return;
     }
 
-    var html = ['<table class="tabulka-zamestnanci"><thead><tr><th>Jméno</th><th>Úvazek (týden)</th><th>Role</th><th>Kategorie</th><th>Akce</th></tr></thead><tbody>'];
+    var html = [
+      '<table class="tabulka-zamestnanci">',
+      '<thead><tr>',
+      thRazeni('jmeno', 'Jméno'),
+      thRazeni('uvazek', 'Úvazek (týden)'),
+      thRazeni('role', 'Role'),
+      thRazeni('kategorie', 'Kategorie'),
+      '<th>Akce</th>',
+      '</tr></thead><tbody>'
+    ];
     var i, z, uv, kategText, btnUpravit, btnSmazat;
     for (i = 0; i < list.length; i += 1) {
       z = list[i];
@@ -251,9 +366,30 @@
   }
 
   /**
+   * Klik na záhlaví sloupce – řazení (B1c). Klik = primární, Shift+klik = sekundární kritérium.
+   */
+  function naKlikZahlavi(e) {
+    var th = e.target && e.target.closest && e.target.closest('th.th-sortable');
+    if (!th) return;
+    var key = th.getAttribute('data-sort');
+    if (!key) return;
+    e.preventDefault();
+    if (e.shiftKey) {
+      pridejSekundarniRazeni(key);
+    } else {
+      nastavPrimarniRazeni(key);
+    }
+    vykresliSeznam();
+  }
+
+  /**
    * Delegace kliknutí v seznamu (Upravit / Smazat).
    */
   function naKlikSeznam(e) {
+    if (e.target && e.target.closest && e.target.closest('th.th-sortable')) {
+      naKlikZahlavi(e);
+      return;
+    }
     var btn = e.target && e.target.getAttribute && e.target.getAttribute('data-akce');
     var id = e.target && e.target.getAttribute && e.target.getAttribute('data-id');
     if (!btn || !id) return;

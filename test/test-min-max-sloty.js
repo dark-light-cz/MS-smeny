@@ -55,6 +55,25 @@
       }
     },
     {
+      name: 'Duplikát slotu má stejná data bez id (B4b)',
+      run: function () {
+        if (!M) return;
+        var slot = M.vytvorMinMaxSlot('15:00', '17:00', 1, null, 0, null, [5], true);
+        var kopie = {
+          id: '',
+          od: slot.od,
+          do: slot.do,
+          minNaBudovu: slot.minNaBudovu,
+          maxNaBudovu: slot.maxNaBudovu,
+          minNaTridu: slot.minNaTridu,
+          maxNaTridu: slot.maxNaTridu,
+          dny: Array.isArray(slot.dny) ? slot.dny.slice() : [],
+          rotace: !!slot.rotace
+        };
+        T.assert(!kopie.id && kopie.od === '15:00' && kopie.do === '17:00' && kopie.rotace === true, 'kopie bez id, stejná data');
+      }
+    },
+    {
       name: 'Smazání slotu přes replaceData se projeví v getData',
       run: function () {
         if (!S || !M) return;

@@ -73,6 +73,8 @@
   - V sekci Zaměstnanci: tabulka zaměstnanců (jméno, úvazek v h/min za týden, role), tlačítko „Přidat zaměstnance“, formulář (jméno, hodiny + minuty týdně, role – učitelka, asistentka pedagoga, školník/školnice, ředitelka, zástupkyně). Akce: přidat, upravit, smazat (s potvrzením). Data se ukládají do modelu a Local Storage (js/zamestnanci.js).
 - **Zaměstnanci – řazení tabulky (B1b):**
   - Tabulka zaměstnanců se automaticky řadí: nejdřív podle role (ředitelka, zástupkyně, učitelka, asistentka pedagoga, školník/školnice), v rámci role podle jména (localeCompare cs).
+- **Zaměstnanci – řazení sloupců uživatelem (B1c):**
+  - Klik na záhlaví sloupce (Jméno, Úvazek, Role, Kategorie) nastaví řazení podle tohoto sloupce (opakovaný klik přepne směr). Shift+klik přidá sloupec jako další kritérium. V záhlaví se zobrazí šipka ▲/▼ a pořadí kritérií (1, 2, …).
 - **Budovy a třídy – struktura (B2):**
   - V sekci Budovy a třídy: hierarchie budova → třídy. CRUD budov (název), v každé budově CRUD tříd (název). Formuláře pro přidání/úpravu budovy a třídy, u třídy výběr budovy (při úpravě lze přesunout do jiné budovy). Smazání budovy (i se třídami) a smazání třídy s potvrzením. Ukládání do modelu a Local Storage (js/budovy-tridy.js).
 - **Otevírací doba (B3):**
@@ -86,7 +88,9 @@
 - **Omezení „ne dohromady“ (C4):**
   - Dvojice osob, které nemají být spolu v jedné třídě ani ve stejné směně. V modelu: **omezeniNeDohromady** (pole objektů { id, osoba1Id, osoba2Id } v kanonickém pořadí). Model: vytvorOmezeniNeDohromady(osoba1Id, osoba2Id). V sekci Pravidla: blok „Omezení „ne dohromady““ – výběr dvou osob (selecty), tlačítko „Přidat dvojici“, seznam dvojic se smazáním. Validace: dvě různé osoby, bez duplicit. Po importu se seznam a výběry obnoví (js/omezeni-ne-dohromady.js).
 - **Min/max počet osob v čase (B4):**
-  - V sekci Pravidla: konfigurace časových slotů (od–do) a pro každý slot minimální a maximální počet osob na budovu a na třídu. Přehledné formuláře s nápovědami („Prázdné = bez omezení“), validace (čas Do později než Od, nezáporné počty, min ≤ max). Chyby a potvrzení se zobrazují na stránce (bez alertů), úspěch mizí po 3 s. Tabulka slotů řazená podle času, přidat / upravit / smazat. Model: vytvorMinMaxSlot(), minMaxSloty v úložišti.
+  - V sekci Pravidla: konfigurace časových slotů (od–do) a pro každý slot minimální a maximální počet osob na budovu a na třídu. Přehledné formuláře s nápovědami („Prázdné = bez omezení“), validace (čas Do později než Od, nezáporné počty, min ≤ max). Chyby a potvrzení se zobrazují na stránce (bez alertů), úspěch mizí po 3 s. Tabulka slotů řazená podle času, přidat / upravit / **duplikovat** / smazat. Model: vytvorMinMaxSlot(), minMaxSloty v úložišti.
+- **Požadavky na počet osob – duplikovat řádek (B4b):**
+  - U každého časového slotu tlačítko „Duplikovat“: otevře formulář s předvyplněnými hodnotami daného řádku pro uložení jako nový slot (uživatel může upravit a uložit).
 - **Export/import – UI (E1):**
   - V sekci Přehled: blok „Záloha a obnova dat“ s textem, že při importu se data nahradí. Tlačítko „Exportovat data“ stáhne JSON soubor. Tlačítko „Importovat data“ otevře výběr souboru; po nahrání platného JSON se data nahradí a zobrazení zaměstnanců, budov a časových slotů se automaticky obnoví. Úspěch a chyby (neplatný soubor) se zobrazují pod tlačítky (js/export-import-ui.js).
 - **Testy:** v prohlížeči se spouštějí otevřením `test/index.html`, nebo `npm test` (Playwright). Testují datový model, Local Storage, export/import JSON, navigaci, zaměstnance, budovy/třídy, časové sloty min/max a pravidlo překryvu; po každém úkolu je vhodné testy znovu spustit a ověřit, že nic nerozbilo.
@@ -111,6 +115,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Implementovány úkoly B1c (řazení sloupců zaměstnanců – klik / Shift+klik, ▲/▼ a pořadí kritérií) a B4b (duplikovat řádek u časových slotů – předvyplnění formuláře pro nový slot).
 - 2025-02-05: Implementován úkol C4 – omezení „ne dohromady“: dvojice osob (model omezeniNeDohromady, vytvorOmezeniNeDohromady); sekce Pravidla – přidat/smazat dvojice; import normalizuje; testy doplněny.
 - 2025-02-05: Implementován úkol C3 – speciální sloty a rotace: u časového slotu pole dny (Po–Pá) a rotace; formulář a tabulka v sekci Pravidla; import normalizuje sloty; testy doplněny.
 - 2025-02-05: Implementován úkol C2 – kmenové vs. vykrývací: u zaměstnance kategorie a přiřazená třída; v Pravidlech blok „Pravidla pro vykrývací“ (bez mezer, max. přesunů); model a export/import doplněny; testy rozšířeny.

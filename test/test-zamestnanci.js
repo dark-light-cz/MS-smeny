@@ -43,6 +43,19 @@
       }
     },
     {
+      name: 'seradZamestnance s vlastními kritérii (B1c) – řazení jen podle jména sestupně',
+      run: function () {
+        if (!M || !Z) return;
+        var list = [
+          M.vytvorZamestnance('Alena', 480, M.ROLE.UCITELKA),
+          M.vytvorZamestnance('Béla', 400, M.ROLE.UCITELKA),
+          M.vytvorZamestnance('Cyril', 300, M.ROLE.UCITELKA)
+        ];
+        var sorted = Z.seradZamestnance(list, [{ key: 'jmeno', dir: -1 }]);
+        T.assert(sorted[0].jmeno === 'Cyril' && sorted[2].jmeno === 'Alena', 'podle jména sestupně');
+      }
+    },
+    {
       name: 'minutyNaHodinyMinuty(0) vrací 0 h 0 min',
       run: function () {
         var r = Z.minutyNaHodinyMinuty(0);

@@ -271,6 +271,7 @@
       html.push('<td>' + escapeHtml(formatMax(s.maxNaTridu)) + '</td>');
       html.push('<td>' + (s.rotace ? 'Ano' : 'Ne') + '</td>');
       html.push('<td><button type="button" class="btn btn-mala" data-akce="upravit" data-id="' + escapeAttr(s.id) + '">Upravit</button> ');
+      html.push('<button type="button" class="btn btn-mala" data-akce="duplikovat" data-id="' + escapeAttr(s.id) + '">Duplikovat</button> ');
       html.push('<button type="button" class="btn btn-mala" data-akce="smazat" data-id="' + escapeAttr(s.id) + '">Smazat</button></td>');
       html.push('</tr>');
     }
@@ -290,6 +291,21 @@
     }
     if (akce === 'upravit' && slot) {
       zobrazFormular(slot);
+      return;
+    }
+    if (akce === 'duplikovat' && slot) {
+      var kopie = {
+        id: '',
+        od: slot.od,
+        do: slot.do,
+        minNaBudovu: slot.minNaBudovu,
+        maxNaBudovu: slot.maxNaBudovu,
+        minNaTridu: slot.minNaTridu,
+        maxNaTridu: slot.maxNaTridu,
+        dny: Array.isArray(slot.dny) ? slot.dny.slice() : [],
+        rotace: !!slot.rotace
+      };
+      zobrazFormular(kopie);
     }
   }
 
