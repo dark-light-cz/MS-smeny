@@ -191,7 +191,7 @@
       '<tbody>'
     ];
     for (var i = 0; i < rows.length; i += 1) {
-      row = rows[i];
+      var row = rows[i];
       var trClass = row.chybiRow ? ' class="navrh-radek-chybi"' : '';
       html.push('<tr' + trClass + '>');
       html.push('<td>' + escapeHtml(row.denLabel) + '</td>');
