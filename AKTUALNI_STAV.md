@@ -21,7 +21,7 @@
 ### Co se konfiguruje
 
 1. **Zaměstnanci**
-   - Jméno, úvazek.
+   - Jméno, **úvazek:** počet hodin za týden (lze zadat i s přesností na minuty).
    - Role: učitelka, asistentka pedagoga, školník/školnice, ředitelka, zástupkyně (speciální role pro vedení MŠ). Další role podle potřeby.
 
 2. **Struktura míst**
@@ -32,6 +32,10 @@
 
 3. **Omezení (plánujeme později)**
    - Např. „tyto dvě osoby ne dohromady v jedné třídě / v jedné směně“.
+
+### Plánování směn (charakter rozvrhu)
+- **Pedagogové** (učitelky, asistentky, ředitelka, zástupkyně): směny **ideálně stejné** – opakující se týden po týdnu (minimálně u pedagogů).
+- **Školníci/školnice:** možnost **krátký–dlouhý týden** – plánování volitelně na **14 dní** (dva týdny v cyklu).
 
 ### Výpočet a výstup
 - Aplikace podle těchto pravidel **vypočte jeden návrh směn** (kdo kdy kde je).
@@ -48,9 +52,10 @@
 ## Co plánujeme (feature set)
 
 - Ukládání dat do Local Storage, export/import JSON.
-- Konfigurace: zaměstnanci (jméno, úvazek, role), budovy a třídy, otevírací doby, min/max počty osob v čase.
+- Konfigurace: zaměstnanci (jméno, úvazek v hodinách za týden s přesností na minuty, role), budovy a třídy, otevírací doby, min/max počty osob v čase.
 - Role: učitelka, asistentka pedagoga, školník/školnice, ředitelka, zástupkyně (příp. další).
 - Omezení typu „tyto 2 osoby ne dohromady“ (později).
+- Směny pedagogů ideálně stejné (opakující se); u školníků volitelně plán na 14 dní (krátký–dlouhý týden).
 - Výpočet jednoho návrhu směn podle pravidel; změna = úprava konfigurace + přepočet.
 
 _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
@@ -59,5 +64,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Doplněno plánování směn: pedagogové = ideálně stejné směny; školníci = volitelně 14 dní (krátký–dlouhý týden).
+- 2025-02-05: Upřesněn úvazek: hodiny za týden, s přesností na minuty.
 - 2025-02-05: Zapsána základní představa aplikace (MŠ, směny, konfigurace, Local Storage, JSON, jedno řešení).
 - 2025-02-05: Založení dokumentu, výchozí stav (pouze statická úvodní stránka).
