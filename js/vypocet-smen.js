@@ -1,7 +1,6 @@
 /**
- * Výpočet návrhu směn (D1).
- * Zjednodušená verze: min/max na budovu a na třídu v časových slotech, úvazky.
- * Bez překryvu, kmenových a rotace.
+ * Výpočet návrhu směn (D1, D3).
+ * Min/max na budovu a třídu, úvazky. D3: překryv v třídě, kmenové/vykrývací, rotace.
  */
 (function (global) {
   'use strict';
@@ -17,6 +16,12 @@
   function timeToMinuty(hhmm) {
     var t = parseTime(hhmm);
     return t.h * 60 + t.m;
+  }
+
+  function minutyToHhmm(minuty) {
+    var m = minuty % 60;
+    var h = Math.floor(minuty / 60);
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
   }
 
   /** Délka slotu v minutách. */
@@ -71,19 +76,87 @@
     return list;
   }
 
+  /** Klíč pozice pro rotaci (stejná pozice = stejný slot + místo). */
+  function posKey(pos) {
+    return (pos.budovaId || '') + '|' + (pos.tridaId || '');
+  }
+
   /**
-   * Vypočte jeden návrh směn.
-   * @param {Object} data - konfigurace (zamestnanci, budovy, minMaxSloty)
-   * @returns {{ ok: boolean, prirazeni?: Array<{ den: number, slotId: string, budovaId?: string, tridaId?: string, zamestnanecId: string }>, chyba?: string }}
+   * Vybere nejvhodnější osobu pro pozici (D3: kmenová u své třídy, vykrývací max přesun, rotace).
+   */
+  function vyberOsobu(zamestnanci, pos, assignedThisSlot, remaining, duration, tridaIdsDnes, pravidla, slot, rotacePocet) {
+    var maxPresun = (pravidla && pravidla.vykryvaciMaxPresun != null) ? parseInt(pravidla.vykryvaciMaxPresun, 10) : 1;
+    var maxTridPerDay = maxPresun + 1;
+    var key = slot.id + '|' + posKey(pos);
+    var candidates = [];
+    zamestnanci.forEach(function (z) {
+      if (assignedThisSlot[z.id]) return;
+      var r = remaining[z.id] || 0;
+      if (r < duration) return;
+      if (pos.tridaId) {
+        var tridy = tridaIdsDnes[z.id] || [];
+        if (z.kmenovaVykryvaci === 'vykrývací' && tridy.indexOf(pos.tridaId) < 0) {
+          var uniq = tridy.slice();
+          uniq.push(pos.tridaId);
+          if (uniq.length > maxTridPerDay) return;
+        }
+      }
+      var kmenovaMatch = pos.tridaId && z.kmenovaVykryvaci === 'kmenová' && z.tridaId === pos.tridaId;
+      var rotaceCount = (rotacePocet && rotacePocet[key] && rotacePocet[key][z.id]) ? rotacePocet[key][z.id] : 0;
+      candidates.push({
+        id: z.id,
+        remaining: r,
+        kmenovaMatch: !!kmenovaMatch,
+        rotaceCount: rotaceCount
+      });
+    });
+    if (candidates.length === 0) return null;
+    candidates.sort(function (a, b) {
+      if (a.kmenovaMatch !== b.kmenovaMatch) return a.kmenovaMatch ? -1 : 1;
+      if (slot.rotace && a.rotaceCount !== b.rotaceCount) return a.rotaceCount - b.rotaceCount;
+      return b.remaining - a.remaining;
+    });
+    return candidates[0].id;
+  }
+
+  /**
+   * Vypočte jeden návrh směn (D1 + D3).
+   * @param {Object} data - konfigurace (zamestnanci, budovy, minMaxSloty, pravidla)
+   * @returns {{ ok: boolean, prirazeni?: Array<...>, chyba?: string }}
    */
   function vypocetSmen(data) {
     var zamestnanci = (data.zamestnanci || []).filter(function (z) {
       return z && z.id && (z.uvazekMinutyTyden == null || z.uvazekMinutyTyden > 0);
     });
     var budovy = data.budovy || [];
+    var pravidla = data.pravidla || {};
     var sloty = (data.minMaxSloty || []).slice().sort(function (a, b) {
       return (a.od || '').localeCompare(b.od || '');
     });
+
+    var prekryvMin = (pravidla.minimalniPrekryvMinuty != null) ? parseInt(pravidla.minimalniPrekryvMinuty, 10) : 0;
+    if (prekryvMin > 0 && budovy.length > 0) {
+      var hasTridy = false;
+      for (var bi = 0; bi < budovy.length; bi += 1) {
+        if (budovy[bi].tridy && budovy[bi].tridy.length > 0) { hasTridy = true; break; }
+      }
+      if (hasTridy) {
+        var odMin = 9 * 60;
+        var doMin = odMin + prekryvMin;
+        sloty.push({
+          id: 'overlap-prekryv',
+          od: minutyToHhmm(odMin),
+          do: minutyToHhmm(doMin),
+          minNaBudovu: 0,
+          maxNaBudovu: null,
+          minNaTridu: 2,
+          maxNaTridu: null,
+          dny: [],
+          rotace: false
+        });
+        sloty.sort(function (a, b) { return (a.od || '').localeCompare(b.od || ''); });
+      }
+    }
 
     if (zamestnanci.length === 0) {
       return { ok: false, chyba: 'Přidejte alespoň jednoho zaměstnance s úvazkem.' };
@@ -98,9 +171,11 @@
     });
 
     var prirazeni = [];
-    var den, slot, duration, positions, pos, assignedThisSlot, person, bestId, bestRem, i, j;
+    var rotacePocet = {};
+    var den, slot, duration, positions, pos, assignedThisSlot, bestId, i, j, tridaIdsDnes, pk;
 
     for (den = 1; den <= 5; den += 1) {
+      tridaIdsDnes = {};
       for (i = 0; i < sloty.length; i += 1) {
         slot = sloty[i];
         if (!slotPlatnyProDen(slot, den)) continue;
@@ -112,16 +187,7 @@
         assignedThisSlot = {};
         for (j = 0; j < positions.length; j += 1) {
           pos = positions[j];
-          bestId = null;
-          bestRem = -1;
-          zamestnanci.forEach(function (z) {
-            if (assignedThisSlot[z.id]) return;
-            var r = remaining[z.id] || 0;
-            if (r >= duration && r > bestRem) {
-              bestRem = r;
-              bestId = z.id;
-            }
-          });
+          bestId = vyberOsobu(zamestnanci, pos, assignedThisSlot, remaining, duration, tridaIdsDnes, pravidla, slot, rotacePocet);
           if (bestId == null) {
             return {
               ok: false,
@@ -137,6 +203,13 @@
           });
           assignedThisSlot[bestId] = true;
           remaining[bestId] -= duration;
+          if (pos.tridaId) {
+            if (!tridaIdsDnes[bestId]) tridaIdsDnes[bestId] = [];
+            if (tridaIdsDnes[bestId].indexOf(pos.tridaId) < 0) tridaIdsDnes[bestId].push(pos.tridaId);
+          }
+          pk = slot.id + '|' + posKey(pos);
+          if (!rotacePocet[pk]) rotacePocet[pk] = {};
+          rotacePocet[pk][bestId] = (rotacePocet[pk][bestId] || 0) + 1;
         }
       }
     }

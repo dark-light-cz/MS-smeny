@@ -42,7 +42,15 @@
     return '(?)';
   }
 
-  function casSlotu(sloty, slotId) {
+  function casSlotu(sloty, slotId, data) {
+    if (slotId === 'overlap-prekryv' && data && data.pravidla) {
+      var min = parseInt(data.pravidla.minimalniPrekryvMinuty, 10) || 120;
+      var odM = 9 * 60;
+      var doM = odM + min;
+      var od = (Math.floor(odM / 60) < 10 ? '0' : '') + Math.floor(odM / 60) + ':' + (odM % 60 < 10 ? '0' : '') + (odM % 60);
+      var do_ = (Math.floor(doM / 60) < 10 ? '0' : '') + Math.floor(doM / 60) + ':' + (doM % 60 < 10 ? '0' : '') + (doM % 60);
+      return 'Překryv (' + od + '–' + do_ + ')';
+    }
     for (var i = 0; i < (sloty || []).length; i += 1) {
       if (sloty[i].id === slotId) {
         var s = sloty[i];
@@ -111,13 +119,17 @@
         ? ('Třída: ' + nazevTridy(budovy, tridaId))
         : ('Budova: ' + nazevBudovy(budovy, budovaId));
       var slotOrder = 0;
-      for (var si = 0; si < sloty.length; si += 1) {
-        if (sloty[si].id === slotId) { slotOrder = si; break; }
+      if (slotId === 'overlap-prekryv') {
+        slotOrder = 1;
+      } else {
+        for (var si = 0; si < sloty.length; si += 1) {
+          if (sloty[si].id === slotId) { slotOrder = si; break; }
+        }
       }
       rows.push({
         den: den,
         denLabel: NAZVY_DNU[den],
-        cas: casSlotu(sloty, slotId),
+        cas: casSlotu(sloty, slotId, data),
         slotOrder: slotOrder,
         misto: misto,
         jmena: names

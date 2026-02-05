@@ -57,6 +57,27 @@
         T.assert(r.prirazeni.length === 5, '5 přiřazení (5 dnů × 1 budova, slot 45 min)');
         T.assert(r.prirazeni[0].den >= 1 && r.prirazeni[0].den <= 5 && r.prirazeni[0].zamestnanecId === z.id, 'přiřazení má den a zamestnanecId');
       }
+    },
+    {
+      name: 'D3: s minimalniPrekryvMinuty a třídami se přidá překryvový slot a přiřazení',
+      run: function () {
+        if (!M) return;
+        var z1 = M.vytvorZamestnance('A', 800, M.ROLE.UCITELKA);
+        var z2 = M.vytvorZamestnance('B', 800, M.ROLE.UCITELKA);
+        var b = M.vytvorBudovu('Pavilon');
+        b.tridy.push(M.vytvorTridu('Třída 1'));
+        var slot = { id: 's1', od: '07:00', do: '08:00', minNaTridu: 1, minNaBudovu: 0, dny: [], rotace: false };
+        var data = {
+          zamestnanci: [z1, z2],
+          budovy: [b],
+          minMaxSloty: [slot],
+          pravidla: { minimalniPrekryvMinuty: 120 }
+        };
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true && r.prirazeni.length > 0, 'ok a přiřazení');
+        var overlap = r.prirazeni.filter(function (p) { return p.slotId === 'overlap-prekryv'; });
+        T.assert(overlap.length >= 10, 'překryv: 5 dnů × 2 osoby na třídu = 10 přiřazení');
+      }
     }
   ];
 

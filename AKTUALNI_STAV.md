@@ -91,8 +91,8 @@
   - V sekci Pravidla: konfigurace časových slotů (od–do) a pro každý slot minimální a maximální počet osob na budovu a na třídu. Přehledné formuláře s nápovědami („Prázdné = bez omezení“), validace (čas Do později než Od, nezáporné počty, min ≤ max). Chyby a potvrzení se zobrazují na stránce (bez alertů), úspěch mizí po 3 s. Tabulka slotů řazená podle času, přidat / upravit / **duplikovat** / smazat. Model: vytvorMinMaxSlot(), minMaxSloty v úložišti.
 - **Požadavky na počet osob – duplikovat řádek (B4b):**
   - U každého časového slotu tlačítko „Duplikovat“: otevře formulář s předvyplněnými hodnotami daného řádku pro uložení jako nový slot (uživatel může upravit a uložit).
-- **Výpočet návrhu směn – první verze (D1):**
-  - Algoritmus na vstupu bere konfiguraci (zaměstnanci, budovy, minMaxSloty). Výstup: přiřazení „kdo kdy kde“ (den, slot, budova/třída, zaměstnanec) tak, aby byly splněny min/max požadavky v časových slotech a úvazky. Zjednodušená verze bez překryvu, kmenových a rotace. API: `MSemenyVypocetSmen.vypocetSmen(data)` → `{ ok: true, prirazeni }` nebo `{ ok: false, chyba }` (js/vypocet-smen.js).
+- **Výpočet návrhu směn – první verze (D1) a rozšíření (D3):**
+  - Algoritmus na vstupu bere konfiguraci (zaměstnanci, budovy, minMaxSloty, pravidla). Výstup: přiřazení „kdo kdy kde“. D1: min/max v slotech, úvazky. D3: (1) **Minimální překryv** – pokud jsou třídy a pravidla.minimalniPrekryvMinuty > 0, přidá se syntetický slot (např. 09:00–11:00) s minNaTridu 2 v každé třídě. (2) **Kmenové/vykrývací** – při výběru osoby pro třídu se preferuje kmenová přiřazená k té třídě; u vykrývací se respektuje max počet tříd za den (vykryvaciMaxPresun + 1). (3) **Rotace** – u slotu s rotace: true se preferují osoby s menším počtem přiřazení do daného slotu/místa v týdnu. API: `MSemenyVypocetSmen.vypocetSmen(data)` (js/vypocet-smen.js). V návrhu směn se překryv zobrazí jako „Překryv (09:00–11:00)“.
 - **Zobrazení návrhu směn (D2):**
   - Sekce „Návrh směn“: popis, tlačítko „Přepočítat“, po výpočtu tabulka s sloupci Den, Čas, Místo, Osoby. Chyba výpočtu (např. nedostatek úvazků) se zobrazí pod tlačítkem. Prázdný stav před prvním výpočtem (js/navrh-smen-ui.js).
 - **Export/import – UI (E1):**
@@ -119,6 +119,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Implementován D3 – rozšíření výpočtu: minimální překryv v třídě (syntetický slot), preferování kmenových u své třídy a omezení přesunů u vykrývacích, rotace u slotů. Zobrazení překryvu v tabulce návrhu.
 - 2025-02-05: Implementovány D1 a D2 – výpočet návrhu směn (algoritmus min/max a úvazky, výstup přiřazení) a zobrazení v sekci Návrh směn (tabulka Den/Čas/Místo/Osoby, tlačítko Přepočítat).
 - 2025-02-05: Implementovány úkoly B1c (řazení sloupců zaměstnanců – klik / Shift+klik, ▲/▼ a pořadí kritérií) a B4b (duplikovat řádek u časových slotů – předvyplnění formuláře pro nový slot).
 - 2025-02-05: Implementován úkol C4 – omezení „ne dohromady“: dvojice osob (model omezeniNeDohromady, vytvorOmezeniNeDohromady); sekce Pravidla – přidat/smazat dvojice; import normalizuje; testy doplněny.
