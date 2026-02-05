@@ -78,6 +78,14 @@
       }
     },
     {
+      name: 'vytvorTridu obsahuje oteviraciDoba',
+      run: function () {
+        var t = M.vytvorTridu('Sluníčka');
+        T.assert(t.oteviraciDoba && Array.isArray(t.oteviraciDoba.dny), 'oteviraciDoba');
+        T.assert(t.oteviraciDoba.od === '07:00' && t.oteviraciDoba.do === '17:00', 'od-do');
+      }
+    },
+    {
       name: 'vychoziOteviraciDoba vrací po-pá 7:00-17:00',
       run: function () {
         var o = M.vychoziOteviraciDoba();

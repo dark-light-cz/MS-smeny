@@ -26,6 +26,53 @@
     return Storage ? Storage.getData() : { budovy: [] };
   }
 
+  /** Výchozí otevírací doba pro vyplnění formuláře. */
+  function vychoziOteviraciDoba() {
+    return Model && Model.vychoziOteviraciDoba
+      ? Model.vychoziOteviraciDoba()
+      : { dny: [1, 2, 3, 4, 5], od: '07:00', do: '17:00' };
+  }
+
+  /**
+   * Vyplní pole otevírací doby ve formuláři (prefix 'budovy' nebo 'tridy').
+   * @param {string} prefix - 'budovy' nebo 'tridy'
+   * @param {Object} oteviraciDoba - { dny: number[], od: string, do: string }
+   */
+  function vyplnOteviraciDobu(prefix, oteviraciDoba) {
+    var od = (oteviraciDoba && oteviraciDoba.od) ? oteviraciDoba.od : '07:00';
+    var do_ = (oteviraciDoba && oteviraciDoba.do) ? oteviraciDoba.do : '17:00';
+    var dny = (oteviraciDoba && oteviraciDoba.dny) ? oteviraciDoba.dny : [1, 2, 3, 4, 5];
+    var elOd = document.getElementById(prefix + '-od');
+    var elDo = document.getElementById(prefix + '-do');
+    if (elOd) elOd.value = od;
+    if (elDo) elDo.value = do_;
+    var i, cb;
+    for (i = 1; i <= 7; i += 1) {
+      cb = document.getElementById(prefix + '-den-' + i);
+      if (cb) cb.checked = dny.indexOf(i) !== -1;
+    }
+  }
+
+  /**
+   * Přečte otevírací dobu z formuláře (prefix 'budovy' nebo 'tridy').
+   * @returns {{ dny: number[], od: string, do: string }}
+   */
+  function ctiOteviraciDobu(prefix) {
+    var dny = [];
+    var i, cb;
+    for (i = 1; i <= 7; i += 1) {
+      cb = document.getElementById(prefix + '-den-' + i);
+      if (cb && cb.checked) dny.push(i);
+    }
+    var elOd = document.getElementById(prefix + '-od');
+    var elDo = document.getElementById(prefix + '-do');
+    return {
+      dny: dny,
+      od: (elOd && elOd.value) ? elOd.value : '07:00',
+      do: (elDo && elDo.value) ? elDo.value : '17:00'
+    };
+  }
+
   /**
    * Vyplní select budov (pro formulář třídy).
    */
@@ -50,6 +97,7 @@
   function zobrazFormularBudovu(budova) {
     document.getElementById('budovy-form-id').value = budova ? budova.id : '';
     document.getElementById('budovy-nazev').value = budova ? (budova.nazev || '') : '';
+    vyplnOteviraciDobu('budovy', (budova && budova.oteviraciDoba) ? budova.oteviraciDoba : vychoziOteviraciDoba());
     document.getElementById('budovy-formular').hidden = false;
   }
 
@@ -64,6 +112,7 @@
     naplnSelectBudov(budovaId || (trida ? najdiBudovuProTridu(trida.id) : null));
     document.getElementById('tridy-form-id').value = trida ? trida.id : '';
     document.getElementById('tridy-nazev').value = trida ? (trida.nazev || '') : '';
+    vyplnOteviraciDobu('tridy', (trida && trida.oteviraciDoba) ? trida.oteviraciDoba : vychoziOteviraciDoba());
     document.getElementById('tridy-formular').hidden = false;
   }
 
@@ -106,12 +155,14 @@
     if (!Storage || !Storage.replaceData) return;
     if (!Model || !Model.vytvorBudovu) return;
 
+    var oteviraciDoba = ctiOteviraciDobu('budovy');
     if (id) {
       Storage.replaceData(function (d) {
         var i;
         for (i = 0; i < (d.budovy || []).length; i += 1) {
           if (d.budovy[i].id === id) {
             d.budovy[i].nazev = nazev;
+            d.budovy[i].oteviraciDoba = { dny: oteviraciDoba.dny.slice(), od: oteviraciDoba.od, do: oteviraciDoba.do };
             break;
           }
         }
@@ -119,6 +170,7 @@
       });
     } else {
       var nova = Model.vytvorBudovu(nazev);
+      nova.oteviraciDoba = { dny: oteviraciDoba.dny.slice(), od: oteviraciDoba.od, do: oteviraciDoba.do };
       Storage.replaceData(function (d) {
         d.budovy = d.budovy || [];
         d.budovy.push(nova);
@@ -140,6 +192,7 @@
     if (!Storage || !Storage.replaceData) return;
     if (!Model || !Model.vytvorTridu) return;
 
+    var oteviraciDoba = ctiOteviraciDobu('tridy');
     if (id) {
       var found = najdiTridu(id);
       if (!found) return;
@@ -154,6 +207,7 @@
         if (idx === -1) return d;
         var trida = src.tridy.splice(idx, 1)[0];
         trida.nazev = nazev;
+        trida.oteviraciDoba = { dny: oteviraciDoba.dny.slice(), od: oteviraciDoba.od, do: oteviraciDoba.do };
         if (src.id === dst.id) {
           src.tridy.splice(idx, 0, trida);
         } else {
@@ -164,6 +218,7 @@
       });
     } else {
       var nova = Model.vytvorTridu(nazev);
+      nova.oteviraciDoba = { dny: oteviraciDoba.dny.slice(), od: oteviraciDoba.od, do: oteviraciDoba.do };
       Storage.replaceData(function (d) {
         var b = (d.budovy || []).filter(function (x) { return x.id === budovaId; })[0];
         if (b) {

@@ -59,12 +59,24 @@
   function doplnVychoziPole(data) {
     var Model = global.MSemenyDataModel;
     var vychozi = Model && Model.vychoziStav ? Model.vychoziStav() : null;
+    var vychoziOteviraci = Model && Model.vychoziOteviraciDoba ? Model.vychoziOteviraciDoba() : { dny: [1, 2, 3, 4, 5], od: '07:00', do: '17:00' };
     if (!vychozi) {
       return data;
     }
+    var budovy = (data.budovy || []).map(function (b) {
+      var budova = { id: b.id, nazev: b.nazev != null ? b.nazev : '', oteviraciDoba: (b.oteviraciDoba && b.oteviraciDoba.dny) ? b.oteviraciDoba : vychoziOteviraci, tridy: [] };
+      (b.tridy || []).forEach(function (t) {
+        budova.tridy.push({
+          id: t.id,
+          nazev: t.nazev != null ? t.nazev : '',
+          oteviraciDoba: (t.oteviraciDoba && t.oteviraciDoba.dny) ? t.oteviraciDoba : vychoziOteviraci
+        });
+      });
+      return budova;
+    });
     var out = {
       zamestnanci: data.zamestnanci,
-      budovy: data.budovy
+      budovy: budovy
     };
     out.version = data.version != null ? data.version : vychozi.version;
     out.minMaxSloty = Array.isArray(data.minMaxSloty) && data.minMaxSloty.length > 0

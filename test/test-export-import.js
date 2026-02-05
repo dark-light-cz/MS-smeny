@@ -92,6 +92,25 @@
           T.assert(false, 'stahnoutExport nesmí vyhodit: ' + e.message);
         }
       }
+    },
+    {
+      name: 'import doplní oteviraciDoba u budov a tříd bez tohoto pole',
+      run: function () {
+        S.resetCache();
+        var importData = {
+          zamestnanci: [],
+          budovy: [
+            { id: 'b1', nazev: 'Budova bez oteviraciDoba', tridy: [{ id: 't1', nazev: 'Třída bez oteviraciDoba' }] }
+          ]
+        };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.budovy.length === 1, 'jedna budova');
+        T.assert(d.budovy[0].oteviraciDoba && Array.isArray(d.budovy[0].oteviraciDoba.dny), 'budova má oteviraciDoba');
+        T.assert(d.budovy[0].oteviraciDoba.od === '07:00' && d.budovy[0].oteviraciDoba.do === '17:00', 'budova od-do');
+        T.assert(d.budovy[0].tridy.length === 1 && d.budovy[0].tridy[0].oteviraciDoba, 'třída má oteviraciDoba');
+      }
     }
   ];
 

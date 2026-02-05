@@ -257,6 +257,36 @@ header {
   margin-left: 0.5rem;
 }
 
+/* Otevírací doba ve formuláři */
+.oteviraci-doba {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.oteviraci-doba legend {
+  padding: 0 0.25rem;
+}
+
+.oteviraci-doba .dny {
+  margin: 0.5rem 0;
+}
+
+.oteviraci-doba .dny label {
+  margin-right: 0.75rem;
+  font-weight: normal;
+}
+
+.oteviraci-doba .label-dny {
+  margin-right: 0.5rem;
+}
+
+.oteviraci-doba input[type="time"] {
+  margin-right: 1rem;
+}
+
 footer {
   margin-top: 2rem;
   border-top: 1px solid var(--color-border);

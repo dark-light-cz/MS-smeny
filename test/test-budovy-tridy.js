@@ -112,6 +112,23 @@
         });
         T.assert(S.getData().budovy.length === 0, 'po smazání 0');
       }
+    },
+    {
+      name: 'Budova má oteviraciDoba (dny, od, do)',
+      run: function () {
+        if (!M) return;
+        var b = M.vytvorBudovu('B');
+        T.assert(b.oteviraciDoba && b.oteviraciDoba.dny.indexOf(1) !== -1, 'dny obsahují Po');
+        T.assert(b.oteviraciDoba.od === '07:00' && b.oteviraciDoba.do === '17:00', 'od-do');
+      }
+    },
+    {
+      name: 'Třída z modelu má oteviraciDoba',
+      run: function () {
+        if (!M) return;
+        var t = M.vytvorTridu('T');
+        T.assert(t.oteviraciDoba && Array.isArray(t.oteviraciDoba.dny), 'oteviraciDoba');
+      }
     }
   ];
 

@@ -97,7 +97,8 @@
   function vytvorTridu(nazev) {
     return {
       id: generujId(),
-      nazev: nazev || ''
+      nazev: nazev || '',
+      oteviraciDoba: vychoziOteviraciDoba()
     };
   }
 

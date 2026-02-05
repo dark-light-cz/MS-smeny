@@ -76,6 +76,25 @@
             <label for="budovy-nazev">Název budovy</label>
             <input type="text" id="budovy-nazev" required>
           </p>
+          <fieldset class="oteviraci-doba">
+            <legend>Otevírací doba</legend>
+            <p class="dny">
+              <span class="label-dny">Dny:</span>
+              <label><input type="checkbox" id="budovy-den-1" value="1"> Po</label>
+              <label><input type="checkbox" id="budovy-den-2" value="2"> Út</label>
+              <label><input type="checkbox" id="budovy-den-3" value="3"> St</label>
+              <label><input type="checkbox" id="budovy-den-4" value="4"> Čt</label>
+              <label><input type="checkbox" id="budovy-den-5" value="5"> Pá</label>
+              <label><input type="checkbox" id="budovy-den-6" value="6"> So</label>
+              <label><input type="checkbox" id="budovy-den-7" value="7"> Ne</label>
+            </p>
+            <p>
+              <label for="budovy-od">Od</label>
+              <input type="time" id="budovy-od" value="07:00">
+              <label for="budovy-do">Do</label>
+              <input type="time" id="budovy-do" value="17:00">
+            </p>
+          </fieldset>
           <p class="form-akce">
             <button type="submit" class="btn btn-primarni">Uložit</button>
             <button type="button" id="budovy-form-zrusit" class="btn">Zrušit</button>
@@ -94,6 +113,25 @@
             <label for="tridy-nazev">Název třídy</label>
             <input type="text" id="tridy-nazev" required>
           </p>
+          <fieldset class="oteviraci-doba">
+            <legend>Otevírací doba</legend>
+            <p class="dny">
+              <span class="label-dny">Dny:</span>
+              <label><input type="checkbox" id="tridy-den-1" value="1"> Po</label>
+              <label><input type="checkbox" id="tridy-den-2" value="2"> Út</label>
+              <label><input type="checkbox" id="tridy-den-3" value="3"> St</label>
+              <label><input type="checkbox" id="tridy-den-4" value="4"> Čt</label>
+              <label><input type="checkbox" id="tridy-den-5" value="5"> Pá</label>
+              <label><input type="checkbox" id="tridy-den-6" value="6"> So</label>
+              <label><input type="checkbox" id="tridy-den-7" value="7"> Ne</label>
+            </p>
+            <p>
+              <label for="tridy-od">Od</label>
+              <input type="time" id="tridy-od" value="07:00">
+              <label for="tridy-do">Do</label>
+              <input type="time" id="tridy-do" value="17:00">
+            </p>
+          </fieldset>
           <p class="form-akce">
             <button type="submit" class="btn btn-primarni">Uložit</button>
             <button type="button" id="tridy-form-zrusit" class="btn">Zrušit</button>
