@@ -9,7 +9,7 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 | # | Úkol | Stav | Poznámka |
 |---|------|------|----------|
 | A1 | **Datový model a Local Storage** – definice struktury dat (zaměstnanci: id, jméno, úvazek v minutách/týden, role; budovy, třídy, otevírací doby, pravidla). Načtení a uložení do Local Storage při změně. | [x] | data-model.js, storage.js; načtení při startu, setData/replaceData/ulozNyni. |
-| A2 | **Export a import JSON** – funkce exportu celých dat do JSON souboru a importu z JSON (obnovení dat). Bez UI zatím jen volatelné z konzole nebo později napojit na tlačítka. | [ ] | |
+| A2 | **Export a import JSON** – funkce exportu celých dat do JSON souboru a importu z JSON (obnovení dat). Bez UI zatím jen volatelné z konzole nebo později napojit na tlačítka. | [x] | export-import.js: exportData(), stahnoutExport(), importZeJSON(); test-export-import.js. |
 | A3 | **Kostra stránky a navigace** – základní rozložení aplikace: hlavička, navigace mezi sekcemi (např. Přehled / Zaměstnanci / Budovy a třídy / Pravidla / Návrh směn), obsahová oblast. Jedna stránka, sekce přepínané v JS (ne více HTML). | [ ] | |
 
 ---

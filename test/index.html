@@ -19,15 +19,17 @@
   <p>Spouštění testů datového modelu a Local Storage. Otevřete konzoli (F12) pro výstup.</p>
   <div id="vysledek"></div>
 
-  <!-- Pořadí: model → storage → runner → testy -->
+  <!-- Pořadí: model → storage → export-import → runner → testy -->
   <script src="../js/data-model.js"></script>
   <script src="../js/storage.js"></script>
+  <script src="../js/export-import.js"></script>
   <script src="test-runner.js"></script>
   <script>
     window.MSemenyTestList = [];
   </script>
   <script src="test-data-model.js"></script>
   <script src="test-storage.js"></script>
+  <script src="test-export-import.js"></script>
   <script>
     (function () {
       var result = window.MSemenyTest.runTests(window.MSemenyTestList);

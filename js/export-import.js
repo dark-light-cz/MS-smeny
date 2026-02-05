@@ -1,0 +1,114 @@
+/**
+ * Export a import dat aplikace MS-smeny do/z JSON.
+ * Bez UI – volatelné z konzole (později napojit na tlačítka).
+ */
+(function (global) {
+  'use strict';
+
+  var DEFAULT_NAZEV_SOUBORU = 'ms-smeny-export.json';
+
+  /**
+   * Vrátí aktuální data jako JSON řetězec.
+   * @returns {string} JSON string celých dat
+   */
+  function exportData() {
+    var Storage = global.MSemenyStorage;
+    if (!Storage || !Storage.getData) {
+      throw new Error('MS-smeny: export-import vyžaduje načtený storage.js');
+    }
+    var data = Storage.getData();
+    return JSON.stringify(data, null, 2);
+  }
+
+  /**
+   * Stáhne aktuální data jako JSON soubor do prohlížeče.
+   * @param {string} [nazevSouboru] Volitelný název souboru (default: ms-smeny-export.json)
+   */
+  function stahnoutExport(nazevSouboru) {
+    var nazev = nazevSouboru && typeof nazevSouboru === 'string' ? nazevSouboru : DEFAULT_NAZEV_SOUBORU;
+    var json = exportData();
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = global.URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = nazev;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    global.URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Ověří, že objekt má platnou strukturu dat (zamestnanci a budovy jsou pole).
+   * @param {*} obj
+   * @returns {boolean}
+   */
+  function jePlatnaStruktura(obj) {
+    return obj &&
+      typeof obj === 'object' &&
+      Array.isArray(obj.zamestnanci) &&
+      Array.isArray(obj.budovy);
+  }
+
+  /**
+   * Doplní chybějící pole (version, minMaxSloty, pravidla) z výchozího stavu.
+   * @param {Object} data Naimportovaná data (mají mít alespoň zamestnanci a budovy)
+   * @returns {Object} Data připravená k uložení
+   */
+  function doplnVychoziPole(data) {
+    var Model = global.MSemenyDataModel;
+    var vychozi = Model && Model.vychoziStav ? Model.vychoziStav() : null;
+    if (!vychozi) {
+      return data;
+    }
+    var out = {
+      zamestnanci: data.zamestnanci,
+      budovy: data.budovy
+    };
+    out.version = data.version != null ? data.version : vychozi.version;
+    out.minMaxSloty = Array.isArray(data.minMaxSloty) && data.minMaxSloty.length > 0
+      ? data.minMaxSloty
+      : vychozi.minMaxSloty;
+    out.pravidla = data.pravidla && typeof data.pravidla === 'object'
+      ? data.pravidla
+      : vychozi.pravidla;
+    return out;
+  }
+
+  /**
+   * Naimportuje data z JSON řetězce a nahradí aktuální stav v úložišti.
+   * @param {string} jsonString Platný JSON s daty (zamestnanci, budovy; volitelně version, minMaxSloty, pravidla)
+   * @returns {boolean} true při úspěchu, false při neplatném vstupu (data se nezmění)
+   */
+  function importZeJSON(jsonString) {
+    var Storage = global.MSemenyStorage;
+    if (!Storage || !Storage.setData) {
+      throw new Error('MS-smeny: export-import vyžaduje načtený storage.js');
+    }
+    if (jsonString == null || typeof jsonString !== 'string') {
+      return false;
+    }
+    var trimmed = jsonString.trim();
+    if (trimmed === '') {
+      return false;
+    }
+    try {
+      var parsed = JSON.parse(trimmed);
+      if (!jePlatnaStruktura(parsed)) {
+        return false;
+      }
+      var data = doplnVychoziPole(parsed);
+      Storage.setData(data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  global.MSemenyExportImport = {
+    exportData: exportData,
+    stahnoutExport: stahnoutExport,
+    importZeJSON: importZeJSON
+  };
+})(typeof window !== 'undefined' ? window : this);
