@@ -83,6 +83,8 @@
   - U zaměstnance: kategorie **kmenová** / **vykrývací**; u kmenové volitelný výběr **přiřazené třídy**. V modelu: zaměstnanec má `kmenovaVykryvaci` ('kmenová' | 'vykrývací') a `tridaId` (id třídy nebo null). Pravidla v modelu: `vykryvaciBezMezer`, `vykryvaciMaxPresun`, `minKmenovychNaTridu`, `maxKmenovychNaTridu`. V sekci Pravidla: blok „Pravidla pro vykrývací“ – checkbox „Bez mezer“, pole „Max. přesunů mezi třídami“ (0–10). Formulář zaměstnance rozšířen o kategorii a select třídy (zobrazí se jen u kmenové). Export/import doplňuje u zaměstnanců chybějící kmenovaVykryvaci a tridaId a sloučí pravidla (js/zamestnanci.js, js/pravidla-prekryv.js).
 - **Speciální sloty a rotace (C3):**
   - Časový slot má volitelná pole **dny** (pole čísel 1–5: Po–Pá; prázdné = platí všechny pracovní dny) a **rotace** (boolean: požadovat střídání osob v tomto slotu). V sekci Pravidla u „Požadavky na počet osob v čase“: formulář rozšířen o fieldset „Platí ve dnech“ (checkboxy Po–Pá) a checkbox „Požadovat střídání (rotace)“. Tabulka slotů má sloupce Dny a Rotace. Import normalizuje u každého slotu dny a rotace (js/data-model.js, js/min-max-sloty.js).
+- **Omezení „ne dohromady“ (C4):**
+  - Dvojice osob, které nemají být spolu v jedné třídě ani ve stejné směně. V modelu: **omezeniNeDohromady** (pole objektů { id, osoba1Id, osoba2Id } v kanonickém pořadí). Model: vytvorOmezeniNeDohromady(osoba1Id, osoba2Id). V sekci Pravidla: blok „Omezení „ne dohromady““ – výběr dvou osob (selecty), tlačítko „Přidat dvojici“, seznam dvojic se smazáním. Validace: dvě různé osoby, bez duplicit. Po importu se seznam a výběry obnoví (js/omezeni-ne-dohromady.js).
 - **Min/max počet osob v čase (B4):**
   - V sekci Pravidla: konfigurace časových slotů (od–do) a pro každý slot minimální a maximální počet osob na budovu a na třídu. Přehledné formuláře s nápovědami („Prázdné = bez omezení“), validace (čas Do později než Od, nezáporné počty, min ≤ max). Chyby a potvrzení se zobrazují na stránce (bez alertů), úspěch mizí po 3 s. Tabulka slotů řazená podle času, přidat / upravit / smazat. Model: vytvorMinMaxSlot(), minMaxSloty v úložišti.
 - **Export/import – UI (E1):**
@@ -109,6 +111,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Implementován úkol C4 – omezení „ne dohromady“: dvojice osob (model omezeniNeDohromady, vytvorOmezeniNeDohromady); sekce Pravidla – přidat/smazat dvojice; import normalizuje; testy doplněny.
 - 2025-02-05: Implementován úkol C3 – speciální sloty a rotace: u časového slotu pole dny (Po–Pá) a rotace; formulář a tabulka v sekci Pravidla; import normalizuje sloty; testy doplněny.
 - 2025-02-05: Implementován úkol C2 – kmenové vs. vykrývací: u zaměstnance kategorie a přiřazená třída; v Pravidlech blok „Pravidla pro vykrývací“ (bez mezer, max. přesunů); model a export/import doplněny; testy rozšířeny.
 - 2025-02-05: Implementován úkol C1 – minimální překryv v třídě (konfigurace v sekci Pravidla, uložení pravidla.minimalniPrekryvMinuty).

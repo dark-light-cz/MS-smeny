@@ -100,6 +100,28 @@
   }
 
   /**
+   * Vytvoří záznam omezení „ne dohromady“ – dvojice osob, které nemají být spolu v jedné třídě/směně.
+   * Id osob se uloží v kanonickém pořadí (osoba1Id ≤ osoba2Id) pro snadné porovnávání dvojic.
+   * @param {string} osoba1Id - id prvního zaměstnance
+   * @param {string} osoba2Id - id druhého zaměstnance
+   * @returns {{ id: string, osoba1Id: string, osoba2Id: string }}
+   */
+  function vytvorOmezeniNeDohromady(osoba1Id, osoba2Id) {
+    var id1 = (osoba1Id && typeof osoba1Id === 'string') ? osoba1Id : '';
+    var id2 = (osoba2Id && typeof osoba2Id === 'string') ? osoba2Id : '';
+    if (id1 > id2) {
+      var t = id1;
+      id1 = id2;
+      id2 = t;
+    }
+    return {
+      id: generujId(),
+      osoba1Id: id1,
+      osoba2Id: id2
+    };
+  }
+
+  /**
    * Prázdný výchozí stav aplikace – všechny entity prázdné, pravidla a sloty s výchozími hodnotami.
    * @returns {Object} Kompletní objekt dat pro uložení / načtení
    */
@@ -109,7 +131,8 @@
       zamestnanci: [],
       budovy: [],
       minMaxSloty: vychoziMinMaxSloty(),
-      pravidla: vychoziPravidla()
+      pravidla: vychoziPravidla(),
+      omezeniNeDohromady: []
     };
   }
 
@@ -162,6 +185,7 @@
     vytvorBudovu: vytvorBudovu,
     vytvorTridu: vytvorTridu,
     vytvorZamestnance: vytvorZamestnance,
-    vytvorMinMaxSlot: vytvorMinMaxSlot
+    vytvorMinMaxSlot: vytvorMinMaxSlot,
+    vytvorOmezeniNeDohromady: vytvorOmezeniNeDohromady
   };
 })(typeof window !== 'undefined' ? window : this);

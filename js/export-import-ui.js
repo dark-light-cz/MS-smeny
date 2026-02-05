@@ -23,6 +23,14 @@
     if (global.MSemenyMinMaxSloty && typeof global.MSemenyMinMaxSloty.vykresliSeznam === 'function') {
       global.MSemenyMinMaxSloty.vykresliSeznam();
     }
+    if (global.MSemenyOmezeniNeDohromady) {
+      if (typeof global.MSemenyOmezeniNeDohromady.naplnSelecty === 'function') {
+        global.MSemenyOmezeniNeDohromady.naplnSelecty();
+      }
+      if (typeof global.MSemenyOmezeniNeDohromady.vykresliSeznam === 'function') {
+        global.MSemenyOmezeniNeDohromady.vykresliSeznam();
+      }
+    }
   }
 
   function init() {

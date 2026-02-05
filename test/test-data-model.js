@@ -22,6 +22,14 @@
         T.assert(s.minMaxSloty.length >= 1, 'minMaxSloty neprázdné');
         T.assert(s.pravidla && typeof s.pravidla === 'object', 'pravidla objekt');
         T.assert(s.pravidla.minimalniPrekryvMinuty === 120, 'minimalniPrekryvMinuty 120');
+        T.assert(Array.isArray(s.omezeniNeDohromady) && s.omezeniNeDohromady.length === 0, 'omezeniNeDohromady prázdné (C4)');
+      }
+    },
+    {
+      name: 'vytvorOmezeniNeDohromady vrací dvojici v kanonickém pořadí (C4)',
+      run: function () {
+        var o = M.vytvorOmezeniNeDohromady('id-b', 'id-a');
+        T.assert(o.id && o.osoba1Id === 'id-a' && o.osoba2Id === 'id-b', 'osoba1Id ≤ osoba2Id');
       }
     },
     {

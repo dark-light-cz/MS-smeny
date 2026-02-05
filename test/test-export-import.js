@@ -160,6 +160,22 @@
         T.assert(Array.isArray(d.minMaxSloty[0].dny) && d.minMaxSloty[0].dny.length === 0, 'dny doplněno prázdné');
         T.assert(d.minMaxSloty[0].rotace === false, 'rotace doplněno false');
       }
+    },
+    {
+      name: 'import doplní a normalizuje omezeniNeDohromady (C4)',
+      run: function () {
+        S.resetCache();
+        var importData = {
+          zamestnanci: [{ id: 'z1', jmeno: 'A', uvazekMinutyTyden: 480, role: 'učitelka' }, { id: 'z2', jmeno: 'B', uvazekMinutyTyden: 480, role: 'učitelka' }],
+          budovy: [],
+          omezeniNeDohromady: [{ id: 'ond1', osoba1Id: 'z1', osoba2Id: 'z2' }]
+        };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(Array.isArray(d.omezeniNeDohromady) && d.omezeniNeDohromady.length === 1, 'jedna dvojice');
+        T.assert(d.omezeniNeDohromady[0].osoba1Id === 'z1' && d.omezeniNeDohromady[0].osoba2Id === 'z2', 'dvojice zachována');
+      }
     }
   ];
 

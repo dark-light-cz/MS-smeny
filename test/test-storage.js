@@ -64,6 +64,22 @@
       }
     },
     {
+      name: 'replaceData uloží omezeniNeDohromady (C4)',
+      run: function () {
+        S.resetCache();
+        S.setData(M.vychoziStav());
+        var o = M.vytvorOmezeniNeDohromady('osoba-1', 'osoba-2');
+        S.replaceData(function (d) {
+          d.omezeniNeDohromady = d.omezeniNeDohromady || [];
+          d.omezeniNeDohromady.push(o);
+          return d;
+        });
+        var d = S.getData();
+        T.assert(Array.isArray(d.omezeniNeDohromady) && d.omezeniNeDohromady.length === 1, 'jedna dvojice');
+        T.assert(d.omezeniNeDohromady[0].osoba1Id === 'osoba-1' && d.omezeniNeDohromady[0].osoba2Id === 'osoba-2', 'id osob uložena');
+      }
+    },
+    {
       name: 'Po setData je obsah v Local Storage',
       run: function () {
         S.resetCache();

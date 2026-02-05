@@ -115,6 +115,18 @@
       minKmenovychNaTridu: p.minKmenovychNaTridu != null ? p.minKmenovychNaTridu : vychozi.pravidla.minKmenovychNaTridu,
       maxKmenovychNaTridu: p.maxKmenovychNaTridu != null ? p.maxKmenovychNaTridu : vychozi.pravidla.maxKmenovychNaTridu
     };
+    var ond = Array.isArray(data.omezeniNeDohromady) ? data.omezeniNeDohromady : [];
+    out.omezeniNeDohromady = ond
+      .filter(function (o) {
+        return o && o.osoba1Id && o.osoba2Id && o.osoba1Id !== o.osoba2Id;
+      })
+      .map(function (o) {
+        return {
+          id: o.id || (Model && Model.generujId ? Model.generujId() : 'ond-' + Date.now()),
+          osoba1Id: String(o.osoba1Id),
+          osoba2Id: String(o.osoba2Id)
+        };
+      });
     return out;
   }
 

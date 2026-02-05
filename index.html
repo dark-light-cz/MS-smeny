@@ -286,7 +286,37 @@
         </form>
       </div>
 
-      <p class="pravidla-dalsi">Další pravidla (rotace ve slotech) budou doplněna v blocích C a D.</p>
+      <div class="pravidla-blok pravidla-ne-dohromady">
+        <h3 id="ne-dohromady-nadpis">Omezení „ne dohromady“</h3>
+        <p class="pravidla-popis">
+          Dvojice osob, které nemají být spolu v jedné třídě nebo ve stejné směně. Výpočet návrhu směn bude tyto dvojice respektovat.
+        </p>
+        <div id="ne-dohromady-zprava" class="sloty-zprava sloty-uspech" role="status" aria-live="polite" hidden></div>
+        <div id="ne-dohromady-chyba" class="sloty-zprava sloty-chyba" role="alert" aria-live="assertive" hidden></div>
+        <form id="ne-dohromady-form" class="prekryv-form">
+          <p>
+            <label for="ne-dohromady-osoba1">Osoba 1</label>
+            <select id="ne-dohromady-osoba1" aria-describedby="ne-dohromady-hint">
+              <option value="">— vyberte —</option>
+            </select>
+          </p>
+          <p>
+            <label for="ne-dohromady-osoba2">Osoba 2</label>
+            <select id="ne-dohromady-osoba2" aria-describedby="ne-dohromady-hint">
+              <option value="">— vyberte —</option>
+            </select>
+          </p>
+          <p class="form-akce">
+            <button type="submit" class="btn btn-primarni">Přidat dvojici</button>
+          </p>
+          <span id="ne-dohromady-hint" class="hint">Obě osoby musí být různé; stejná dvojice lze přidat jen jednou.</span>
+        </form>
+        <div id="ne-dohromady-seznam" class="omezeni-seznam" aria-live="polite">
+          <!-- Seznam dvojic vykresluje JS -->
+        </div>
+      </div>
+
+      <p class="pravidla-dalsi">Výpočet návrhu směn bude doplněn v bloku D.</p>
     </section>
     <section id="navrh-smen" class="sekce" aria-labelledby="navrh-nadpis" hidden>
       <h2 id="navrh-nadpis">Návrh směn</h2>
@@ -304,6 +334,7 @@
   <script src="js/budovy-tridy.js"></script>
   <script src="js/min-max-sloty.js"></script>
   <script src="js/pravidla-prekryv.js"></script>
+  <script src="js/omezeni-ne-dohromady.js"></script>
   <script src="js/export-import-ui.js"></script>
   <script src="js/main.js"></script>
 </body>

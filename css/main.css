@@ -479,6 +479,25 @@ header {
   margin-right: 0.25rem;
 }
 
+.omezeni-prazdno {
+  color: #666;
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+.omezeni-list {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.omezeni-list li {
+  margin: 0.25rem 0;
+}
+
+.omezeni-list .btn-mala {
+  margin-left: 0.5rem;
+}
+
 /* Minimální překryv v třídě */
 .pravidla-prekryv .prekryv-form {
   margin-top: 0.5rem;
