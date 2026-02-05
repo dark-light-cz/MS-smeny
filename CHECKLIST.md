@@ -6,11 +6,11 @@ Použití: u každého úkolu je stav `[ ]` (k vykonání) nebo `[x]` (hotovo). 
 
 ## Fáze 0: Příprava
 
-- [ ] **0.1 Založení a propojení s GitHub repozitářem**
+- [x] **0.1 Založení a propojení s GitHub repozitářem**
   - Vytvořit repozitář na GitHubu (osobní účet)
   - Propojit lokální projekt s remote (origin)
   - Ověřit push (např. README nebo první commit)
-  - Poznámka: _
+  - Poznámka: Repozitář https://github.com/dark-light-cz/MS-smeny, push přes SSH proběhl.
 
 - [x] **0.2 Základní struktura projektu**
   - Složky a soubory: index.html, css/, js/
