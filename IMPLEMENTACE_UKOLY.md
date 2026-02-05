@@ -24,6 +24,7 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 | B2 | **Budovy a třídy – struktura** – CRUD budov, v každé budově CRUD tříd. U budovy/třídy: název. Zobrazení hierarchie (budova → třídy). Ukládání do modelu a Local Storage. | [x] | Sekce Budovy a třídy: hierarchie, formuláře budov/tříd; js/budovy-tridy.js; test-budovy-tridy.js. |
 | B3 | **Otevírací doba** – u budovy nebo třídy nastavení otevírací doby (např. den v týdnu + od–do, nebo jednoduchý model „po–pá 7:00–17:00“). Uložení do modelu. | [x] | Formuláře budov a tříd: fieldset Otevírací doba (dny Po–Ne, od/do); třída má oteviraciDoba v modelu; import doplní chybějící. |
 | B4 | **Min/max počet osob v čase** – konfigurace časových slotů (od–do) a pro každý slot min/max počet osob (na třídu nebo na budovu). Příklad: 7:00–7:45 min 1 na budovu; od 7:45 min 1 na třídu. Uložení do modelu. | [x] | Sekce Pravidla: časové sloty, formulář s nápovědami, validace, zprávy bez alertů; js/min-max-sloty.js, vytvorMinMaxSlot v modelu; test-min-max-sloty.js. |
+| B4b | **Požadavky na počet osob – duplikovat řádek** – v tabulce „Požadavky na počet osob v čase“ přidat možnost duplikovat řádek: obsah řádku se předvyplní do formuláře nového záznamu (uživatel může upravit a uložit jako nový slot). | [ ] | |
 
 ---
 

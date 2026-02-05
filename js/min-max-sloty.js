@@ -95,23 +95,33 @@
     var maxB = document.getElementById('sloty-max-budova');
     var minT = document.getElementById('sloty-min-trida');
     var maxT = document.getElementById('sloty-max-trida');
+    var dny = [];
+    var i, cb;
+    for (i = 1; i <= 5; i += 1) {
+      cb = document.getElementById('sloty-den-' + i);
+      if (cb && cb.checked) dny.push(i);
+    }
+    var rotaceEl = document.getElementById('sloty-rotace');
     return {
       od: odEl ? odEl.value : '07:00',
       do: doEl ? doEl.value : '17:00',
       minNaBudovu: minB && minB.value !== '' ? parseInt(minB.value, 10) : 0,
       maxNaBudovu: (maxB && maxB.value !== '') ? parseInt(maxB.value, 10) : null,
       minNaTridu: minT && minT.value !== '' ? parseInt(minT.value, 10) : 0,
-      maxNaTridu: (maxT && maxT.value !== '') ? parseInt(maxT.value, 10) : null
+      maxNaTridu: (maxT && maxT.value !== '') ? parseInt(maxT.value, 10) : null,
+      dny: dny,
+      rotace: !!(rotaceEl && rotaceEl.checked)
     };
   }
 
   /** Vyplní formulář hodnotami slotu (nebo výchozími při přidávání). */
   function vyplnFormular(slot) {
     var vychozi = (getData().minMaxSloty || []).length > 0
-      ? { od: '07:00', do: '17:00', minNaBudovu: 0, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null }
+      ? { od: '07:00', do: '17:00', minNaBudovu: 0, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null, dny: [], rotace: false }
       : (Model && Model.vychoziMinMaxSloty ? Model.vychoziMinMaxSloty()[0] : null);
     var s = slot || vychozi;
-    if (!s) s = { od: '07:00', do: '17:00', minNaBudovu: 0, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null };
+    if (!s) s = { od: '07:00', do: '17:00', minNaBudovu: 0, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null, dny: [], rotace: false };
+    var dny = Array.isArray(s.dny) ? s.dny : [];
 
     document.getElementById('sloty-form-id').value = slot ? slot.id : '';
     document.getElementById('sloty-od').value = s.od || '07:00';
@@ -120,6 +130,13 @@
     document.getElementById('sloty-max-budova').value = (s.maxNaBudovu != null && s.maxNaBudovu !== '') ? s.maxNaBudovu : '';
     document.getElementById('sloty-min-trida').value = (s.minNaTridu != null) ? s.minNaTridu : 0;
     document.getElementById('sloty-max-trida').value = (s.maxNaTridu != null && s.maxNaTridu !== '') ? s.maxNaTridu : '';
+    var i, cb;
+    for (i = 1; i <= 5; i += 1) {
+      cb = document.getElementById('sloty-den-' + i);
+      if (cb) cb.checked = dny.indexOf(i) !== -1;
+    }
+    var rotaceEl = document.getElementById('sloty-rotace');
+    if (rotaceEl) rotaceEl.checked = !!s.rotace;
   }
 
   function zobrazFormular(slot) {
@@ -136,6 +153,17 @@
   /** Formát max hodnoty pro zobrazení (prázdné = „—"). */
   function formatMax(val) {
     return (val != null && val !== '') ? String(val) : '—';
+  }
+
+  /** Názvy dnů (1 = Po … 5 = Pá). */
+  var NAZVY_DNU = ['', 'Po', 'Út', 'St', 'Čt', 'Pá'];
+
+  /** Formát pole dnů pro zobrazení: prázdné = „Po–Pá“, jinak výpis nebo rozsah. */
+  function formatDny(dny) {
+    var arr = Array.isArray(dny) ? dny.filter(function (d) { return d >= 1 && d <= 5; }).sort() : [];
+    if (arr.length === 0 || arr.length === 5) return 'Po–Pá';
+    if (arr.length === 1) return NAZVY_DNU[arr[0]];
+    return arr.map(function (d) { return NAZVY_DNU[d]; }).join(', ');
   }
 
   function odeslatFormular(e) {
@@ -163,6 +191,8 @@
             sloty[i].maxNaBudovu = vals.maxNaBudovu;
             sloty[i].minNaTridu = vals.minNaTridu;
             sloty[i].maxNaTridu = vals.maxNaTridu;
+            sloty[i].dny = Array.isArray(vals.dny) ? vals.dny.slice() : [];
+            sloty[i].rotace = !!vals.rotace;
             break;
           }
         }
@@ -173,7 +203,8 @@
       var novy = Model.vytvorMinMaxSlot(
         vals.od, vals.do,
         vals.minNaBudovu, vals.maxNaBudovu,
-        vals.minNaTridu, vals.maxNaTridu
+        vals.minNaTridu, vals.maxNaTridu,
+        vals.dny, vals.rotace
       );
       Storage.replaceData(function (d) {
         d.minMaxSloty = d.minMaxSloty || [];
@@ -219,10 +250,12 @@
       '<table class="tabulka-sloty">',
       '<thead><tr>',
       '<th>Čas</th>',
+      '<th>Dny</th>',
       '<th>Min. na budovu</th>',
       '<th>Max. na budovu</th>',
       '<th>Min. na třídu</th>',
       '<th>Max. na třídu</th>',
+      '<th>Rotace</th>',
       '<th>Akce</th>',
       '</tr></thead><tbody>'
     ];
@@ -231,10 +264,12 @@
       s = sloty[i];
       html.push('<tr>');
       html.push('<td>' + escapeHtml(s.od || '') + ' – ' + escapeHtml(s.do || '') + '</td>');
+      html.push('<td>' + escapeHtml(formatDny(s.dny)) + '</td>');
       html.push('<td>' + (s.minNaBudovu != null ? s.minNaBudovu : 0) + '</td>');
       html.push('<td>' + escapeHtml(formatMax(s.maxNaBudovu)) + '</td>');
       html.push('<td>' + (s.minNaTridu != null ? s.minNaTridu : 0) + '</td>');
       html.push('<td>' + escapeHtml(formatMax(s.maxNaTridu)) + '</td>');
+      html.push('<td>' + (s.rotace ? 'Ano' : 'Ne') + '</td>');
       html.push('<td><button type="button" class="btn btn-mala" data-akce="upravit" data-id="' + escapeAttr(s.id) + '">Upravit</button> ');
       html.push('<button type="button" class="btn btn-mala" data-akce="smazat" data-id="' + escapeAttr(s.id) + '">Smazat</button></td>');
       html.push('</tr>');

@@ -38,6 +38,23 @@
       }
     },
     {
+      name: 'Slot s dny a rotace se uloží a načte (C3)',
+      run: function () {
+        if (!S || !M) return;
+        S.resetCache();
+        S.setData(M.vychoziStav());
+        var novy = M.vytvorMinMaxSlot('15:30', '17:00', 1, null, 0, null, [5], true);
+        S.replaceData(function (d) {
+          d.minMaxSloty = d.minMaxSloty || [];
+          d.minMaxSloty.push(novy);
+          return d;
+        });
+        var data = S.getData();
+        var slot = (data.minMaxSloty || []).filter(function (s) { return s.od === '15:30'; })[0];
+        T.assert(slot && slot.dny && slot.dny[0] === 5 && slot.rotace === true, 'dny a rotace uloženy');
+      }
+    },
+    {
       name: 'Smazání slotu přes replaceData se projeví v getData',
       run: function () {
         if (!S || !M) return;

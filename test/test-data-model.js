@@ -121,6 +121,28 @@
         T.assert(s.minNaBudovu === 1 && s.maxNaBudovu === null, 'budova min 1 max neomezeno');
         T.assert(s.minNaTridu === 0 && s.maxNaTridu === null, 'třída');
       }
+    },
+    {
+      name: 'vytvorMinMaxSlot s dny a rotace (C3)',
+      run: function () {
+        var s = M.vytvorMinMaxSlot('15:30', '17:00', 1, 1, 0, null, [5], true);
+        T.assert(Array.isArray(s.dny) && s.dny.length === 1 && s.dny[0] === 5, 'dny pouze pátek');
+        T.assert(s.rotace === true, 'rotace zapnuta');
+        var s2 = M.vytvorMinMaxSlot('08:00', '12:00', 0, null, 1, null);
+        T.assert(Array.isArray(s2.dny) && s2.dny.length === 0, 'bez dny = prázdné pole');
+        T.assert(s2.rotace === false, 'rotace vypnuta');
+      }
+    },
+    {
+      name: 'vychoziMinMaxSloty sloty mají dny a rotace (C3)',
+      run: function () {
+        var sloty = M.vychoziMinMaxSloty();
+        T.assert(sloty.length >= 1, 'alespoň jeden slot');
+        sloty.forEach(function (s) {
+          T.assert(Array.isArray(s.dny), 'slot má dny');
+          T.assert(typeof s.rotace === 'boolean', 'slot má rotace');
+        });
+      }
     }
   ];
 

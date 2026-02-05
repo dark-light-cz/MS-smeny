@@ -52,22 +52,26 @@
    */
   function vychoziMinMaxSloty() {
     return [
-      { id: generujId(), od: '07:00', do: '07:45', minNaBudovu: 1, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null },
-      { id: generujId(), od: '07:45', do: '17:00', minNaTridu: 1, maxNaTridu: null, minNaBudovu: 0, maxNaBudovu: null }
+      { id: generujId(), od: '07:00', do: '07:45', minNaBudovu: 1, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null, dny: [], rotace: false },
+      { id: generujId(), od: '07:45', do: '17:00', minNaTridu: 1, maxNaTridu: null, minNaBudovu: 0, maxNaBudovu: null, dny: [], rotace: false }
     ];
   }
 
   /**
    * Vytvoří nový časový slot pro min/max počet osob.
+   * Volitelně: dny (1=Po … 5=Pá; prázdné = platí všechny pracovní dny), rotace (požadovat střídání osob).
    * @param {string} od - čas od (HH:mm)
    * @param {string} do_ - čas do (HH:mm)
    * @param {number|null} minNaBudovu - minimální počet osob na budovu (null/undefined → 0)
    * @param {number|null} maxNaBudovu - maximální počet na budovu (null/undefined → neomezeno)
    * @param {number|null} minNaTridu - minimální počet na třídu
    * @param {number|null} maxNaTridu - maximální počet na třídu
+   * @param {number[]} [dny] - dny v týdnu (1–5); prázdné/undefined = všechny
+   * @param {boolean} [rotace] - požadovat střídání (aby v slotu nebyla pořád stejná osoba)
    * @returns {Object}
    */
-  function vytvorMinMaxSlot(od, do_, minNaBudovu, maxNaBudovu, minNaTridu, maxNaTridu) {
+  function vytvorMinMaxSlot(od, do_, minNaBudovu, maxNaBudovu, minNaTridu, maxNaTridu, dny, rotace) {
+    var dnyNorm = Array.isArray(dny) ? dny.filter(function (d) { return d >= 1 && d <= 5; }) : [];
     return {
       id: generujId(),
       od: od || '07:00',
@@ -75,7 +79,9 @@
       minNaBudovu: minNaBudovu != null && minNaBudovu !== '' ? parseInt(minNaBudovu, 10) : 0,
       maxNaBudovu: (maxNaBudovu != null && maxNaBudovu !== '') ? parseInt(maxNaBudovu, 10) : null,
       minNaTridu: minNaTridu != null && minNaTridu !== '' ? parseInt(minNaTridu, 10) : 0,
-      maxNaTridu: (maxNaTridu != null && maxNaTridu !== '') ? parseInt(maxNaTridu, 10) : null
+      maxNaTridu: (maxNaTridu != null && maxNaTridu !== '') ? parseInt(maxNaTridu, 10) : null,
+      dny: dnyNorm,
+      rotace: !!rotace
     };
   }
 

@@ -91,9 +91,22 @@
       budovy: budovy
     };
     out.version = data.version != null ? data.version : vychozi.version;
-    out.minMaxSloty = Array.isArray(data.minMaxSloty) && data.minMaxSloty.length > 0
+    var sloty = Array.isArray(data.minMaxSloty) && data.minMaxSloty.length > 0
       ? data.minMaxSloty
       : vychozi.minMaxSloty;
+    out.minMaxSloty = sloty.map(function (s) {
+      return {
+        id: s.id,
+        od: s.od,
+        do: s.do,
+        minNaBudovu: s.minNaBudovu,
+        maxNaBudovu: s.maxNaBudovu,
+        minNaTridu: s.minNaTridu,
+        maxNaTridu: s.maxNaTridu,
+        dny: Array.isArray(s.dny) ? s.dny.slice() : [],
+        rotace: !!s.rotace
+      };
+    });
     var p = data.pravidla && typeof data.pravidla === 'object' ? data.pravidla : {};
     out.pravidla = {
       minimalniPrekryvMinuty: p.minimalniPrekryvMinuty != null ? p.minimalniPrekryvMinuty : vychozi.pravidla.minimalniPrekryvMinuty,

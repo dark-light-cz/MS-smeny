@@ -81,6 +81,8 @@
   - V sekci Pravidla: blok „Minimální překryv v třídě“ – konfigurovatelná délka překryvu dvou pedagogů (v hodinách, např. 2). Uložení do modelu (pravidla.minimalniPrekryvMinuty v minutách). Formulář s nápovědou a tlačítkem Uložit (js/pravidla-prekryv.js).
 - **Kmenové vs. vykrývací (C2):**
   - U zaměstnance: kategorie **kmenová** / **vykrývací**; u kmenové volitelný výběr **přiřazené třídy**. V modelu: zaměstnanec má `kmenovaVykryvaci` ('kmenová' | 'vykrývací') a `tridaId` (id třídy nebo null). Pravidla v modelu: `vykryvaciBezMezer`, `vykryvaciMaxPresun`, `minKmenovychNaTridu`, `maxKmenovychNaTridu`. V sekci Pravidla: blok „Pravidla pro vykrývací“ – checkbox „Bez mezer“, pole „Max. přesunů mezi třídami“ (0–10). Formulář zaměstnance rozšířen o kategorii a select třídy (zobrazí se jen u kmenové). Export/import doplňuje u zaměstnanců chybějící kmenovaVykryvaci a tridaId a sloučí pravidla (js/zamestnanci.js, js/pravidla-prekryv.js).
+- **Speciální sloty a rotace (C3):**
+  - Časový slot má volitelná pole **dny** (pole čísel 1–5: Po–Pá; prázdné = platí všechny pracovní dny) a **rotace** (boolean: požadovat střídání osob v tomto slotu). V sekci Pravidla u „Požadavky na počet osob v čase“: formulář rozšířen o fieldset „Platí ve dnech“ (checkboxy Po–Pá) a checkbox „Požadovat střídání (rotace)“. Tabulka slotů má sloupce Dny a Rotace. Import normalizuje u každého slotu dny a rotace (js/data-model.js, js/min-max-sloty.js).
 - **Min/max počet osob v čase (B4):**
   - V sekci Pravidla: konfigurace časových slotů (od–do) a pro každý slot minimální a maximální počet osob na budovu a na třídu. Přehledné formuláře s nápovědami („Prázdné = bez omezení“), validace (čas Do později než Od, nezáporné počty, min ≤ max). Chyby a potvrzení se zobrazují na stránce (bez alertů), úspěch mizí po 3 s. Tabulka slotů řazená podle času, přidat / upravit / smazat. Model: vytvorMinMaxSlot(), minMaxSloty v úložišti.
 - **Export/import – UI (E1):**
@@ -107,6 +109,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Implementován úkol C3 – speciální sloty a rotace: u časového slotu pole dny (Po–Pá) a rotace; formulář a tabulka v sekci Pravidla; import normalizuje sloty; testy doplněny.
 - 2025-02-05: Implementován úkol C2 – kmenové vs. vykrývací: u zaměstnance kategorie a přiřazená třída; v Pravidlech blok „Pravidla pro vykrývací“ (bez mezer, max. přesunů); model a export/import doplněny; testy rozšířeny.
 - 2025-02-05: Implementován úkol C1 – minimální překryv v třídě (konfigurace v sekci Pravidla, uložení pravidla.minimalniPrekryvMinuty).
 - 2025-02-05: Implementován úkol B1b – řazení tabulky zaměstnanců podle role a jména.

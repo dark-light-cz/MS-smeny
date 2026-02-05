@@ -220,6 +220,21 @@
                 <span id="sloty-hint-trida" class="hint">Prázdné = bez omezení</span>
               </p>
             </fieldset>
+            <fieldset class="sloty-dny">
+              <legend>Platí ve dnech</legend>
+              <p class="sloty-dny-checkboxy" role="group" aria-describedby="sloty-hint-dny">
+                <label><input type="checkbox" id="sloty-den-1" value="1"> Po</label>
+                <label><input type="checkbox" id="sloty-den-2" value="2"> Út</label>
+                <label><input type="checkbox" id="sloty-den-3" value="3"> St</label>
+                <label><input type="checkbox" id="sloty-den-4" value="4"> Čt</label>
+                <label><input type="checkbox" id="sloty-den-5" value="5"> Pá</label>
+              </p>
+              <span id="sloty-hint-dny" class="hint">Nevybráno = platí všechny pracovní dny</span>
+            </fieldset>
+            <p>
+              <label><input type="checkbox" id="sloty-rotace"> Požadovat střídání (rotace)</label>
+              <span class="hint">Aby v tomto slotu nebyla pořád stejná osoba – střídají se více lidí</span>
+            </p>
             <p class="form-akce">
               <button type="submit" class="btn btn-primarni">Uložit</button>
               <button type="button" id="sloty-form-zrusit" class="btn">Zrušit</button>

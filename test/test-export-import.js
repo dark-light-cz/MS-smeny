@@ -141,6 +141,25 @@
         T.assert(d.pravidla.vykryvaciBezMezer === false && d.pravidla.vykryvaciMaxPresun === 2, 'pravidla vykrývací sloučena');
         T.assert(d.pravidla.minimalniPrekryvMinuty != null, 'ostatní pravidla doplněna');
       }
+    },
+    {
+      name: 'import normalizuje sloty – dny a rotace (C3)',
+      run: function () {
+        S.resetCache();
+        var importData = {
+          zamestnanci: [],
+          budovy: [],
+          minMaxSloty: [
+            { id: 's1', od: '15:30', do: '17:00', minNaBudovu: 1, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null }
+          ]
+        };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.minMaxSloty.length === 1, 'jeden slot');
+        T.assert(Array.isArray(d.minMaxSloty[0].dny) && d.minMaxSloty[0].dny.length === 0, 'dny doplněno prázdné');
+        T.assert(d.minMaxSloty[0].rotace === false, 'rotace doplněno false');
+      }
     }
   ];
 
