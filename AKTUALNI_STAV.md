@@ -67,7 +67,9 @@
   - `MSemenyExportImport.exportData()` – vrátí aktuální data jako JSON řetězec.
   - `MSemenyExportImport.stahnoutExport(nazevSouboru)` – stáhne data jako JSON soubor (volitelně název, default `ms-smeny-export.json`).
   - `MSemenyExportImport.importZeJSON(jsonString)` – naimportuje data z JSON řetězce, ověří strukturu (zamestnanci, budovy pole), doplní chybějící version/minMaxSloty/pravidla a nahradí stav v Local Storage. Vrátí `true` při úspěchu, `false` při neplatném vstupu. Zatím bez UI – volatelné z konzole.
-- **Testy:** v prohlížeči se spouštějí otevřením `test/index.html`, nebo `npm test` (Playwright). Testují datový model, Local Storage a export/import JSON; po každém úkolu je vhodné testy znovu spustit a ověřit, že nic nerozbilo.
+- **Kostra stránky a navigace (A3):**
+  - Jedna stránka s hlavičkou (název MS-smeny), hlavní navigací (Přehled, Zaměstnanci, Budovy a třídy, Pravidla, Návrh směn) a obsahovou oblastí s pěti sekcemi. Sekce se přepínají v JS (zobrazení/skrytí), URL hash (#prehled, #zamestnanci, …) se při přepnutí aktualizuje. API: `MSemenyNavigace.zobrazSekci(id)`, `MSemenyNavigace.sekceZHash()`, `MSemenyNavigace.getIdSekci()` (js/navigace.js).
+- **Testy:** v prohlížeči se spouštějí otevřením `test/index.html`, nebo `npm test` (Playwright). Testují datový model, Local Storage, export/import JSON a navigaci; po každém úkolu je vhodné testy znovu spustit a ověřit, že nic nerozbilo.
 
 ---
 
@@ -89,6 +91,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Implementován úkol A3 – kostra stránky a navigace (hlavička, nav s 5 sekcemi, přepínání v JS, hash; js/navigace.js, test-navigace.js).
 - 2025-02-05: Implementován úkol A2 – export a import JSON (js/export-import.js): exportData(), stahnoutExport(), importZeJSON(); testy v test-export-import.js.
 - 2025-02-05: Přidány testy – test/index.html, test-runner a testy pro datový model a storage; spuštění v prohlížeči. Do storage doplněn resetCache() pro testy a reload.
 - 2025-02-05: Implementován úkol A1 – datový model (js/data-model.js) a Local Storage (js/storage.js), načtení při startu, ukládání při změně.

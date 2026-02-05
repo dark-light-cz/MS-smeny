@@ -7,11 +7,39 @@
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
-  <header>
+  <header class="hlavicka">
     <h1>MS-smeny</h1>
+    <nav class="hlavni-navigace" aria-label="Hlavní navigace">
+      <ul>
+        <li><a href="#prehled" data-sekce="prehled" class="nav-odkaz">Přehled</a></li>
+        <li><a href="#zamestnanci" data-sekce="zamestnanci" class="nav-odkaz">Zaměstnanci</a></li>
+        <li><a href="#budovy-tridy" data-sekce="budovy-tridy" class="nav-odkaz">Budovy a třídy</a></li>
+        <li><a href="#pravidla" data-sekce="pravidla" class="nav-odkaz">Pravidla</a></li>
+        <li><a href="#navrh-smen" data-sekce="navrh-smen" class="nav-odkaz">Návrh směn</a></li>
+      </ul>
+    </nav>
   </header>
-  <main>
-    <p>Základní struktura projektu. Implementace bude doplněna dle CHECKLIST.md.</p>
+  <main class="obsah">
+    <section id="prehled" class="sekce" aria-labelledby="prehled-nadpis">
+      <h2 id="prehled-nadpis">Přehled</h2>
+      <p>Základní struktura projektu. Konfigurace zaměstnanců, budov a pravidel bude doplněna v dalších sekcích.</p>
+    </section>
+    <section id="zamestnanci" class="sekce" aria-labelledby="zamestnanci-nadpis" hidden>
+      <h2 id="zamestnanci-nadpis">Zaměstnanci</h2>
+      <p>Seznam a správa zaměstnanců – bude doplněno v bloku B.</p>
+    </section>
+    <section id="budovy-tridy" class="sekce" aria-labelledby="budovy-nadpis" hidden>
+      <h2 id="budovy-nadpis">Budovy a třídy</h2>
+      <p>Struktura budov a tříd – bude doplněno v bloku B.</p>
+    </section>
+    <section id="pravidla" class="sekce" aria-labelledby="pravidla-nadpis" hidden>
+      <h2 id="pravidla-nadpis">Pravidla</h2>
+      <p>Otevírací doby, min/max počty osob, překryvy a další pravidla – bude doplněno v blocích B a C.</p>
+    </section>
+    <section id="navrh-smen" class="sekce" aria-labelledby="navrh-nadpis" hidden>
+      <h2 id="navrh-nadpis">Návrh směn</h2>
+      <p>Výpočet a zobrazení návrhu směn – bude doplněno v bloku D.</p>
+    </section>
   </main>
   <footer>
     <p>Projekt v přípravě.</p>
@@ -19,6 +47,7 @@
   <script src="js/data-model.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/export-import.js"></script>
+  <script src="js/navigace.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
