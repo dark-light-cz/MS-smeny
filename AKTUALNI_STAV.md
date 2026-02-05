@@ -54,6 +54,13 @@
 - Aplikace podle těchto pravidel **vypočte jeden návrh směn** (kdo kdy kde je).
 - Jedno řešení na přepočet; úprava jen změnou konfigurace a znovu spuštěným výpočtem.
 
+### Důležité upřesnění: sloty vs. směny (2026-02-05)
+- **Časové sloty (min/max počet osob)** jsou **kontrolní pravidla**, nikoli přímá přiřazení. Slot „07:45–16:00, min 1 na třídu" znamená: „v každém okamžiku mezi 07:45 a 16:00 musí být v každé třídě alespoň 1 osoba." Konkrétní osoby se tam ale mohou **střídat** – jedna učitelka od 7:00 do 13:00, druhá od 11:00 do 17:00.
+- **Algoritmus musí plánovat směny** (souvislé bloky pracovní doby) pro každého zaměstnance na základě jeho úvazku. Výstupem je, KDY a KDE každý člověk pracuje.
+- **Každý zaměstnanec musí mít v týdnu naplánovaný celý svůj úvazek** – žádné „nerozřazené" minuty.
+- **Souvislá pracovní doba:** zaměstnanec pracuje v rámci dne jeden souvislý blok (ne roztříštěné úseky s mezerami).
+- Teprve po naplánování směn se ověří, že v každém okamžiku jsou splněny minimální (a max.) počty osob na budovu/třídu.
+
 ---
 
 ## Co aplikace aktuálně umí (implementované funkce)
