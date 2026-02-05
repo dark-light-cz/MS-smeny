@@ -61,4 +61,5 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 
 - **Zaškrtnutí:** po dokončení úkolu změň `[ ]` na `[x]` a doplň krátkou poznámku.
 - **Po každém dokončeném úkolu:** aktualizuj **AKTUALNI_STAV.md** – sekci „Co aplikace aktuálně umí“.
+- **Testy:** před uzavřením úkolu spusť `npm test`. Pro novou funkci přidej nové testy (v příslušném souboru v `test/` nebo nový testovací soubor). Existující testy měň jen po zdůvodnění a po potvrzení uživatelem – viz pravidla v `.cursor/rules/projekt.mdc`.
 - **Odkaz z CHECKLIST.md:** Fáze 2 (Implementace jádra) se plní podle tohoto seznamu; úkol 2.1 = např. A1–A3, pak B1.

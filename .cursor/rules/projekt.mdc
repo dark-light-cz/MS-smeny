@@ -27,6 +27,15 @@ alwaysApply: true
   - Pokud odpověď vyvolá nový dotaz, přidat ho do seznamu v OPEN_QUESTIONS.md.
 - **Po vyřešení všech dotazů** – krok zapracování: seznam dotazů a odpovědí zapracovat do dokumentace (specifikace, feature set). Důležitý je **finální stav a funkce**, ne detailní cesta, jak jsme se k tomu dobrali. Cíl: přehlednost aktuálního stavu a feature setu.
 
+## Testy
+
+- **Po implementaci nové funkce** vždy:
+  1. **Spustit existující testy** (`npm test`) a ověřit, že prošly.
+  2. **Doplnit nové testy** pro tuto novou funkci (soubor v `test/` podle oblasti, např. `test-data-model.js`, `test-storage.js`, nebo nový soubor).
+- **Existující testy nikdy svévolně neupravovat.** Pokud je potřeba změnit nebo smazat existující test:
+  1. **Zhodnotit důvod** – proč by se měl test upravovat (změna chování vs. chyba v testu vs. refaktor).
+  2. **Nechat si úpravu potvrdit** uživatelem před provedením změny.
+
 ## Dokumentace stavu a vibe coding
 
 - **AKTUALNI_STAV.md** je živý dokument – jediný zdroj pravdy pro to, co aplikace je a co umí. V každém okamžiku tam má být kompletní přehled implementované funkčnosti (pro vibe coding).
@@ -40,3 +49,4 @@ alwaysApply: true
 - **PLAN.md** – vysoká úroveň plánu a fáze.
 - **CHECKLIST.md** – co je hotové, co je potřeba dodělat; sekce „Co dál“ pro doporučený postup.
 - **OPEN_QUESTIONS.md** – otevřené dotazy a workflow pro jejich řešení.
+- **TROUBLESHOOTING.md** – řešení problémů (Node.js, testy, Playwright); obsahuje i pravidlo při selhání testů po změně kódu.

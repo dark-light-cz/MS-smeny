@@ -21,7 +21,9 @@ Otevři `index.html` v prohlížeči (lokálně nebo přes jednoduchý HTTP serv
 
 ## Testy
 
-Testy běží v prohlížeči bez build stepu. Po implementaci úkolu je vhodné je spustit a ověřit, že nic nerozbilo.
+Testy běží v prohlížeči bez build stepu.
+
+**Pravidla:** Po implementaci nové funkce vždy spusť existující testy (`npm test`) a doplň nové testy pro tuto funkci. Existující testy neupravuj svévolně – úpravu vždy zdůvodni a nech si ji potvrdit (viz též `.cursor/rules/projekt.mdc`).
 
 ### Spuštění z editoru (Cursor / VS Code)
 
@@ -48,6 +50,8 @@ Otevři soubor `test/index.html` v prohlížeči (nebo přes HTTP server z koře
 - `test/test-data-model.js` – testy datového modelu (výchozí stav, role, vytváření zaměstnanců, budov, tříd)
 - `test/test-storage.js` – testy úložiště (načtení, setData, replaceData, zápis do Local Storage, reset cache)
 - `test/run-in-browser.js` – Node skript pro `npm test` (spustí stránku v Chromiu a podle výsledku ukončí s kódem 0/1)
+
+**Troubleshooting:** viz **TROUBLESHOOTING.md** (Node.js/npm, Playwright, spuštění z editoru).
 
 ## Repozitář
 

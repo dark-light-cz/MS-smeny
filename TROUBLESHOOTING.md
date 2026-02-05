@@ -84,6 +84,16 @@ Pokud nechceš instalovat Node.js, testy stále můžeš spouštět **ručně v 
 
 ---
 
+## Testy po změně kódu selhávají
+
+Pokud jsi změnil aplikaci nebo datový model a testy najednou padají:
+
+1. **Ověř, že jsi před dokončením úkolu spustil existující testy** a pro novou funkci přidal nové testy (viz pravidla v `.cursor/rules/projekt.mdc` a README).
+2. **Rozliš:** selhání může znamenat, že změna **rozbiła očekávané chování** (pak je třeba opravit kód nebo vrátit změnu), nebo že **očekávání testu už neplatí** (změnilo se chování záměrně). V druhém případě je úprava testu přípustná, ale **nikdy ji nedělej svévolně**: zdůvodni, proč má být test změněn, a nech si úpravu **potvrdit** (uživatelem / v code review).
+3. **Existující testy neměň bez zdůvodnění a potvrzení** – viz pravidla projektu.
+
+---
+
 ## Další problémy
 
 - **Port 17776 už je použitý** – skript `test/run-in-browser.js` používá port 17776. Zavři jinou aplikaci, která ho používá, nebo v souboru změň konstantu `PORT` na jiné číslo.  
