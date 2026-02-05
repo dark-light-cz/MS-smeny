@@ -52,7 +52,7 @@ Postupná implementace funkcí a částí aplikace MS-smeny. Úkoly plníme v po
 
 | # | Úkol | Stav | Poznámka |
 |---|------|------|----------|
-| E1 | **Export/import – UI** – tlačítka nebo menu „Exportovat data“ (stáhnout JSON) a „Importovat data“ (nahrát JSON, nahradit/ sloučit dle dohody). | [ ] | |
+| E1 | **Export/import – UI** – tlačítka nebo menu „Exportovat data“ (stáhnout JSON) a „Importovat data“ (nahrát JSON, nahradit/ sloučit dle dohody). | [x] | Sekce Přehled: blok Záloha a obnova dat, tlačítka Exportovat data / Importovat data; js/export-import-ui.js; po importu obnova pohledů. |
 | E2 | **Validace a hlášení chyb** – kontrola vstupů (úvazek, časy, povinná pole), zobrazení srozumitelných hlášek. Při výpočtu např. „nelze najít řešení“ + důvod pokud možno. | [ ] | |
 | E3 | **Doladění UX** – konzistentní styly, přehlednost formulářů a tabulek, základní responzivita. | [ ] | |
 | E4 | **Zobrazovaný název aplikace** – upravit lidský název aplikace zobrazený v hlavičce stránky a v titulku prohlížeče (`<title>`). Jde o to, jak se aplikace jmenuje pro uživatele v UI, ne o název repozitáře na GitHubu. | [ ] | |

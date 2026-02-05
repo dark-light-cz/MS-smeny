@@ -22,7 +22,20 @@
   <main class="obsah">
     <section id="prehled" class="sekce" aria-labelledby="prehled-nadpis">
       <h2 id="prehled-nadpis">Přehled</h2>
-      <p>Základní struktura projektu. Konfigurace zaměstnanců, budov a pravidel bude doplněna v dalších sekcích.</p>
+      <p>Konfiguraci zaměstnanců, budov a pravidel najdete v jednotlivých sekcích v navigaci.</p>
+
+      <div class="prehled-zaloha">
+        <h3 id="zaloha-nadpis">Záloha a obnova dat</h3>
+        <p class="zaloha-popis">
+          Můžete si stáhnout všechna data jako JSON soubor (záloha) a později je znovu nahrát (obnova). Při importu se současná data <strong>nahradí</strong> nahraným obsahem.
+        </p>
+        <div id="export-import-zprava" class="export-import-zprava" role="alert" aria-live="assertive" hidden></div>
+        <div class="zaloha-akce">
+          <button type="button" id="btn-export" class="btn btn-primarni">Exportovat data</button>
+          <button type="button" id="btn-import" class="btn">Importovat data</button>
+          <input type="file" id="input-import" accept=".json,application/json" class="visually-hidden" aria-hidden="true">
+        </div>
+      </div>
     </section>
     <section id="zamestnanci" class="sekce" aria-labelledby="zamestnanci-nadpis" hidden>
       <h2 id="zamestnanci-nadpis">Zaměstnanci</h2>
@@ -222,6 +235,7 @@
   <script src="js/zamestnanci.js"></script>
   <script src="js/budovy-tridy.js"></script>
   <script src="js/min-max-sloty.js"></script>
+  <script src="js/export-import-ui.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

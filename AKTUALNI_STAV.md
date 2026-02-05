@@ -77,6 +77,8 @@
   - U budovy i u třídy lze v příslušném formuláři nastavit otevírací dobu: výběr dnů (Po–Ne), čas Od a Do (model „po–pá 7:00–17:00“). Uložení do modelu (oteviraciDoba: { dny, od, do }). Třída má v modelu oteviraciDoba (vytvorTridu ji vytvoří s výchozí hodnotou). Při importu JSON se chybějící oteviraciDoba u budov a tříd doplní výchozí hodnotou.
 - **Min/max počet osob v čase (B4):**
   - V sekci Pravidla: konfigurace časových slotů (od–do) a pro každý slot minimální a maximální počet osob na budovu a na třídu. Přehledné formuláře s nápovědami („Prázdné = bez omezení“), validace (čas Do později než Od, nezáporné počty, min ≤ max). Chyby a potvrzení se zobrazují na stránce (bez alertů), úspěch mizí po 3 s. Tabulka slotů řazená podle času, přidat / upravit / smazat. Model: vytvorMinMaxSlot(), minMaxSloty v úložišti.
+- **Export/import – UI (E1):**
+  - V sekci Přehled: blok „Záloha a obnova dat“ s textem, že při importu se data nahradí. Tlačítko „Exportovat data“ stáhne JSON soubor. Tlačítko „Importovat data“ otevře výběr souboru; po nahrání platného JSON se data nahradí a zobrazení zaměstnanců, budov a časových slotů se automaticky obnoví. Úspěch a chyby (neplatný soubor) se zobrazují pod tlačítky (js/export-import-ui.js).
 - **Testy:** v prohlížeči se spouštějí otevřením `test/index.html`, nebo `npm test` (Playwright). Testují datový model, Local Storage, export/import JSON, navigaci, zaměstnance, budovy/třídy a časové sloty min/max; po každém úkolu je vhodné testy znovu spustit a ověřit, že nic nerozbilo.
 
 ---
@@ -99,6 +101,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2025-02-05: Implementován úkol E1 – export/import UI (tlačítka na Přehledu, obnova pohledů po importu).
 - 2025-02-05: Implementován úkol B4 – min/max počet osob v čase (časové sloty v sekci Pravidla, validace, srozumitelné zprávy, js/min-max-sloty.js).
 - 2025-02-05: Implementován úkol B3 – otevírací doba u budov a tříd (formuláře: dny Po–Ne, od/do; model třídy rozšířen o oteviraciDoba; import doplňuje chybějící).
 - 2025-02-05: Implementován úkol B2 – budovy a třídy: CRUD budov a tříd, hierarchie, ukládání do modelu a Local Storage (js/budovy-tridy.js, test-budovy-tridy.js).
