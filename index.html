@@ -368,6 +368,56 @@
         </form>
       </div>
 
+      <div class="pravidla-blok pravidla-stridani">
+        <h3 id="stridani-nadpis">Střídání dopoledne / odpoledne</h3>
+        <p class="pravidla-popis">
+          Pokud je zapnuto, algoritmus se snaží (nebo vyžaduje), aby tentýž zaměstnanec nestřídal stále stejný typ směny (např. vždy od rána), ale aby se dopolední a odpolední směny mezi dny prostřídaly.
+        </p>
+        <div id="stridani-zprava" class="sloty-zprava sloty-uspech" role="status" aria-live="polite" hidden></div>
+        <form id="stridani-form" class="prekryv-form">
+          <p>
+            <label><input type="checkbox" id="stridani-zapnuto"> Zapnout střídání dopoledne / odpoledne</label>
+          </p>
+          <p>
+            <label for="stridani-rezim">Režim</label>
+            <select id="stridani-rezim" aria-describedby="stridani-hint-rezim">
+              <option value="preferenční">Preferenční (algoritmus preferuje střídání)</option>
+              <option value="tvrdý">Tvrdý (algoritmus vyžaduje střídání)</option>
+            </select>
+            <span id="stridani-hint-rezim" class="hint">Preferenční = upřednostňuje, tvrdý = nepřipustí stále stejnou směnu</span>
+          </p>
+          <p>
+            <label for="stridani-hranice">Hranice dopoledne / odpoledne</label>
+            <input type="time" id="stridani-hranice" value="12:00" aria-describedby="stridani-hint-hranice">
+            <span id="stridani-hint-hranice" class="hint">Směna začínající před touto hodinou = dopolední, po ní = odpolední</span>
+          </p>
+          <p class="form-akce">
+            <button type="submit" class="btn btn-primarni">Uložit</button>
+          </p>
+        </form>
+      </div>
+
+      <div class="pravidla-blok pravidla-souvisle-bloky">
+        <h3 id="souvisle-bloky-nadpis">Souvislé bloky a méně dnů</h3>
+        <p class="pravidla-popis">
+          Pokud je zapnuto, algoritmus u kratších úvazků preferuje soustředění práce do méně dnů s delšími bloky (některé dny volno) místo krátkých směn rozptýlených do každého dne.
+        </p>
+        <div id="souvisle-bloky-zprava" class="sloty-zprava sloty-uspech" role="status" aria-live="polite" hidden></div>
+        <form id="souvisle-bloky-form" class="prekryv-form">
+          <p>
+            <label><input type="checkbox" id="souvisle-bloky-zapnuto"> Preferovat souvislé bloky a méně dnů</label>
+          </p>
+          <p>
+            <label for="souvisle-bloky-min-delka">Minimální délka bloku (hodiny)</label>
+            <input type="number" id="souvisle-bloky-min-delka" min="0" max="24" step="0.5" placeholder="neomezeno" aria-describedby="souvisle-bloky-hint">
+            <span id="souvisle-bloky-hint" class="hint">Prázdné = bez požadavku na min. délku; jinak směna nebude kratší než tato hodnota</span>
+          </p>
+          <p class="form-akce">
+            <button type="submit" class="btn btn-primarni">Uložit</button>
+          </p>
+        </form>
+      </div>
+
       <p class="pravidla-dalsi">Výpočet návrhu směn využívá všechna výše nastavená pravidla (sekce <a href="#navrh-smen" data-sekce="navrh-smen" class="nav-odkaz">Návrh směn</a>).</p>
     </section>
     <section id="navrh-smen" class="sekce" aria-labelledby="navrh-nadpis" hidden>

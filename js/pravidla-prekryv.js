@@ -125,6 +125,122 @@
     zobrazZpravuPrechodBudovy('Nastavení přechodu mezi budovami bylo uloženo.');
   }
 
+  // --- Střídání dopoledne/odpoledne (C6) ---
+
+  function zobrazZpravuStridani(text) {
+    var el = document.getElementById('stridani-zprava');
+    if (!el) return;
+    el.textContent = text || '';
+    el.hidden = !text;
+    if (text) {
+      setTimeout(function () { el.hidden = true; el.textContent = ''; }, 3000);
+    }
+  }
+
+  /** Převede minuty od půlnoci na HH:mm. */
+  function minutyNaHhmm(minuty) {
+    var h = Math.floor(minuty / 60);
+    var m = minuty % 60;
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  }
+
+  /** Převede HH:mm na minuty od půlnoci. */
+  function hhmmNaMinuty(hhmm) {
+    if (!hhmm || typeof hhmm !== 'string') return 720;
+    var parts = hhmm.split(':');
+    return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+  }
+
+  function vyplnStridaniFormular() {
+    var data = getData();
+    var p = data.pravidla || {};
+    var vychozi = Model && Model.vychoziPravidla ? Model.vychoziPravidla() : {};
+    var zapnuto = p.stridaniDopoledneOdpoledne != null ? !!p.stridaniDopoledneOdpoledne : !!vychozi.stridaniDopoledneOdpoledne;
+    var rezim = p.stridaniRezim || vychozi.stridaniRezim || 'preferenční';
+    var hraniceMin = p.stridaniHraniceMinuty != null ? p.stridaniHraniceMinuty : (vychozi.stridaniHraniceMinuty || 720);
+
+    var cb = document.getElementById('stridani-zapnuto');
+    var sel = document.getElementById('stridani-rezim');
+    var inp = document.getElementById('stridani-hranice');
+    if (cb) cb.checked = zapnuto;
+    if (sel) sel.value = rezim;
+    if (inp) inp.value = minutyNaHhmm(hraniceMin);
+  }
+
+  function odeslatStridaniFormular(e) {
+    e.preventDefault();
+    var cb = document.getElementById('stridani-zapnuto');
+    var sel = document.getElementById('stridani-rezim');
+    var inp = document.getElementById('stridani-hranice');
+    var zapnuto = cb ? !!cb.checked : false;
+    var rezim = sel ? sel.value : 'preferenční';
+    var validniRezimy = Model && Model.STRIDANI_REZIMY ? Model.STRIDANI_REZIMY : ['preferenční', 'tvrdý'];
+    if (validniRezimy.indexOf(rezim) < 0) rezim = 'preferenční';
+    var hraniceMin = inp ? hhmmNaMinuty(inp.value) : 720;
+
+    if (!Storage || !Storage.replaceData) return;
+    Storage.replaceData(function (d) {
+      d.pravidla = d.pravidla || {};
+      d.pravidla.stridaniDopoledneOdpoledne = zapnuto;
+      d.pravidla.stridaniRezim = rezim;
+      d.pravidla.stridaniHraniceMinuty = hraniceMin;
+      return d;
+    });
+    zobrazZpravuStridani('Nastavení střídání dopoledne/odpoledne bylo uloženo.');
+  }
+
+  // --- Souvislé bloky a méně dnů (C7) ---
+
+  function zobrazZpravuSouvisleBlok(text) {
+    var el = document.getElementById('souvisle-bloky-zprava');
+    if (!el) return;
+    el.textContent = text || '';
+    el.hidden = !text;
+    if (text) {
+      setTimeout(function () { el.hidden = true; el.textContent = ''; }, 3000);
+    }
+  }
+
+  function vyplnSouvisleBlokFormular() {
+    var data = getData();
+    var p = data.pravidla || {};
+    var vychozi = Model && Model.vychoziPravidla ? Model.vychoziPravidla() : {};
+    var zapnuto = p.preferSouvisleBlok != null ? !!p.preferSouvisleBlok : !!vychozi.preferSouvisleBlok;
+    var minMinuty = p.minDelkaBlokuMinuty != null ? p.minDelkaBlokuMinuty : vychozi.minDelkaBlokuMinuty;
+
+    var cb = document.getElementById('souvisle-bloky-zapnuto');
+    var inp = document.getElementById('souvisle-bloky-min-delka');
+    if (cb) cb.checked = zapnuto;
+    if (inp) {
+      if (minMinuty != null && !isNaN(minMinuty)) {
+        inp.value = Math.round(minMinuty / 60 * 10) / 10; // minuty → hodiny
+      } else {
+        inp.value = '';
+      }
+    }
+  }
+
+  function odeslatSouvisleBlokFormular(e) {
+    e.preventDefault();
+    var cb = document.getElementById('souvisle-bloky-zapnuto');
+    var inp = document.getElementById('souvisle-bloky-min-delka');
+    var zapnuto = cb ? !!cb.checked : false;
+    var hodiny = inp ? parseFloat(inp.value) : NaN;
+    var minMinuty = null;
+    if (!isNaN(hodiny) && hodiny > 0) {
+      minMinuty = Math.round(hodiny * 60);
+    }
+
+    if (!Storage || !Storage.replaceData) return;
+    Storage.replaceData(function (d) {
+      d.pravidla = d.pravidla || {};
+      d.pravidla.preferSouvisleBlok = zapnuto;
+      d.pravidla.minDelkaBlokuMinuty = minMinuty;
+      return d;
+    });
+    zobrazZpravuSouvisleBlok('Nastavení souvislých bloků bylo uloženo.');
+  }
+
   function init() {
     if (!Storage) return;
     vyplnFormular();
@@ -142,6 +258,16 @@
     if (formPB) {
       formPB.addEventListener('submit', odeslatPrechodBudovyFormular);
     }
+    vyplnStridaniFormular();
+    var formS = document.getElementById('stridani-form');
+    if (formS) {
+      formS.addEventListener('submit', odeslatStridaniFormular);
+    }
+    vyplnSouvisleBlokFormular();
+    var formSB = document.getElementById('souvisle-bloky-form');
+    if (formSB) {
+      formSB.addEventListener('submit', odeslatSouvisleBlokFormular);
+    }
   }
 
   // Skripty jsou na konci <body>, DOM je kompletní – init() voláme ihned.
@@ -149,6 +275,8 @@
 
   global.MSemenyPravidlaPrekryv = {
     vyplnFormular: vyplnFormular,
-    vyplnPrechodBudovyFormular: vyplnPrechodBudovyFormular
+    vyplnPrechodBudovyFormular: vyplnPrechodBudovyFormular,
+    vyplnStridaniFormular: vyplnStridaniFormular,
+    vyplnSouvisleBlokFormular: vyplnSouvisleBlokFormular
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -101,6 +101,12 @@
   - Globální pravidlo v sekci Pravidla: checkbox „Zakázat přechod mezi budovami" (výchozí: zaškrtnuto = zaměstnanec pracuje v jednom dni pouze v jedné budově). Model: `pravidla.zakazPrechodMeziBudovami` (boolean).
   - U zaměstnance lokální nastavení: select „Přechod mezi budovami" s hodnotami Výchozí (dle globálního) / Zakázat / Povolit. Model: `zamestnanec.prechodMeziBudovami` ('výchozí' | 'zakázat' | 'povolit'). V tabulce zaměstnanců sloupec „Přechod budovy".
   - Export/import normalizuje oba nové fieldy. **Algoritmus výpočtu směn toto nastavení respektuje** (D5) – zaměstnanec se zakázaným přechodem pracuje celý den jen v jedné budově.
+- **Střídání dopoledne / odpoledne (C6):**
+  - Globální pravidlo v sekci Pravidla: checkbox „Zapnout střídání dopoledne / odpoledne" (výchozí: vypnuto). Pokud zapnuto, algoritmus (v budoucnu D6) zajistí, že zaměstnanec nestřídá stále stejný typ směny. Režim: **preferenční** (algoritmus preferuje střídání) nebo **tvrdý** (algoritmus vyžaduje střídání). Hranice dopoledne/odpoledne: konfigurovatelný čas (výchozí 12:00) – směna začínající před hranicí = dopolední, po ní = odpolední.
+  - Model: `pravidla.stridaniDopoledneOdpoledne` (boolean), `pravidla.stridaniRezim` ('preferenční' | 'tvrdý'), `pravidla.stridaniHraniceMinuty` (number, výchozí 720 = 12:00). Export/import normalizuje (neplatný režim → 'preferenční'). **Algoritmus výpočtu směn toto nastavení zatím neaplikuje** – viz D6.
+- **Souvislé bloky a méně dnů (C7):**
+  - Globální pravidlo v sekci Pravidla: checkbox „Preferovat souvislé bloky a méně dnů" (výchozí: vypnuto). Pokud zapnuto, algoritmus (v budoucnu D7) u kratších úvazků soustředí práci do méně dnů s delšími bloky. Volitelně: minimální délka bloku v hodinách (prázdné = bez požadavku).
+  - Model: `pravidla.preferSouvisleBlok` (boolean), `pravidla.minDelkaBlokuMinuty` (number | null). Export/import normalizuje. **Algoritmus výpočtu směn toto nastavení zatím neaplikuje** – viz D7.
 - **Min/max počet osob v čase (B4):**
   - V sekci Pravidla: konfigurace časových slotů (od–do) a pro každý slot minimální a maximální počet osob na budovu a na třídu. Přehledné formuláře s nápovědami („Prázdné = bez omezení“), validace (čas Do později než Od, nezáporné počty, min ≤ max). Chyby a potvrzení se zobrazují na stránce (bez alertů), úspěch mizí po 3 s. Tabulka slotů řazená podle času, přidat / upravit / **duplikovat** / smazat. Model: vytvorMinMaxSlot(), minMaxSloty v úložišti.
 - **Požadavky na počet osob – duplikovat řádek (B4b):**
@@ -139,6 +145,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2026-02-06: Implementovány C6 a C7 – konfigurace střídání dopoledne/odpoledne (zapnuto/vypnuto, režim preferenční/tvrdý, hranice 12:00) a konfigurace souvislých bloků a méně dnů (zapnuto/vypnuto, min délka bloku). Model, UI v sekci Pravidla, export/import normalizace; 13 nových testů; celkem 144 testů.
 - 2026-02-06: Implementován D5 – aplikace přechodu mezi budovami ve výpočtu: helper maZakazPrechodu (lokální vs. globální nastavení), canGoToBuilding kontrola v assignLocations, doAssign trackuje budovu zaměstnance; kroky přiřazení (fill classes/buildings/remaining) filtrují dle omezení budovy; 5 unit testů + 3 integrační testy; celkem 131 testů prošlo.
 - 2026-02-06: Implementován C5 – konfigurace přechodu mezi budovami: globální pravidlo (zakazPrechodMeziBudovami v sekci Pravidla), lokální nastavení u zaměstnance (prechodMeziBudovami: výchozí/zakázat/povolit), sloupec v tabulce, export/import normalizace; 16 nových testů.
 - 2026-02-06: Nedostupnost zaměstnanců (B1d) zapracována do algoritmu výpočtu směn – buildAvailMask/longestAvailBlock, placeShifts respektuje masku, úvazek se přerozdělí proporčně; 8 nových testů.

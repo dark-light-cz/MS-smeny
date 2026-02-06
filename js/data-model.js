@@ -89,6 +89,9 @@
    * Výchozí pravidla (minimální překryv, kmenové/vykrývací, atd.).
    * @returns {Object}
    */
+  /** Platné hodnoty pro režim střídání dopoledne/odpoledne (C6). */
+  var STRIDANI_REZIMY = ['preferenční', 'tvrdý'];
+
   function vychoziPravidla() {
     return {
       minimalniPrekryvMinuty: 120,
@@ -96,7 +99,14 @@
       vykryvaciMaxPresun: 1,
       minKmenovychNaTridu: 2,
       maxKmenovychNaTridu: 3,
-      zakazPrechodMeziBudovami: true
+      zakazPrechodMeziBudovami: true,
+      // C6: Střídání dopoledne/odpoledne
+      stridaniDopoledneOdpoledne: false,
+      stridaniRezim: 'preferenční',
+      stridaniHraniceMinuty: 720, // 12:00 = 720 min od půlnoci
+      // C7: Preferovat souvislé bloky a méně dnů
+      preferSouvisleBlok: false,
+      minDelkaBlokuMinuty: null
     };
   }
 
@@ -225,6 +235,7 @@
     vytvorOmezeniNeDohromady: vytvorOmezeniNeDohromady,
     normalizujNedostupnost: normalizujNedostupnost,
     normalizujPrechodBudovy: normalizujPrechodBudovy,
-    PRECHOD_BUDOVY_HODNOTY: PRECHOD_BUDOVY_HODNOTY
+    PRECHOD_BUDOVY_HODNOTY: PRECHOD_BUDOVY_HODNOTY,
+    STRIDANI_REZIMY: STRIDANI_REZIMY
   };
 })(typeof window !== 'undefined' ? window : this);

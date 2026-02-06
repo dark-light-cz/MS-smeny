@@ -256,6 +256,85 @@
         var d = S.getData();
         T.assert(d.pravidla.zakazPrechodMeziBudovami === false, 'zachováno false');
       }
+    },
+    // --- C6: Střídání dopoledne/odpoledne – import ---
+    {
+      name: 'import doplní výchozí pravidla střídání (C6)',
+      run: function () {
+        S.resetCache();
+        var importData = { zamestnanci: [], budovy: [], pravidla: {} };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.pravidla.stridaniDopoledneOdpoledne === false, 'stridani výchozí false');
+        T.assert(d.pravidla.stridaniRezim === 'preferenční', 'režim výchozí preferenční');
+        T.assert(d.pravidla.stridaniHraniceMinuty === 720, 'hranice výchozí 720');
+      }
+    },
+    {
+      name: 'import zachová nastavení střídání (C6)',
+      run: function () {
+        S.resetCache();
+        var importData = {
+          zamestnanci: [], budovy: [],
+          pravidla: {
+            stridaniDopoledneOdpoledne: true,
+            stridaniRezim: 'tvrdý',
+            stridaniHraniceMinuty: 660
+          }
+        };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.pravidla.stridaniDopoledneOdpoledne === true, 'stridani true');
+        T.assert(d.pravidla.stridaniRezim === 'tvrdý', 'režim tvrdý');
+        T.assert(d.pravidla.stridaniHraniceMinuty === 660, 'hranice 660');
+      }
+    },
+    {
+      name: 'import normalizuje neplatný režim střídání na preferenční (C6)',
+      run: function () {
+        S.resetCache();
+        var importData = {
+          zamestnanci: [], budovy: [],
+          pravidla: { stridaniRezim: 'neplatný' }
+        };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.pravidla.stridaniRezim === 'preferenční', 'neplatný → preferenční');
+      }
+    },
+    // --- C7: Souvislé bloky a méně dnů – import ---
+    {
+      name: 'import doplní výchozí pravidla souvislých bloků (C7)',
+      run: function () {
+        S.resetCache();
+        var importData = { zamestnanci: [], budovy: [], pravidla: {} };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.pravidla.preferSouvisleBlok === false, 'preferSouvisleBlok výchozí false');
+        T.assert(d.pravidla.minDelkaBlokuMinuty === null, 'minDelkaBlokuMinuty výchozí null');
+      }
+    },
+    {
+      name: 'import zachová nastavení souvislých bloků (C7)',
+      run: function () {
+        S.resetCache();
+        var importData = {
+          zamestnanci: [], budovy: [],
+          pravidla: {
+            preferSouvisleBlok: true,
+            minDelkaBlokuMinuty: 240
+          }
+        };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.pravidla.preferSouvisleBlok === true, 'preferSouvisleBlok true');
+        T.assert(d.pravidla.minDelkaBlokuMinuty === 240, 'minDelkaBlokuMinuty 240');
+      }
     }
   ];
 

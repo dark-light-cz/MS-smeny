@@ -64,6 +64,93 @@
         var stav = M.vychoziStav();
         T.assert(stav.pravidla && stav.pravidla.zakazPrechodMeziBudovami === true, 'výchozí stav má zakazPrechodMeziBudovami true');
       }
+    },
+    // --- C6: Střídání dopoledne/odpoledne ---
+    {
+      name: 'Výchozí pravidla mají stridaniDopoledneOdpoledne = false (C6)',
+      run: function () {
+        if (!M) return;
+        var p = M.vychoziPravidla();
+        T.assert(p && p.stridaniDopoledneOdpoledne === false, 'stridaniDopoledneOdpoledne false');
+      }
+    },
+    {
+      name: 'Výchozí pravidla mají stridaniRezim = preferenční (C6)',
+      run: function () {
+        if (!M) return;
+        var p = M.vychoziPravidla();
+        T.assert(p && p.stridaniRezim === 'preferenční', 'stridaniRezim preferenční');
+      }
+    },
+    {
+      name: 'Výchozí pravidla mají stridaniHraniceMinuty = 720 (C6)',
+      run: function () {
+        if (!M) return;
+        var p = M.vychoziPravidla();
+        T.assert(p && p.stridaniHraniceMinuty === 720, 'stridaniHraniceMinuty 720 (12:00)');
+      }
+    },
+    {
+      name: 'STRIDANI_REZIMY obsahuje preferenční a tvrdý (C6)',
+      run: function () {
+        if (!M) return;
+        T.assert(Array.isArray(M.STRIDANI_REZIMY), 'STRIDANI_REZIMY je pole');
+        T.assert(M.STRIDANI_REZIMY.indexOf('preferenční') >= 0, 'obsahuje preferenční');
+        T.assert(M.STRIDANI_REZIMY.indexOf('tvrdý') >= 0, 'obsahuje tvrdý');
+      }
+    },
+    {
+      name: 'replaceData může změnit pravidla střídání (C6)',
+      run: function () {
+        if (!S || !M) return;
+        S.resetCache();
+        S.setData(M.vychoziStav());
+        S.replaceData(function (d) {
+          d.pravidla = d.pravidla || {};
+          d.pravidla.stridaniDopoledneOdpoledne = true;
+          d.pravidla.stridaniRezim = 'tvrdý';
+          d.pravidla.stridaniHraniceMinuty = 660;
+          return d;
+        });
+        var data = S.getData();
+        T.assert(data.pravidla.stridaniDopoledneOdpoledne === true, 'zapnuto true');
+        T.assert(data.pravidla.stridaniRezim === 'tvrdý', 'režim tvrdý');
+        T.assert(data.pravidla.stridaniHraniceMinuty === 660, 'hranice 660 (11:00)');
+      }
+    },
+    // --- C7: Souvislé bloky a méně dnů ---
+    {
+      name: 'Výchozí pravidla mají preferSouvisleBlok = false (C7)',
+      run: function () {
+        if (!M) return;
+        var p = M.vychoziPravidla();
+        T.assert(p && p.preferSouvisleBlok === false, 'preferSouvisleBlok false');
+      }
+    },
+    {
+      name: 'Výchozí pravidla mají minDelkaBlokuMinuty = null (C7)',
+      run: function () {
+        if (!M) return;
+        var p = M.vychoziPravidla();
+        T.assert(p && p.minDelkaBlokuMinuty === null, 'minDelkaBlokuMinuty null');
+      }
+    },
+    {
+      name: 'replaceData může změnit pravidla souvislých bloků (C7)',
+      run: function () {
+        if (!S || !M) return;
+        S.resetCache();
+        S.setData(M.vychoziStav());
+        S.replaceData(function (d) {
+          d.pravidla = d.pravidla || {};
+          d.pravidla.preferSouvisleBlok = true;
+          d.pravidla.minDelkaBlokuMinuty = 180;
+          return d;
+        });
+        var data = S.getData();
+        T.assert(data.pravidla.preferSouvisleBlok === true, 'zapnuto true');
+        T.assert(data.pravidla.minDelkaBlokuMinuty === 180, 'min délka 180 min');
+      }
     }
   ];
 

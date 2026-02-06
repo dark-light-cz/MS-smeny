@@ -112,13 +112,27 @@
       };
     });
     var p = data.pravidla && typeof data.pravidla === 'object' ? data.pravidla : {};
+    // C6: Normalizace režimu střídání
+    var stridaniRezimy = Model && Model.STRIDANI_REZIMY ? Model.STRIDANI_REZIMY : ['preferenční', 'tvrdý'];
+    var stridaniRezim = (p.stridaniRezim && stridaniRezimy.indexOf(p.stridaniRezim) >= 0)
+      ? p.stridaniRezim : vychozi.pravidla.stridaniRezim;
+    // C7: Normalizace min délky bloku
+    var minDelkaBloku = (p.minDelkaBlokuMinuty != null && p.minDelkaBlokuMinuty !== '' && !isNaN(parseInt(p.minDelkaBlokuMinuty, 10)))
+      ? parseInt(p.minDelkaBlokuMinuty, 10) : vychozi.pravidla.minDelkaBlokuMinuty;
     out.pravidla = {
       minimalniPrekryvMinuty: p.minimalniPrekryvMinuty != null ? p.minimalniPrekryvMinuty : vychozi.pravidla.minimalniPrekryvMinuty,
       vykryvaciBezMezer: p.vykryvaciBezMezer != null ? p.vykryvaciBezMezer : vychozi.pravidla.vykryvaciBezMezer,
       vykryvaciMaxPresun: p.vykryvaciMaxPresun != null ? p.vykryvaciMaxPresun : vychozi.pravidla.vykryvaciMaxPresun,
       minKmenovychNaTridu: p.minKmenovychNaTridu != null ? p.minKmenovychNaTridu : vychozi.pravidla.minKmenovychNaTridu,
       maxKmenovychNaTridu: p.maxKmenovychNaTridu != null ? p.maxKmenovychNaTridu : vychozi.pravidla.maxKmenovychNaTridu,
-      zakazPrechodMeziBudovami: p.zakazPrechodMeziBudovami != null ? !!p.zakazPrechodMeziBudovami : vychozi.pravidla.zakazPrechodMeziBudovami
+      zakazPrechodMeziBudovami: p.zakazPrechodMeziBudovami != null ? !!p.zakazPrechodMeziBudovami : vychozi.pravidla.zakazPrechodMeziBudovami,
+      // C6: Střídání dopoledne/odpoledne
+      stridaniDopoledneOdpoledne: p.stridaniDopoledneOdpoledne != null ? !!p.stridaniDopoledneOdpoledne : vychozi.pravidla.stridaniDopoledneOdpoledne,
+      stridaniRezim: stridaniRezim,
+      stridaniHraniceMinuty: p.stridaniHraniceMinuty != null ? parseInt(p.stridaniHraniceMinuty, 10) || 720 : vychozi.pravidla.stridaniHraniceMinuty,
+      // C7: Souvislé bloky a méně dnů
+      preferSouvisleBlok: p.preferSouvisleBlok != null ? !!p.preferSouvisleBlok : vychozi.pravidla.preferSouvisleBlok,
+      minDelkaBlokuMinuty: minDelkaBloku
     };
     var ond = Array.isArray(data.omezeniNeDohromady) ? data.omezeniNeDohromady : [];
     out.omezeniNeDohromady = ond
