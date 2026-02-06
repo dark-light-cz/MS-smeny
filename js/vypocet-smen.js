@@ -295,6 +295,23 @@
     return { shifts: shifts, coverage: coverage };
   }
 
+  /* === D5: Přechod mezi budovami === */
+
+  /**
+   * Zjistí, zda zaměstnanec má zakázaný přechod mezi budovami v jednom dni.
+   * Rozhodnutí: lokální nastavení u zaměstnance má přednost; 'výchozí' → globální pravidlo.
+   * @param {Object} zamestnanec
+   * @param {Object} pravidla
+   * @returns {boolean} true = přechod je zakázán
+   */
+  function maZakazPrechodu(zamestnanec, pravidla) {
+    var local = zamestnanec.prechodMeziBudovami;
+    if (local === 'zakázat') return true;
+    if (local === 'povolit') return false;
+    // 'výchozí' nebo chybí → globální nastavení
+    return !!(pravidla && pravidla.zakazPrechodMeziBudovami);
+  }
+
   /* === Fáze 3: Přiřazení míst (kde pracují) === */
 
   /**
@@ -344,6 +361,22 @@
       for (j = 0; j < bTridy.length; j++) {
         tridyProBudovu[budovy[i].id].push(bTridy[j].id);
       }
+    }
+
+    // D5: Omezení přechodu mezi budovami – pro každého zaměstnance sledujeme,
+    //     do které budovy byl dnes přiřazen (první přiřazení určí budovu na celý den).
+    var zamDenBudova = {}; // zamestnanecId → budovaId (první budova v tomto dni)
+    var zakazPrechodu = {}; // zamestnanecId → boolean (true = přechod zakázán)
+    for (i = 0; i < zamestnanci.length; i++) {
+      zakazPrechodu[zamestnanci[i].id] = maZakazPrechodu(zamestnanci[i], pravidla);
+    }
+
+    /** D5: Kontrola, zda zaměstnanec smí pracovat v dané budově. */
+    function canGoToBuilding(zId, budovaId) {
+      if (!budovaId) return true;
+      if (!zakazPrechodu[zId]) return true;
+      if (!zamDenBudova[zId]) return true; // ještě nebyl nikde → může kamkoli
+      return zamDenBudova[zId] === budovaId;
     }
 
     // Vybere třídu v budově pro zaměstnance (preferuje předchozí třídu, pak nejméně obsazenou)
@@ -408,12 +441,21 @@
 
       function doAssign(zId, bId, tId) {
         assigned[zId] = { budovaId: bId || null, tridaId: tId || null };
+        var resolvedBud = null;
         if (tId) {
           classCount[tId] = (classCount[tId] || 0) + 1;
           var parentBud = demandInfo.tridaBudova[tId];
-          if (parentBud) buildingCount[parentBud] = (buildingCount[parentBud] || 0) + 1;
+          if (parentBud) {
+            buildingCount[parentBud] = (buildingCount[parentBud] || 0) + 1;
+            resolvedBud = parentBud;
+          }
         } else if (bId) {
           buildingCount[bId] = (buildingCount[bId] || 0) + 1;
+          resolvedBud = bId;
+        }
+        // D5: Zaznamenat budovu zaměstnance (první přiřazení určí budovu na celý den)
+        if (resolvedBud && !zamDenBudova[zId]) {
+          zamDenBudova[zId] = resolvedBud;
         }
       }
 
@@ -496,6 +538,8 @@
             }
           }
           if (forbidden) continue;
+          // D5: Omezení přechodu mezi budovami
+          if (!canGoToBuilding(zIdA, demandInfo.tridaBudova[tIdFill])) continue;
           // Vykrývací max přesunů
           var empA = empMap[zIdA];
           if (empA && empA.kmenovaVykryvaci === 'vykrývací') {
@@ -526,6 +570,8 @@
         for (j = 0; j < onShift.length; j++) {
           if (bNeed <= 0) break;
           if (!assigned[onShift[j]]) {
+            // D5: Omezení přechodu mezi budovami
+            if (!canGoToBuilding(onShift[j], bIdFill)) continue;
             var classForBuild = pickClassInBuilding(bIdFill, onShift[j], m);
             if (classForBuild) {
               doAssign(onShift[j], null, classForBuild);
@@ -555,9 +601,18 @@
             doAssign(zIdR, prevR.budovaId, null);
           }
         } else if (tridaIds.length > 0) {
-          doAssign(zIdR, null, tridaIds[0]);
+          // D5: Respektovat omezení přechodu mezi budovami
+          var tridaProZbyle = null;
+          if (zamDenBudova[zIdR] && zakazPrechodu[zIdR]) {
+            tridaProZbyle = pickClassInBuilding(zamDenBudova[zIdR], zIdR, m);
+          }
+          if (!tridaProZbyle) tridaProZbyle = tridaIds[0];
+          doAssign(zIdR, null, tridaProZbyle);
         } else if (budovaIds.length > 0) {
-          doAssign(zIdR, budovaIds[0], null);
+          // D5: Respektovat omezení přechodu mezi budovami
+          var budovaProZbyle = (zamDenBudova[zIdR] && zakazPrechodu[zIdR])
+            ? zamDenBudova[zIdR] : budovaIds[0];
+          doAssign(zIdR, budovaProZbyle, null);
         }
       }
 
@@ -769,8 +824,9 @@
     vypocetSmen: vypocetSmen,
     slotDurationMinuty: slotDurationMinuty,
     positionsProSlot: positionsProSlot,
-    // Interní helpery exportované pro testy (B1d)
+    // Interní helpery exportované pro testy (B1d, D5)
     _buildAvailMask: buildAvailMask,
-    _longestAvailBlock: longestAvailBlock
+    _longestAvailBlock: longestAvailBlock,
+    _maZakazPrechodu: maZakazPrechodu
   };
 })(typeof window !== 'undefined' ? window : this);

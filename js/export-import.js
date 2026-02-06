@@ -75,6 +75,7 @@
       return budova;
     });
     var normNedost = Model && Model.normalizujNedostupnost ? Model.normalizujNedostupnost : function (n) { return Array.isArray(n) ? n : []; };
+    var normPrechod = Model && Model.normalizujPrechodBudovy ? Model.normalizujPrechodBudovy : function (v) { return v === 'zakázat' || v === 'povolit' ? v : 'výchozí'; };
     var zamestnanci = (data.zamestnanci || []).map(function (z) {
       var k = z.kmenovaVykryvaci === 'vykrývací' ? 'vykrývací' : 'kmenová';
       var tid = (k === 'kmenová' && z.tridaId) ? z.tridaId : null;
@@ -85,7 +86,8 @@
         role: z.role != null ? z.role : 'učitelka',
         kmenovaVykryvaci: k,
         tridaId: tid,
-        nedostupnost: normNedost(z.nedostupnost)
+        nedostupnost: normNedost(z.nedostupnost),
+        prechodMeziBudovami: normPrechod(z.prechodMeziBudovami)
       };
     });
     var out = {
@@ -115,7 +117,8 @@
       vykryvaciBezMezer: p.vykryvaciBezMezer != null ? p.vykryvaciBezMezer : vychozi.pravidla.vykryvaciBezMezer,
       vykryvaciMaxPresun: p.vykryvaciMaxPresun != null ? p.vykryvaciMaxPresun : vychozi.pravidla.vykryvaciMaxPresun,
       minKmenovychNaTridu: p.minKmenovychNaTridu != null ? p.minKmenovychNaTridu : vychozi.pravidla.minKmenovychNaTridu,
-      maxKmenovychNaTridu: p.maxKmenovychNaTridu != null ? p.maxKmenovychNaTridu : vychozi.pravidla.maxKmenovychNaTridu
+      maxKmenovychNaTridu: p.maxKmenovychNaTridu != null ? p.maxKmenovychNaTridu : vychozi.pravidla.maxKmenovychNaTridu,
+      zakazPrechodMeziBudovami: p.zakazPrechodMeziBudovami != null ? !!p.zakazPrechodMeziBudovami : vychozi.pravidla.zakazPrechodMeziBudovami
     };
     var ond = Array.isArray(data.omezeniNeDohromady) ? data.omezeniNeDohromady : [];
     out.omezeniNeDohromady = ond

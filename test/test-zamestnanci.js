@@ -377,6 +377,108 @@
         T.assert(el.innerHTML.indexOf('07:00') >= 0, 'po kliknutí: od 07:00');
         T.assert(el.innerHTML.indexOf('17:00') >= 0, 'po kliknutí: do 17:00');
       }
+    },
+    // --- C5: Přechod mezi budovami ---
+    {
+      name: 'vytvorZamestnance má výchozí prechodMeziBudovami = „výchozí" (C5)',
+      run: function () {
+        if (!M) return;
+        var z = M.vytvorZamestnance('Test C5', 480, M.ROLE.UCITELKA);
+        T.assert(z.prechodMeziBudovami === 'výchozí', 'výchozí hodnota je „výchozí"');
+      }
+    },
+    {
+      name: 'vytvorZamestnance přijme prechodMeziBudovami „zakázat" a „povolit" (C5)',
+      run: function () {
+        if (!M) return;
+        var z1 = M.vytvorZamestnance('Test', 480, M.ROLE.UCITELKA, 'kmenová', null, [], 'zakázat');
+        T.assert(z1.prechodMeziBudovami === 'zakázat', 'zakázat');
+        var z2 = M.vytvorZamestnance('Test', 480, M.ROLE.UCITELKA, 'kmenová', null, [], 'povolit');
+        T.assert(z2.prechodMeziBudovami === 'povolit', 'povolit');
+      }
+    },
+    {
+      name: 'vytvorZamestnance normalizuje neplatný prechodMeziBudovami na „výchozí" (C5)',
+      run: function () {
+        if (!M) return;
+        var z1 = M.vytvorZamestnance('Test', 480, M.ROLE.UCITELKA, 'kmenová', null, [], 'neplatna');
+        T.assert(z1.prechodMeziBudovami === 'výchozí', 'neplatná → výchozí');
+        var z2 = M.vytvorZamestnance('Test', 480, M.ROLE.UCITELKA, 'kmenová', null, [], null);
+        T.assert(z2.prechodMeziBudovami === 'výchozí', 'null → výchozí');
+      }
+    },
+    {
+      name: 'normalizujPrechodBudovy vrací správné hodnoty (C5)',
+      run: function () {
+        if (!M || !M.normalizujPrechodBudovy) return;
+        T.assert(M.normalizujPrechodBudovy('výchozí') === 'výchozí', 'výchozí');
+        T.assert(M.normalizujPrechodBudovy('zakázat') === 'zakázat', 'zakázat');
+        T.assert(M.normalizujPrechodBudovy('povolit') === 'povolit', 'povolit');
+        T.assert(M.normalizujPrechodBudovy('nesmysl') === 'výchozí', 'neplatná → výchozí');
+        T.assert(M.normalizujPrechodBudovy(null) === 'výchozí', 'null → výchozí');
+        T.assert(M.normalizujPrechodBudovy(undefined) === 'výchozí', 'undefined → výchozí');
+      }
+    },
+    {
+      name: 'PRECHOD_BUDOVY_HODNOTY obsahuje 3 platné hodnoty (C5)',
+      run: function () {
+        if (!M || !M.PRECHOD_BUDOVY_HODNOTY) return;
+        T.assert(Array.isArray(M.PRECHOD_BUDOVY_HODNOTY), 'je pole');
+        T.assert(M.PRECHOD_BUDOVY_HODNOTY.length === 3, '3 hodnoty');
+        T.assert(M.PRECHOD_BUDOVY_HODNOTY.indexOf('výchozí') >= 0, 'obsahuje výchozí');
+        T.assert(M.PRECHOD_BUDOVY_HODNOTY.indexOf('zakázat') >= 0, 'obsahuje zakázat');
+        T.assert(M.PRECHOD_BUDOVY_HODNOTY.indexOf('povolit') >= 0, 'obsahuje povolit');
+      }
+    },
+    {
+      name: 'souhrPrechodBudovy vrací správné texty (C5)',
+      run: function () {
+        if (!Z || !Z.souhrPrechodBudovy) return;
+        T.assert(Z.souhrPrechodBudovy('výchozí') === 'Výchozí', 'výchozí');
+        T.assert(Z.souhrPrechodBudovy('zakázat') === 'Zakázat', 'zakázat');
+        T.assert(Z.souhrPrechodBudovy('povolit') === 'Povolit', 'povolit');
+        T.assert(Z.souhrPrechodBudovy(undefined) === 'Výchozí', 'undefined → Výchozí');
+        T.assert(Z.souhrPrechodBudovy(null) === 'Výchozí', 'null → Výchozí');
+      }
+    },
+    {
+      name: 'zobrazFormular vyplní select přechodu mezi budovami (C5)',
+      run: function () {
+        if (!Z || !M || !S) return;
+        S.resetCache();
+        S.setData(M.vychoziStav());
+        var zam = M.vytvorZamestnance('Test C5', 480, M.ROLE.UCITELKA, 'kmenová', null, [], 'povolit');
+        Z.zobrazFormular(zam);
+        var sel = document.getElementById('zamestnanci-prechod-budovy');
+        T.assert(sel != null, 'select existuje');
+        T.assert(sel.value === 'povolit', 'select má hodnotu „povolit"');
+      }
+    },
+    {
+      name: 'zobrazFormular(null) nastaví select přechodu na „výchozí" (C5)',
+      run: function () {
+        if (!Z) return;
+        Z.zobrazFormular(null);
+        var sel = document.getElementById('zamestnanci-prechod-budovy');
+        T.assert(sel != null, 'select existuje');
+        T.assert(sel.value === 'výchozí', 'select má hodnotu „výchozí"');
+      }
+    },
+    {
+      name: 'prechodMeziBudovami se uloží a načte přes replaceData (C5)',
+      run: function () {
+        if (!S || !M) return;
+        S.resetCache();
+        var z = M.vytvorZamestnance('Test Prechod', 480, M.ROLE.UCITELKA, 'kmenová', null, [], 'zakázat');
+        S.setData(M.vychoziStav());
+        S.replaceData(function (d) {
+          d.zamestnanci.push(z);
+          return d;
+        });
+        var data = S.getData();
+        T.assert(data.zamestnanci.length === 1, 'jeden zaměstnanec');
+        T.assert(data.zamestnanci[0].prechodMeziBudovami === 'zakázat', 'uloženo zakázat');
+      }
     }
   ];
 

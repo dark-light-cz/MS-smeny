@@ -95,9 +95,13 @@
       vykryvaciBezMezer: true,
       vykryvaciMaxPresun: 1,
       minKmenovychNaTridu: 2,
-      maxKmenovychNaTridu: 3
+      maxKmenovychNaTridu: 3,
+      zakazPrechodMeziBudovami: true
     };
   }
+
+  /** Platné hodnoty pro pole prechodMeziBudovami u zaměstnance. */
+  var PRECHOD_BUDOVY_HODNOTY = ['výchozí', 'zakázat', 'povolit'];
 
   /**
    * Vytvoří záznam omezení „ne dohromady“ – dvojice osob, které nemají být spolu v jedné třídě/směně.
@@ -158,11 +162,12 @@
   }
 
   /**
-   * Struktura zaměstnance: id, jméno, úvazek, role, kmenová/vykrývací, přiřazená třída, nedostupnost.
+   * Struktura zaměstnance: id, jméno, úvazek, role, kmenová/vykrývací, přiřazená třída, nedostupnost, přechod mezi budovami.
    * kmenovaVykryvaci: 'kmenová' | 'vykrývací'. tridaId: id třídy (pouze u kmenové).
    * nedostupnost: pole objektů { den: 1–5 (Po–Pá), od: "HH:mm", do: "HH:mm" } – časová období v týdnu, kdy zaměstnanec nemůže pracovat.
+   * prechodMeziBudovami: 'výchozí' | 'zakázat' | 'povolit' – lokální nastavení přechodu mezi budovami v jednom dni.
    */
-  function vytvorZamestnance(jmeno, uvazekMinutyTyden, role, kmenovaVykryvaci, tridaId, nedostupnost) {
+  function vytvorZamestnance(jmeno, uvazekMinutyTyden, role, kmenovaVykryvaci, tridaId, nedostupnost, prechodMeziBudovami) {
     return {
       id: generujId(),
       jmeno: jmeno || '',
@@ -170,8 +175,18 @@
       role: role || ROLE.UCITELKA,
       kmenovaVykryvaci: kmenovaVykryvaci === 'vykrývací' ? 'vykrývací' : 'kmenová',
       tridaId: (kmenovaVykryvaci === 'kmenová' && tridaId) ? tridaId : null,
-      nedostupnost: normalizujNedostupnost(nedostupnost)
+      nedostupnost: normalizujNedostupnost(nedostupnost),
+      prechodMeziBudovami: normalizujPrechodBudovy(prechodMeziBudovami)
     };
+  }
+
+  /**
+   * Normalizuje hodnotu přechodu mezi budovami.
+   * @param {string|*} hodnota
+   * @returns {'výchozí'|'zakázat'|'povolit'}
+   */
+  function normalizujPrechodBudovy(hodnota) {
+    return PRECHOD_BUDOVY_HODNOTY.indexOf(hodnota) >= 0 ? hodnota : 'výchozí';
   }
 
   /**
@@ -208,6 +223,8 @@
     vytvorZamestnance: vytvorZamestnance,
     vytvorMinMaxSlot: vytvorMinMaxSlot,
     vytvorOmezeniNeDohromady: vytvorOmezeniNeDohromady,
-    normalizujNedostupnost: normalizujNedostupnost
+    normalizujNedostupnost: normalizujNedostupnost,
+    normalizujPrechodBudovy: normalizujPrechodBudovy,
+    PRECHOD_BUDOVY_HODNOTY: PRECHOD_BUDOVY_HODNOTY
   };
 })(typeof window !== 'undefined' ? window : this);

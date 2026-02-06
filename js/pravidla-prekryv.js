@@ -91,6 +91,40 @@
     zobrazZpravuVykryvaci('Pravidla pro vykrývací byla uložena.');
   }
 
+  // --- Přechod mezi budovami (C5) ---
+
+  function zobrazZpravuPrechodBudovy(text) {
+    var el = document.getElementById('prechod-budovy-zprava');
+    if (!el) return;
+    el.textContent = text || '';
+    el.hidden = !text;
+    if (text) {
+      setTimeout(function () { el.hidden = true; el.textContent = ''; }, 3000);
+    }
+  }
+
+  function vyplnPrechodBudovyFormular() {
+    var data = getData();
+    var p = data.pravidla || {};
+    var vychozi = Model && Model.vychoziPravidla ? Model.vychoziPravidla() : {};
+    var zakazat = p.zakazPrechodMeziBudovami != null ? p.zakazPrechodMeziBudovami : (vychozi.zakazPrechodMeziBudovami !== false);
+    var cb = document.getElementById('prechod-budovy-zakazat');
+    if (cb) cb.checked = !!zakazat;
+  }
+
+  function odeslatPrechodBudovyFormular(e) {
+    e.preventDefault();
+    var cb = document.getElementById('prechod-budovy-zakazat');
+    var zakazat = cb ? !!cb.checked : true;
+    if (!Storage || !Storage.replaceData) return;
+    Storage.replaceData(function (d) {
+      d.pravidla = d.pravidla || {};
+      d.pravidla.zakazPrechodMeziBudovami = zakazat;
+      return d;
+    });
+    zobrazZpravuPrechodBudovy('Nastavení přechodu mezi budovami bylo uloženo.');
+  }
+
   function init() {
     if (!Storage) return;
     vyplnFormular();
@@ -103,12 +137,18 @@
     if (formV) {
       formV.addEventListener('submit', odeslatVykryvaciFormular);
     }
+    vyplnPrechodBudovyFormular();
+    var formPB = document.getElementById('prechod-budovy-form');
+    if (formPB) {
+      formPB.addEventListener('submit', odeslatPrechodBudovyFormular);
+    }
   }
 
   // Skripty jsou na konci <body>, DOM je kompletní – init() voláme ihned.
   init();
 
   global.MSemenyPravidlaPrekryv = {
-    vyplnFormular: vyplnFormular
+    vyplnFormular: vyplnFormular,
+    vyplnPrechodBudovyFormular: vyplnPrechodBudovyFormular
   };
 })(typeof window !== 'undefined' ? window : this);

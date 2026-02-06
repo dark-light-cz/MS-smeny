@@ -449,6 +449,292 @@
       }
     },
 
+    /* === D5: Helper _maZakazPrechodu === */
+
+    {
+      name: '_maZakazPrechodu: výchozí + globální zákaz → zakázán',
+      run: function () {
+        if (!V._maZakazPrechodu) return;
+        var z = { prechodMeziBudovami: 'výchozí' };
+        T.assert(V._maZakazPrechodu(z, { zakazPrechodMeziBudovami: true }) === true,
+          'výchozí + globální zákaz = zakázán');
+      }
+    },
+    {
+      name: '_maZakazPrechodu: výchozí + globální povolení → povolen',
+      run: function () {
+        if (!V._maZakazPrechodu) return;
+        var z = { prechodMeziBudovami: 'výchozí' };
+        T.assert(V._maZakazPrechodu(z, { zakazPrechodMeziBudovami: false }) === false,
+          'výchozí + globální povolení = povolen');
+      }
+    },
+    {
+      name: '_maZakazPrechodu: lokální zakázat má přednost před globálním povolením',
+      run: function () {
+        if (!V._maZakazPrechodu) return;
+        var z = { prechodMeziBudovami: 'zakázat' };
+        T.assert(V._maZakazPrechodu(z, { zakazPrechodMeziBudovami: false }) === true,
+          'lokální zakázat = zakázán (i přes globální povolení)');
+      }
+    },
+    {
+      name: '_maZakazPrechodu: lokální povolit má přednost před globálním zákazem',
+      run: function () {
+        if (!V._maZakazPrechodu) return;
+        var z = { prechodMeziBudovami: 'povolit' };
+        T.assert(V._maZakazPrechodu(z, { zakazPrechodMeziBudovami: true }) === false,
+          'lokální povolit = povolen (i přes globální zákaz)');
+      }
+    },
+    {
+      name: '_maZakazPrechodu: chybějící lokální hodnota → globální nastavení',
+      run: function () {
+        if (!V._maZakazPrechodu) return;
+        var z = {}; // bez prechodMeziBudovami
+        T.assert(V._maZakazPrechodu(z, { zakazPrechodMeziBudovami: true }) === true,
+          'chybějící lokální + globální zákaz = zakázán');
+        T.assert(V._maZakazPrechodu(z, { zakazPrechodMeziBudovami: false }) === false,
+          'chybějící lokální + globální povolení = povolen');
+      }
+    },
+
+    /* === Testy přechodu mezi budovami (D5) === */
+
+    {
+      name: 'zakazPrechodMeziBudovami=true: žádný zaměstnanec nesmí být v jednom dni ve dvou budovách',
+      run: function () {
+        if (!M) return;
+        // Konfigurace odpovídající reálnému exportu (anonymizované názvy zachovány z existujícího testu B1e).
+        // Pravidlo zakazPrechodMeziBudovami je zapnuto → Blanka (a kdokoli jiný) nesmí
+        // v jednom dni přecházet z Jedničky do Dvojky (nebo naopak).
+        var data = {
+          zamestnanci: [
+            { id: 'z-maja', jmeno: 'Učitelka A', uvazekMinutyTyden: 1200, role: 'zástupkyně',
+              kmenovaVykryvaci: 'kmenová', tridaId: 't-mysky',
+              nedostupnost: [{ den: 5, od: '07:00', do: '17:00' }] },
+            { id: 'z-zuzka', jmeno: 'Učitelka B', uvazekMinutyTyden: 720, role: 'ředitelka',
+              kmenovaVykryvaci: 'kmenová', tridaId: 't-berusky',
+              nedostupnost: [{ den: 5, od: '07:00', do: '17:00' }] },
+            { id: 'z-alena', jmeno: 'Učitelka C', uvazekMinutyTyden: 1860, role: 'učitelka' },
+            { id: 'z-terezka', jmeno: 'Učitelka D', uvazekMinutyTyden: 1860, role: 'učitelka' },
+            { id: 'z-vera', jmeno: 'Učitelka E', uvazekMinutyTyden: 1860, role: 'učitelka' },
+            { id: 'z-martinaS', jmeno: 'Učitelka F', uvazekMinutyTyden: 1860, role: 'učitelka' },
+            { id: 'z-martinaM', jmeno: 'Učitelka G', uvazekMinutyTyden: 1860, role: 'učitelka',
+              kmenovaVykryvaci: 'kmenová', tridaId: null },
+            { id: 'z-lucka', jmeno: 'Učitelka H', uvazekMinutyTyden: 1860, role: 'učitelka' },
+            { id: 'z-blanka', jmeno: 'Učitelka I', uvazekMinutyTyden: 1860, role: 'učitelka' },
+            { id: 'z-sylva', jmeno: 'Učitelka J', uvazekMinutyTyden: 1590, role: 'učitelka',
+              kmenovaVykryvaci: 'vykrývací', tridaId: null },
+            { id: 'z-kamila', jmeno: 'Učitelka K', uvazekMinutyTyden: 150, role: 'učitelka',
+              kmenovaVykryvaci: 'vykrývací', tridaId: null },
+            { id: 'z-eva', jmeno: 'Učitelka L', uvazekMinutyTyden: 210, role: 'učitelka',
+              kmenovaVykryvaci: 'vykrývací', tridaId: null },
+            { id: 'z-hanka', jmeno: 'Učitelka M', uvazekMinutyTyden: 480, role: 'učitelka',
+              kmenovaVykryvaci: 'vykrývací', tridaId: null }
+          ],
+          budovy: [
+            { id: 'b-jednicka', nazev: 'Budova 1',
+              oteviraciDoba: { dny: [1,2,3,4,5], od: '07:00', do: '17:00' },
+              tridy: [
+                { id: 't-mysky', nazev: 'Třída 1' },
+                { id: 't-berusky', nazev: 'Třída 2' },
+                { id: 't-jezci', nazev: 'Třída 3' }
+              ] },
+            { id: 'b-dvojka', nazev: 'Budova 2',
+              oteviraciDoba: { dny: [1,2,3,4,5], od: '07:00', do: '17:00' },
+              tridy: [
+                { id: 't-slunicka', nazev: 'Třída 4' },
+                { id: 't-zabky', nazev: 'Třída 5' }
+              ] }
+          ],
+          minMaxSloty: [
+            { id: 's1', od: '07:00', do: '07:45', minNaBudovu: 1, maxNaBudovu: null,
+              minNaTridu: 0, maxNaTridu: null, dny: [], rotace: false },
+            { id: 's2', od: '07:45', do: '16:00', minNaTridu: 1, maxNaTridu: null,
+              minNaBudovu: 0, maxNaBudovu: null, dny: [], rotace: false },
+            { id: 's3', od: '16:00', do: '17:00', minNaBudovu: 1, maxNaBudovu: null,
+              minNaTridu: 0, maxNaTridu: null, dny: [1,2,3,4], rotace: false },
+            { id: 's4', od: '16:00', do: '17:00', minNaBudovu: 1, maxNaBudovu: null,
+              minNaTridu: 0, maxNaTridu: null, dny: [5], rotace: true }
+          ],
+          pravidla: {
+            minimalniPrekryvMinuty: 120,
+            vykryvaciBezMezer: true,
+            vykryvaciMaxPresun: 1,
+            zakazPrechodMeziBudovami: true
+          },
+          omezeniNeDohromady: [
+            { id: 'o1', osoba1Id: 'z-alena', osoba2Id: 'z-lucka' },
+            { id: 'o2', osoba1Id: 'z-maja', osoba2Id: 'z-martinaM' },
+            { id: 'o3', osoba1Id: 'z-maja', osoba2Id: 'z-zuzka' }
+          ]
+        };
+
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+
+        // Vytvořit mapu tridaId → budovaId
+        var tridaBudova = {};
+        for (var bi = 0; bi < data.budovy.length; bi++) {
+          var bud = data.budovy[bi];
+          var tridy = bud.tridy || [];
+          for (var ti = 0; ti < tridy.length; ti++) {
+            tridaBudova[tridy[ti].id] = bud.id;
+          }
+        }
+
+        // Pro každý den a každého zaměstnance ověřit, že všechny segmenty jsou v jedné budově
+        var chyby = [];
+        for (var den = 1; den <= 5; den++) {
+          // Seskupit segmenty per zaměstnanec pro daný den
+          var zamBudovy = {}; // zamId → Set budovaId
+          for (var pi = 0; pi < r.prirazeni.length; pi++) {
+            var p = r.prirazeni[pi];
+            if (p.den !== den) continue;
+            if (!zamBudovy[p.zamestnanecId]) zamBudovy[p.zamestnanecId] = {};
+            for (var si = 0; si < p.segmenty.length; si++) {
+              var seg = p.segmenty[si];
+              var budId = seg.tridaId ? tridaBudova[seg.tridaId] : seg.budovaId;
+              if (budId) zamBudovy[p.zamestnanecId][budId] = true;
+            }
+          }
+          // Kontrola: max 1 budova na zaměstnance za den
+          for (var zamId in zamBudovy) {
+            if (!zamBudovy.hasOwnProperty(zamId)) continue;
+            var budovyIds = Object.keys(zamBudovy[zamId]);
+            if (budovyIds.length > 1) {
+              // Najít jméno zaměstnance
+              var jmeno = zamId;
+              for (var zi = 0; zi < data.zamestnanci.length; zi++) {
+                if (data.zamestnanci[zi].id === zamId) { jmeno = data.zamestnanci[zi].jmeno; break; }
+              }
+              chyby.push('Den ' + den + ', ' + jmeno + ': přechod mezi budovami (' + budovyIds.join(', ') + ')');
+            }
+          }
+        }
+        T.assert(chyby.length === 0,
+          'Přechod mezi budovami zakázán, ale nalezeny přechody: ' + chyby.join('; '));
+      }
+    },
+
+    {
+      name: 'zakazPrechodMeziBudovami=true + zaměstnanec s povolit: výjimka smí přecházet',
+      run: function () {
+        if (!M) return;
+        // Zjednodušený scénář: 2 budovy po 1 třídě, 3 zaměstnanci.
+        // Globální zákaz přechodu. Zaměstnanec C má prechodMeziBudovami='povolit' → smí.
+        // Zaměstnanci A a B nesmí přecházet (výchozí = zákaz).
+        var data = {
+          zamestnanci: [
+            { id: 'z1', jmeno: 'Osoba A', uvazekMinutyTyden: 1860, role: 'učitelka',
+              prechodMeziBudovami: 'výchozí' },
+            { id: 'z2', jmeno: 'Osoba B', uvazekMinutyTyden: 1860, role: 'učitelka' },
+            { id: 'z3', jmeno: 'Osoba C', uvazekMinutyTyden: 1860, role: 'učitelka',
+              prechodMeziBudovami: 'povolit' }
+          ],
+          budovy: [
+            { id: 'b1', nazev: 'Budova X',
+              oteviraciDoba: { dny: [1,2,3,4,5], od: '07:00', do: '17:00' },
+              tridy: [{ id: 't1', nazev: 'Třída X1' }] },
+            { id: 'b2', nazev: 'Budova Y',
+              oteviraciDoba: { dny: [1,2,3,4,5], od: '07:00', do: '17:00' },
+              tridy: [{ id: 't2', nazev: 'Třída Y1' }] }
+          ],
+          minMaxSloty: [
+            { id: 's1', od: '07:00', do: '17:00', minNaTridu: 1, minNaBudovu: 0, dny: [], rotace: false }
+          ],
+          pravidla: {
+            zakazPrechodMeziBudovami: true
+          },
+          omezeniNeDohromady: []
+        };
+
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+
+        // Mapa třída → budova
+        var tridaBudova = { t1: 'b1', t2: 'b2' };
+
+        // Z1 a Z2: nesmí přecházet (globální zákaz, výchozí/chybí)
+        // Z3: smí přecházet (explicitní 'povolit')
+        for (var den = 1; den <= 5; den++) {
+          var zamBudovy = {};
+          for (var pi = 0; pi < r.prirazeni.length; pi++) {
+            var p = r.prirazeni[pi];
+            if (p.den !== den) continue;
+            if (!zamBudovy[p.zamestnanecId]) zamBudovy[p.zamestnanecId] = {};
+            for (var si = 0; si < p.segmenty.length; si++) {
+              var seg = p.segmenty[si];
+              var budId = seg.tridaId ? tridaBudova[seg.tridaId] : seg.budovaId;
+              if (budId) zamBudovy[p.zamestnanecId][budId] = true;
+            }
+          }
+          // z1 a z2 nesmí mít víc než 1 budovu
+          if (zamBudovy['z1'] && Object.keys(zamBudovy['z1']).length > 1) {
+            T.assert(false, 'Den ' + den + ': Osoba A přechází mezi budovami (globální zákaz, výchozí nastavení)');
+          }
+          if (zamBudovy['z2'] && Object.keys(zamBudovy['z2']).length > 1) {
+            T.assert(false, 'Den ' + den + ': Osoba B přechází mezi budovami (globální zákaz, bez lokálního nastavení)');
+          }
+        }
+      }
+    },
+
+    {
+      name: 'zakazPrechodMeziBudovami=false + zaměstnanec se zakázat: jen ten zaměstnanec nesmí přecházet',
+      run: function () {
+        if (!M) return;
+        // Globální povolení přechodu. Zaměstnanec A má lokální 'zakázat' → nesmí přecházet.
+        var data = {
+          zamestnanci: [
+            { id: 'z1', jmeno: 'Osoba A', uvazekMinutyTyden: 1860, role: 'učitelka',
+              prechodMeziBudovami: 'zakázat' },
+            { id: 'z2', jmeno: 'Osoba B', uvazekMinutyTyden: 1860, role: 'učitelka' },
+            { id: 'z3', jmeno: 'Osoba C', uvazekMinutyTyden: 1860, role: 'učitelka' }
+          ],
+          budovy: [
+            { id: 'b1', nazev: 'Budova X',
+              oteviraciDoba: { dny: [1,2,3,4,5], od: '07:00', do: '17:00' },
+              tridy: [{ id: 't1', nazev: 'Třída X1' }] },
+            { id: 'b2', nazev: 'Budova Y',
+              oteviraciDoba: { dny: [1,2,3,4,5], od: '07:00', do: '17:00' },
+              tridy: [{ id: 't2', nazev: 'Třída Y1' }] }
+          ],
+          minMaxSloty: [
+            { id: 's1', od: '07:00', do: '17:00', minNaTridu: 1, minNaBudovu: 0, dny: [], rotace: false }
+          ],
+          pravidla: {
+            zakazPrechodMeziBudovami: false
+          },
+          omezeniNeDohromady: []
+        };
+
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+
+        var tridaBudova = { t1: 'b1', t2: 'b2' };
+
+        // z1 nesmí přecházet (lokální 'zakázat')
+        for (var den = 1; den <= 5; den++) {
+          var z1Budovy = {};
+          for (var pi = 0; pi < r.prirazeni.length; pi++) {
+            var p = r.prirazeni[pi];
+            if (p.den !== den || p.zamestnanecId !== 'z1') continue;
+            for (var si = 0; si < p.segmenty.length; si++) {
+              var seg = p.segmenty[si];
+              var budId = seg.tridaId ? tridaBudova[seg.tridaId] : seg.budovaId;
+              if (budId) z1Budovy[budId] = true;
+            }
+          }
+          if (Object.keys(z1Budovy).length > 1) {
+            T.assert(false,
+              'Den ' + den + ': Osoba A přechází mezi budovami (lokální zakázat, i když globální povoleno)');
+          }
+        }
+      }
+    },
+
     {
       name: 'Bez nedostupnosti se chování nemění (stávající zaměstnanci bez pole nedostupnost)',
       run: function () {

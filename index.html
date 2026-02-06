@@ -102,6 +102,15 @@
               <button type="button" id="nedostupnost-btn-cely-den" class="btn btn-mala" title="Přidá nedostupnost na celý den (7:00–17:00)">Celý den</button>
             </div>
           </fieldset>
+          <p>
+            <label for="zamestnanci-prechod-budovy">Přechod mezi budovami</label>
+            <select id="zamestnanci-prechod-budovy">
+              <option value="výchozí">Výchozí (dle globálního nastavení)</option>
+              <option value="zakázat">Zakázat</option>
+              <option value="povolit">Povolit</option>
+            </select>
+            <span class="hint">Lokální nastavení: zda tento zaměstnanec smí v jednom dni pracovat ve více budovách. „Výchozí" respektuje globální pravidlo.</span>
+          </p>
           <p class="form-akce">
             <button type="submit" class="btn btn-primarni">Uložit</button>
             <button type="button" id="zamestnanci-form-zrusit" class="btn">Zrušit</button>
@@ -340,6 +349,23 @@
         <div id="ne-dohromady-seznam" class="omezeni-seznam" aria-live="polite">
           <!-- Seznam dvojic vykresluje JS -->
         </div>
+      </div>
+
+      <div class="pravidla-blok pravidla-prechod-budovy">
+        <h3 id="prechod-budovy-nadpis">Přechod mezi budovami</h3>
+        <p class="pravidla-popis">
+          Globální nastavení, zda zaměstnanec smí v jednom dni pracovat ve více budovách. Toto nastavení lze u konkrétního zaměstnance přepsat (v jeho detailu).
+        </p>
+        <div id="prechod-budovy-zprava" class="sloty-zprava sloty-uspech" role="status" aria-live="polite" hidden></div>
+        <form id="prechod-budovy-form" class="prekryv-form">
+          <p>
+            <label><input type="checkbox" id="prechod-budovy-zakazat" checked> Zakázat přechod mezi budovami</label>
+            <span class="hint">Je-li zaškrtnuto, zaměstnanec pracuje v jednom dni pouze v jedné budově (výchozí). Odškrtněte, pokud chcete přechod mezi budovami povolit.</span>
+          </p>
+          <p class="form-akce">
+            <button type="submit" class="btn btn-primarni">Uložit</button>
+          </p>
+        </form>
       </div>
 
       <p class="pravidla-dalsi">Výpočet návrhu směn využívá všechna výše nastavená pravidla (sekce <a href="#navrh-smen" data-sekce="navrh-smen" class="nav-odkaz">Návrh směn</a>).</p>

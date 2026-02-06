@@ -171,6 +171,17 @@
   }
 
   /**
+   * Vrátí textový popis nastavení přechodu mezi budovami pro tabulku.
+   * @param {string|undefined} hodnota - 'výchozí' | 'zakázat' | 'povolit'
+   * @returns {string}
+   */
+  function souhrPrechodBudovy(hodnota) {
+    if (hodnota === 'zakázat') return 'Zakázat';
+    if (hodnota === 'povolit') return 'Povolit';
+    return 'Výchozí';
+  }
+
+  /**
    * Vyplní formulář hodnotami zaměstnance (nebo prázdný při přidávání).
    * @param {Object|null} z - zaměstnanec nebo null
    */
@@ -191,6 +202,12 @@
     // Nedostupnost
     formNedostupnost = (z && Array.isArray(z.nedostupnost)) ? z.nedostupnost.slice() : [];
     vykresliNedostupnostFormular();
+    // Přechod mezi budovami (C5)
+    var prechodEl = document.getElementById('zamestnanci-prechod-budovy');
+    if (prechodEl) {
+      var prechodVal = (z && z.prechodMeziBudovami) ? z.prechodMeziBudovami : 'výchozí';
+      prechodEl.value = prechodVal;
+    }
   }
 
   /**
@@ -357,18 +374,20 @@
       thRazeni('role', 'Role'),
       thRazeni('kategorie', 'Kategorie'),
       '<th>Nedostupnost</th>',
+      '<th>Přechod budovy</th>',
       '<th>Akce</th>',
       '</tr></thead><tbody>'
     ];
-    var i, z, uv, kategText, nedostText, btnUpravit, btnSmazat;
+    var i, z, uv, kategText, nedostText, prechodText, btnUpravit, btnSmazat;
     for (i = 0; i < list.length; i += 1) {
       z = list[i];
       uv = minutyNaHodinyMinuty(z.uvazekMinutyTyden);
       kategText = (z.kmenovaVykryvaci === 'vykrývací') ? 'Vykrývací' : ('Kmenová' + (z.tridaId ? ' (' + escapeHtml(nazevTridy(z.tridaId)) + ')' : ''));
       nedostText = souhrNedostupnosti(z.nedostupnost);
+      prechodText = souhrPrechodBudovy(z.prechodMeziBudovami);
       btnUpravit = '<button type="button" class="btn btn-mala" data-akce="upravit" data-id="' + escapeAttr(z.id) + '">Upravit</button>';
       btnSmazat = '<button type="button" class="btn btn-mala" data-akce="smazat" data-id="' + escapeAttr(z.id) + '">Smazat</button>';
-      html.push('<tr><td>' + escapeHtml(z.jmeno || '') + '</td><td>' + uv.hodiny + ' h ' + uv.minuty + ' min</td><td>' + escapeHtml(z.role || '') + '</td><td>' + kategText + '</td><td class="td-nedostupnost">' + (nedostText ? escapeHtml(nedostText) : '<span class="hint">—</span>') + '</td><td>' + btnUpravit + ' ' + btnSmazat + '</td></tr>');
+      html.push('<tr><td>' + escapeHtml(z.jmeno || '') + '</td><td>' + uv.hodiny + ' h ' + uv.minuty + ' min</td><td>' + escapeHtml(z.role || '') + '</td><td>' + kategText + '</td><td class="td-nedostupnost">' + (nedostText ? escapeHtml(nedostText) : '<span class="hint">—</span>') + '</td><td>' + escapeHtml(prechodText) + '</td><td>' + btnUpravit + ' ' + btnSmazat + '</td></tr>');
     }
     html.push('</tbody></table>');
     el.innerHTML = html.join('');
@@ -427,6 +446,10 @@
 
     // Normalizovat nedostupnost z formuláře
     var nedost = (Model && Model.normalizujNedostupnost) ? Model.normalizujNedostupnost(formNedostupnost) : formNedostupnost.slice();
+    // Přechod mezi budovami (C5)
+    var prechodEl = document.getElementById('zamestnanci-prechod-budovy');
+    var prechod = (prechodEl && prechodEl.value) ? prechodEl.value : 'výchozí';
+    if (Model && Model.normalizujPrechodBudovy) prechod = Model.normalizujPrechodBudovy(prechod);
 
     if (id) {
       Storage.replaceData(function (d) {
@@ -440,13 +463,14 @@
             zam[i].kmenovaVykryvaci = kateg;
             zam[i].tridaId = tridaId;
             zam[i].nedostupnost = nedost;
+            zam[i].prechodMeziBudovami = prechod;
             break;
           }
         }
         return d;
       });
     } else {
-      var novy = Model.vytvorZamestnance(jmeno, minuty, role, kateg, tridaId, nedost);
+      var novy = Model.vytvorZamestnance(jmeno, minuty, role, kateg, tridaId, nedost, prechod);
       Storage.replaceData(function (d) {
         d.zamestnanci = d.zamestnanci || [];
         d.zamestnanci.push(novy);
@@ -589,6 +613,7 @@
     skryjFormular: skryjFormular,
     getRazeniKriteria: function () { return razeniKriteria.slice(); },
     nastavPrimarniRazeni: nastavPrimarniRazeni,
-    souhrNedostupnosti: souhrNedostupnosti
+    souhrNedostupnosti: souhrNedostupnosti,
+    souhrPrechodBudovy: souhrPrechodBudovy
   };
 })(typeof window !== 'undefined' ? window : this);

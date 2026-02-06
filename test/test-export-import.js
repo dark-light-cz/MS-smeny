@@ -197,6 +197,65 @@
         T.assert(Array.isArray(d.zamestnanci[1].nedostupnost), 'Béla má nedostupnost pole');
         T.assert(d.zamestnanci[1].nedostupnost.length === 0, 'Béla: prázdná nedostupnost (doplněno)');
       }
+    },
+    // --- C5: Přechod mezi budovami – import/export ---
+    {
+      name: 'import zachová prechodMeziBudovami u zaměstnanců (C5)',
+      run: function () {
+        S.resetCache();
+        var importData = {
+          zamestnanci: [
+            { id: 'z1', jmeno: 'Anna', uvazekMinutyTyden: 480, role: 'učitelka', prechodMeziBudovami: 'zakázat' },
+            { id: 'z2', jmeno: 'Béla', uvazekMinutyTyden: 480, role: 'učitelka', prechodMeziBudovami: 'povolit' },
+            { id: 'z3', jmeno: 'Cyril', uvazekMinutyTyden: 480, role: 'učitelka' }
+          ],
+          budovy: []
+        };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.zamestnanci[0].prechodMeziBudovami === 'zakázat', 'Anna: zakázat');
+        T.assert(d.zamestnanci[1].prechodMeziBudovami === 'povolit', 'Béla: povolit');
+        T.assert(d.zamestnanci[2].prechodMeziBudovami === 'výchozí', 'Cyril: výchozí (doplněno)');
+      }
+    },
+    {
+      name: 'import normalizuje neplatný prechodMeziBudovami na „výchozí" (C5)',
+      run: function () {
+        S.resetCache();
+        var importData = {
+          zamestnanci: [
+            { id: 'z1', jmeno: 'Test', uvazekMinutyTyden: 480, role: 'učitelka', prechodMeziBudovami: 'neplatna' }
+          ],
+          budovy: []
+        };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.zamestnanci[0].prechodMeziBudovami === 'výchozí', 'neplatná → výchozí');
+      }
+    },
+    {
+      name: 'import doplní pravidla.zakazPrechodMeziBudovami (C5)',
+      run: function () {
+        S.resetCache();
+        var importData = { zamestnanci: [], budovy: [], pravidla: {} };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.pravidla.zakazPrechodMeziBudovami === true, 'doplněno true (výchozí)');
+      }
+    },
+    {
+      name: 'import zachová pravidla.zakazPrechodMeziBudovami = false (C5)',
+      run: function () {
+        S.resetCache();
+        var importData = { zamestnanci: [], budovy: [], pravidla: { zakazPrechodMeziBudovami: false } };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(d.pravidla.zakazPrechodMeziBudovami === false, 'zachováno false');
+      }
     }
   ];
 
