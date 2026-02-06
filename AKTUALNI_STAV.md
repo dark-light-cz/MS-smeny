@@ -60,6 +60,7 @@
 - **Každý zaměstnanec musí mít v týdnu naplánovaný celý svůj úvazek** – žádné „nerozřazené" minuty.
 - **Souvislá pracovní doba:** zaměstnanec pracuje v rámci dne jeden souvislý blok (ne roztříštěné úseky s mezerami).
 - Teprve po naplánování směn se ověří, že v každém okamžiku jsou splněny minimální (a max.) počty osob na budovu/třídu.
+- **Zaměstnanec je vždy v konkrétní třídě** (pokud budova třídy má). Neexistuje stav „jsem na budově, ale ne ve třídě". Požadavek „min 1 na budovu" je splněn tím, že je alespoň 1 osoba v libovolné třídě dané budovy. Při otevírání/zavírání budovy osoba pokračuje (nebo začíná) ve třídě, kde pracuje — žádné segmenty „Budova: …" bez třídy.
 
 ---
 

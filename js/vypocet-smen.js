@@ -265,6 +265,37 @@
       if (demandInfo.budovaDemand.hasOwnProperty(bk)) budovaIds.push(bk);
     }
 
+    // Mapa budovaId → [tridaId, ...]
+    var tridyProBudovu = {};
+    for (i = 0; i < budovy.length; i++) {
+      var bTridy = budovy[i].tridy || [];
+      tridyProBudovu[budovy[i].id] = [];
+      for (j = 0; j < bTridy.length; j++) {
+        tridyProBudovu[budovy[i].id].push(bTridy[j].id);
+      }
+    }
+
+    // Vybere třídu v budově pro zaměstnance (preferuje předchozí třídu, pak nejméně obsazenou)
+    function pickClassInBuilding(bId, zId, currentM) {
+      var candidates = tridyProBudovu[bId] || [];
+      if (candidates.length === 0) return null;
+      // Preferovat třídu, kde zaměstnanec nedávno byl
+      for (var ci = 0; ci < candidates.length; ci++) {
+        if (wasRecentlyAt(zId, candidates[ci], 'trida', currentM)) return candidates[ci];
+      }
+      // Jinak třídu s nejmenším obsazením
+      var bestTid = candidates[0];
+      var bestCount = classCount[candidates[0]] || 0;
+      for (var ci2 = 1; ci2 < candidates.length; ci2++) {
+        var cnt = classCount[candidates[ci2]] || 0;
+        if (cnt < bestCount) {
+          bestCount = cnt;
+          bestTid = candidates[ci2];
+        }
+      }
+      return bestTid;
+    }
+
     // Sledování přesunů za den
     var transitions = {}; // zamestnanecId → počet změn lokace
     for (i = 0; i < shifts.length; i++) transitions[shifts[i].zamestnanecId] = 0;
@@ -363,7 +394,13 @@
             if (isClass) {
               doAssign(stickyList[si], null, locId);
             } else {
-              doAssign(stickyList[si], locId, null);
+              // Budova-only sticky: převést na třídu v budově
+              var stickyClass = pickClassInBuilding(locId, stickyList[si], m);
+              if (stickyClass) {
+                doAssign(stickyList[si], null, stickyClass);
+              } else {
+                doAssign(stickyList[si], locId, null);
+              }
             }
           }
         }
@@ -411,7 +448,7 @@
         }
       }
 
-      // Krok 4: Zaplnit neobsazené budovy (osoby ve třídách se počítají)
+      // Krok 4: Zaplnit neobsazené budovy — přiřadit do TŘÍDY v budově (ne na budovu bez třídy)
       for (i = 0; i < budovaIds.length; i++) {
         var bIdFill = budovaIds[i];
         var bNeed = (buildDem[bIdFill] || 0) - (buildingCount[bIdFill] || 0);
@@ -419,19 +456,34 @@
         for (j = 0; j < onShift.length; j++) {
           if (bNeed <= 0) break;
           if (!assigned[onShift[j]]) {
-            doAssign(onShift[j], bIdFill, null);
+            var classForBuild = pickClassInBuilding(bIdFill, onShift[j], m);
+            if (classForBuild) {
+              doAssign(onShift[j], null, classForBuild);
+            } else {
+              // Fallback: budova bez tříd (výjimečný případ)
+              doAssign(onShift[j], bIdFill, null);
+            }
             bNeed--;
           }
         }
       }
 
-      // Krok 5: Zbylí nepřiřazení → zůstat kde byli, nebo první třída/budova
+      // Krok 5: Zbylí nepřiřazení → zůstat kde byli (v třídě), nebo přiřadit do třídy
       for (i = 0; i < onShift.length; i++) {
         var zIdR = onShift[i];
         if (assigned[zIdR]) continue;
         var prevR = (m > 0 && assignments[zIdR]) ? assignments[zIdR][m - 1] : null;
-        if (prevR) {
-          doAssign(zIdR, prevR.budovaId, prevR.tridaId);
+        if (prevR && prevR.tridaId) {
+          // Pokračovat v předchozí třídě
+          doAssign(zIdR, null, prevR.tridaId);
+        } else if (prevR && prevR.budovaId) {
+          // Předchozí bylo na budově (nemělo by se stát) → převést na třídu
+          var classConvert = pickClassInBuilding(prevR.budovaId, zIdR, m);
+          if (classConvert) {
+            doAssign(zIdR, null, classConvert);
+          } else {
+            doAssign(zIdR, prevR.budovaId, null);
+          }
         } else if (tridaIds.length > 0) {
           doAssign(zIdR, null, tridaIds[0]);
         } else if (budovaIds.length > 0) {

@@ -158,6 +158,35 @@
           T.assert(count9to11 >= 2, 'Den ' + den + ': v třídě 1 v čase překryvu ' + count9to11 + ' osob (potřeba ≥2)');
         }
       }
+    },
+    {
+      name: 'Žádný segment nemá přiřazení na budovu bez třídy (pokud budova má třídy)',
+      run: function () {
+        if (!M) return;
+        var z1 = M.vytvorZamestnance('A', 1860, M.ROLE.UCITELKA);
+        var z2 = M.vytvorZamestnance('B', 1860, M.ROLE.UCITELKA);
+        var b = M.vytvorBudovu('Budova');
+        b.tridy.push(M.vytvorTridu('Třída 1'));
+        var data = {
+          zamestnanci: [z1, z2],
+          budovy: [b],
+          minMaxSloty: [
+            { id: 's1', od: '07:00', do: '07:45', minNaBudovu: 1, minNaTridu: 0, dny: [], rotace: false },
+            { id: 's2', od: '07:45', do: '16:00', minNaBudovu: 0, minNaTridu: 1, dny: [], rotace: false },
+            { id: 's3', od: '16:00', do: '17:00', minNaBudovu: 1, minNaTridu: 0, dny: [], rotace: false }
+          ]
+        };
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+        for (var i = 0; i < r.prirazeni.length; i++) {
+          var p = r.prirazeni[i];
+          for (var j = 0; j < p.segmenty.length; j++) {
+            var seg = p.segmenty[j];
+            T.assert(seg.tridaId != null,
+              'Segment bez třídy: den ' + p.den + ', ' + seg.od + '–' + seg.do + ' (budova: ' + seg.budovaId + ')');
+          }
+        }
+      }
     }
   ];
 
