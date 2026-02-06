@@ -27,6 +27,12 @@ alwaysApply: true
   - Pokud odpověď vyvolá nový dotaz, přidat ho do seznamu v OPEN_QUESTIONS.md.
 - **Po vyřešení všech dotazů** – krok zapracování: seznam dotazů a odpovědí zapracovat do dokumentace (specifikace, feature set). Důležitý je **finální stav a funkce**, ne detailní cesta, jak jsme se k tomu dobrali. Cíl: přehlednost aktuálního stavu a feature setu.
 
+## Anonymizace vzorových dat
+
+- Uživatel může poskytnout **stažené příklady konfigurace nebo výsledku plánování** (exporty z aplikace) pro analýzu chyb, psaní testů apod. Tato data mohou obsahovat **reálná jména osob a reference na konkrétní školky**.
+- **Pravidlo:** Kdykoli s takovými daty pracuješ a máš je **použít v kódu, v testech, v commit zprávách nebo v jiném textu v repozitáři**, nejprve je **anonymizuj** – nahraď jména a názvy škol/tříd/budov fiktivními (např. „Učitelka A“, „Školka X“, „Třída Berušky“ → „Třída 1“). Do repozitáře ani do výstupu pro uživatele nevkládej reálné identifikující údaje z těchto vzorků.
+- Při psaní testů založených na dodaném příkladu používej vždy anonymizovanou verzi dat.
+
 ## Testy
 
 - **Po implementaci nové funkce** vždy:

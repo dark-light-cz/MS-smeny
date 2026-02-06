@@ -87,6 +87,89 @@
     if (wrap) wrap.hidden = !(kmenova && kmenova.checked);
   }
 
+  // --- Nedostupnost – dočasný stav při úpravě formuláře ---
+
+  /** Dočasné pole nedostupnosti (platné během editace formuláře). */
+  var formNedostupnost = [];
+
+  /** Názvy dnů pro zobrazení. */
+  var DNY_NAZVY = { 1: 'Po', 2: 'Út', 3: 'St', 4: 'Čt', 5: 'Pá' };
+  var DNY_NAZVY_DLOUHE = { 1: 'Pondělí', 2: 'Úterý', 3: 'Středa', 4: 'Čtvrtek', 5: 'Pátek' };
+
+  /**
+   * Vykreslí seznam nedostupnosti ve formuláři.
+   */
+  function vykresliNedostupnostFormular() {
+    var el = document.getElementById('nedostupnost-seznam');
+    if (!el) return;
+    if (formNedostupnost.length === 0) {
+      el.innerHTML = '<p class="nedostupnost-prazdno">Žádná nedostupnost – zaměstnanec je k dispozici celý týden.</p>';
+      return;
+    }
+    // Seřadit podle dne a času
+    var sorted = formNedostupnost.slice().sort(function (a, b) {
+      if (a.den !== b.den) return a.den - b.den;
+      return a.od.localeCompare(b.od);
+    });
+    var html = ['<table class="tabulka-nedostupnost"><thead><tr><th>Den</th><th>Od</th><th>Do</th><th>Akce</th></tr></thead><tbody>'];
+    for (var i = 0; i < sorted.length; i++) {
+      var n = sorted[i];
+      html.push('<tr><td>' + escapeHtml(DNY_NAZVY_DLOUHE[n.den] || String(n.den)) + '</td>');
+      html.push('<td>' + escapeHtml(n.od) + '</td>');
+      html.push('<td>' + escapeHtml(n.do) + '</td>');
+      html.push('<td><button type="button" class="btn btn-mala" data-akce="nedostupnost-smazat" data-nd-den="' + n.den + '" data-nd-od="' + escapeAttr(n.od) + '" data-nd-do="' + escapeAttr(n.do) + '">Odebrat</button></td>');
+      html.push('</tr>');
+    }
+    html.push('</tbody></table>');
+    el.innerHTML = html.join('');
+  }
+
+  /**
+   * Přidá blok nedostupnosti do formNedostupnost a překreslí.
+   */
+  function pridatNedostupnost(den, od, do_) {
+    den = parseInt(den, 10);
+    if (den < 1 || den > 5 || !od || !do_) return;
+    if (od >= do_) return; // čas „od" musí být před „do"
+    // Kontrola duplicity
+    var dup = formNedostupnost.some(function (n) {
+      return n.den === den && n.od === od && n.do === do_;
+    });
+    if (dup) return;
+    formNedostupnost.push({ den: den, od: od, do: do_ });
+    vykresliNedostupnostFormular();
+  }
+
+  /**
+   * Odebere blok nedostupnosti z formNedostupnost a překreslí.
+   */
+  function odebratNedostupnost(den, od, do_) {
+    den = parseInt(den, 10);
+    formNedostupnost = formNedostupnost.filter(function (n) {
+      return !(n.den === den && n.od === od && n.do === do_);
+    });
+    vykresliNedostupnostFormular();
+  }
+
+  /**
+   * Vrátí krátký textový souhrn nedostupnosti pro tabulku zaměstnanců.
+   * @param {Array} nedostupnost
+   * @returns {string}
+   */
+  function souhrNedostupnosti(nedostupnost) {
+    if (!Array.isArray(nedostupnost) || nedostupnost.length === 0) return '';
+    var sorted = nedostupnost.slice().sort(function (a, b) {
+      if (a.den !== b.den) return a.den - b.den;
+      return a.od.localeCompare(b.od);
+    });
+    var parts = [];
+    for (var i = 0; i < sorted.length; i++) {
+      var n = sorted[i];
+      parts.push((DNY_NAZVY[n.den] || String(n.den)) + ' ' + n.od + '\u2013' + n.do);
+    }
+    return parts.join(', ');
+  }
+
   /**
    * Vyplní formulář hodnotami zaměstnance (nebo prázdný při přidávání).
    * @param {Object|null} z - zaměstnanec nebo null
@@ -105,6 +188,9 @@
     if (vykryvaciEl) vykryvaciEl.checked = (kateg === 'vykrývací');
     naplnSelectTridy(z && z.tridaId ? z.tridaId : null);
     toggleTridaWrapper();
+    // Nedostupnost
+    formNedostupnost = (z && Array.isArray(z.nedostupnost)) ? z.nedostupnost.slice() : [];
+    vykresliNedostupnostFormular();
   }
 
   /**
@@ -270,17 +356,19 @@
       thRazeni('uvazek', 'Úvazek (týden)'),
       thRazeni('role', 'Role'),
       thRazeni('kategorie', 'Kategorie'),
+      '<th>Nedostupnost</th>',
       '<th>Akce</th>',
       '</tr></thead><tbody>'
     ];
-    var i, z, uv, kategText, btnUpravit, btnSmazat;
+    var i, z, uv, kategText, nedostText, btnUpravit, btnSmazat;
     for (i = 0; i < list.length; i += 1) {
       z = list[i];
       uv = minutyNaHodinyMinuty(z.uvazekMinutyTyden);
       kategText = (z.kmenovaVykryvaci === 'vykrývací') ? 'Vykrývací' : ('Kmenová' + (z.tridaId ? ' (' + escapeHtml(nazevTridy(z.tridaId)) + ')' : ''));
+      nedostText = souhrNedostupnosti(z.nedostupnost);
       btnUpravit = '<button type="button" class="btn btn-mala" data-akce="upravit" data-id="' + escapeAttr(z.id) + '">Upravit</button>';
       btnSmazat = '<button type="button" class="btn btn-mala" data-akce="smazat" data-id="' + escapeAttr(z.id) + '">Smazat</button>';
-      html.push('<tr><td>' + escapeHtml(z.jmeno || '') + '</td><td>' + uv.hodiny + ' h ' + uv.minuty + ' min</td><td>' + escapeHtml(z.role || '') + '</td><td>' + kategText + '</td><td>' + btnUpravit + ' ' + btnSmazat + '</td></tr>');
+      html.push('<tr><td>' + escapeHtml(z.jmeno || '') + '</td><td>' + uv.hodiny + ' h ' + uv.minuty + ' min</td><td>' + escapeHtml(z.role || '') + '</td><td>' + kategText + '</td><td class="td-nedostupnost">' + (nedostText ? escapeHtml(nedostText) : '<span class="hint">—</span>') + '</td><td>' + btnUpravit + ' ' + btnSmazat + '</td></tr>');
     }
     html.push('</tbody></table>');
     el.innerHTML = html.join('');
@@ -337,6 +425,9 @@
     if (!Storage || !Storage.replaceData) return;
     if (!Model || !Model.vytvorZamestnance) return;
 
+    // Normalizovat nedostupnost z formuláře
+    var nedost = (Model && Model.normalizujNedostupnost) ? Model.normalizujNedostupnost(formNedostupnost) : formNedostupnost.slice();
+
     if (id) {
       Storage.replaceData(function (d) {
         var zam = d.zamestnanci || [];
@@ -348,13 +439,14 @@
             zam[i].role = role;
             zam[i].kmenovaVykryvaci = kateg;
             zam[i].tridaId = tridaId;
+            zam[i].nedostupnost = nedost;
             break;
           }
         }
         return d;
       });
     } else {
-      var novy = Model.vytvorZamestnance(jmeno, minuty, role, kateg, tridaId);
+      var novy = Model.vytvorZamestnance(jmeno, minuty, role, kateg, tridaId, nedost);
       Storage.replaceData(function (d) {
         d.zamestnanci = d.zamestnanci || [];
         d.zamestnanci.push(novy);
@@ -438,6 +530,46 @@
     if (kmenovaEl) kmenovaEl.addEventListener('change', toggleTridaWrapper);
     if (vykryvaciEl) vykryvaciEl.addEventListener('change', toggleTridaWrapper);
 
+    // Nedostupnost – tlačítko „Přidat"
+    var btnNedostPridat = document.getElementById('nedostupnost-btn-pridat');
+    if (btnNedostPridat) {
+      btnNedostPridat.addEventListener('click', function () {
+        var denEl = document.getElementById('nedostupnost-den');
+        var odEl = document.getElementById('nedostupnost-od');
+        var doEl = document.getElementById('nedostupnost-do');
+        if (denEl && odEl && doEl) {
+          pridatNedostupnost(denEl.value, odEl.value, doEl.value);
+        }
+      });
+    }
+
+    // Nedostupnost – tlačítko „Celý den"
+    var btnCelyDen = document.getElementById('nedostupnost-btn-cely-den');
+    if (btnCelyDen) {
+      btnCelyDen.addEventListener('click', function () {
+        var denEl = document.getElementById('nedostupnost-den');
+        if (denEl) {
+          pridatNedostupnost(denEl.value, '07:00', '17:00');
+        }
+      });
+    }
+
+    // Nedostupnost – delegace kliku na „Odebrat" v seznamu
+    var ndSeznam = document.getElementById('nedostupnost-seznam');
+    if (ndSeznam) {
+      ndSeznam.addEventListener('click', function (e) {
+        var btn = e.target;
+        if (btn && btn.getAttribute && btn.getAttribute('data-akce') === 'nedostupnost-smazat') {
+          var den = btn.getAttribute('data-nd-den');
+          var od = btn.getAttribute('data-nd-od');
+          var do_ = btn.getAttribute('data-nd-do');
+          if (den && od && do_) {
+            odebratNedostupnost(den, od, do_);
+          }
+        }
+      });
+    }
+
     var seznam = document.getElementById('zamestnanci-seznam');
     if (seznam) {
       seznam.addEventListener('click', naKlikSeznam);
@@ -446,11 +578,8 @@
     vykresliSeznam();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  // Skripty jsou na konci <body>, DOM je kompletní – init() voláme ihned.
+  init();
 
   global.MSemenyZamestnanci = {
     minutyNaHodinyMinuty: minutyNaHodinyMinuty,
@@ -459,6 +588,7 @@
     zobrazFormular: zobrazFormular,
     skryjFormular: skryjFormular,
     getRazeniKriteria: function () { return razeniKriteria.slice(); },
-    nastavPrimarniRazeni: nastavPrimarniRazeni
+    nastavPrimarniRazeni: nastavPrimarniRazeni,
+    souhrNedostupnosti: souhrNedostupnosti
   };
 })(typeof window !== 'undefined' ? window : this);

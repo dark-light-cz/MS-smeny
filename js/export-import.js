@@ -74,6 +74,7 @@
       });
       return budova;
     });
+    var normNedost = Model && Model.normalizujNedostupnost ? Model.normalizujNedostupnost : function (n) { return Array.isArray(n) ? n : []; };
     var zamestnanci = (data.zamestnanci || []).map(function (z) {
       var k = z.kmenovaVykryvaci === 'vykrývací' ? 'vykrývací' : 'kmenová';
       var tid = (k === 'kmenová' && z.tridaId) ? z.tridaId : null;
@@ -83,7 +84,8 @@
         uvazekMinutyTyden: z.uvazekMinutyTyden != null ? z.uvazekMinutyTyden : 0,
         role: z.role != null ? z.role : 'učitelka',
         kmenovaVykryvaci: k,
-        tridaId: tid
+        tridaId: tid,
+        nedostupnost: normNedost(z.nedostupnost)
       };
     });
     var out = {

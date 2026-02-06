@@ -158,18 +158,39 @@
   }
 
   /**
-   * Struktura zaměstnance: id, jméno, úvazek, role, kmenová/vykrývací, přiřazená třída.
+   * Struktura zaměstnance: id, jméno, úvazek, role, kmenová/vykrývací, přiřazená třída, nedostupnost.
    * kmenovaVykryvaci: 'kmenová' | 'vykrývací'. tridaId: id třídy (pouze u kmenové).
+   * nedostupnost: pole objektů { den: 1–5 (Po–Pá), od: "HH:mm", do: "HH:mm" } – časová období v týdnu, kdy zaměstnanec nemůže pracovat.
    */
-  function vytvorZamestnance(jmeno, uvazekMinutyTyden, role, kmenovaVykryvaci, tridaId) {
+  function vytvorZamestnance(jmeno, uvazekMinutyTyden, role, kmenovaVykryvaci, tridaId, nedostupnost) {
     return {
       id: generujId(),
       jmeno: jmeno || '',
       uvazekMinutyTyden: uvazekMinutyTyden != null ? uvazekMinutyTyden : 0,
       role: role || ROLE.UCITELKA,
       kmenovaVykryvaci: kmenovaVykryvaci === 'vykrývací' ? 'vykrývací' : 'kmenová',
-      tridaId: (kmenovaVykryvaci === 'kmenová' && tridaId) ? tridaId : null
+      tridaId: (kmenovaVykryvaci === 'kmenová' && tridaId) ? tridaId : null,
+      nedostupnost: normalizujNedostupnost(nedostupnost)
     };
+  }
+
+  /**
+   * Normalizuje pole nedostupnosti – ověří strukturu a vrátí čisté pole.
+   * @param {Array|*} nedostupnost
+   * @returns {Array<{den: number, od: string, do: string}>}
+   */
+  function normalizujNedostupnost(nedostupnost) {
+    if (!Array.isArray(nedostupnost)) return [];
+    return nedostupnost
+      .filter(function (n) {
+        return n && typeof n === 'object' &&
+          typeof n.den === 'number' && n.den >= 1 && n.den <= 5 &&
+          typeof n.od === 'string' && n.od.length >= 4 &&
+          typeof n.do === 'string' && n.do.length >= 4;
+      })
+      .map(function (n) {
+        return { den: n.den, od: n.od, do: n.do };
+      });
   }
 
   // Export do globálního objektu (bez build stepu)
@@ -186,6 +207,7 @@
     vytvorTridu: vytvorTridu,
     vytvorZamestnance: vytvorZamestnance,
     vytvorMinMaxSlot: vytvorMinMaxSlot,
-    vytvorOmezeniNeDohromady: vytvorOmezeniNeDohromady
+    vytvorOmezeniNeDohromady: vytvorOmezeniNeDohromady,
+    normalizujNedostupnost: normalizujNedostupnost
   };
 })(typeof window !== 'undefined' ? window : this);

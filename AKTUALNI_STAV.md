@@ -83,6 +83,8 @@
   - Tabulka zaměstnanců se automaticky řadí: nejdřív podle role (ředitelka, zástupkyně, učitelka, asistentka pedagoga, školník/školnice), v rámci role podle jména (localeCompare cs).
 - **Zaměstnanci – řazení sloupců uživatelem (B1c):**
   - Klik na záhlaví sloupce (Jméno, Úvazek, Role, Kategorie) nastaví řazení podle tohoto sloupce (opakovaný klik přepne směr). Shift+klik přidá sloupec jako další kritérium. V záhlaví se zobrazí šipka ▲/▼ a pořadí kritérií (1, 2, …).
+- **Zaměstnanci – nedostupnost v rámci týdne (B1d):**
+  - U každého zaměstnance lze nakonfigurovat časová období, kdy nemůže pracovat (den Po–Pá + čas od–do). Účel: částečné úvazky, vyhrazený čas vedení, rodinné důvody. Ve formuláři zaměstnance: fieldset „Nedostupnost v rámci týdne" – přidání bloku (den, od, do), tlačítko „Celý den" (7:00–17:00), odebrání. V tabulce zaměstnanců sloupec Nedostupnost (krátký souhrn). Uložení do modelu (nedostupnost: [{den, od, do}]), export/import normalizuje (neplatné záznamy odfiltruje, chybějící pole doplní prázdným polem). **Algoritmus výpočtu směn nedostupnost respektuje** – směna není položena do nedostupných minut; úvazek se přerozdělí proporčně na dostupné dny.
 - **Budovy a třídy – struktura (B2):**
   - V sekci Budovy a třídy: hierarchie budova → třídy. CRUD budov (název), v každé budově CRUD tříd (název). Formuláře pro přidání/úpravu budovy a třídy, u třídy výběr budovy (při úpravě lze přesunout do jiné budovy). Smazání budovy (i se třídami) a smazání třídy s potvrzením. Ukládání do modelu a Local Storage (js/budovy-tridy.js).
 - **Otevírací doba (B3):**
@@ -100,7 +102,7 @@
 - **Požadavky na počet osob – duplikovat řádek (B4b):**
   - U každého časového slotu tlačítko „Duplikovat“: otevře formulář s předvyplněnými hodnotami daného řádku pro uložení jako nový slot (uživatel může upravit a uložit).
 - **Výpočet návrhu směn – první verze (D1) a rozšíření (D3):**
-  - Algoritmus na vstupu bere konfiguraci (zaměstnanci, budovy, minMaxSloty, pravidla). Výstup: přiřazení „kdo kdy kde“. Každý zaměstnanec má na každý den seznam navazujících segmentů (kde je v daném čase). Sloty jsou kontrolní pravidla (ne přímá přiřazení). Fáze: demand → umístění směn → přiřazení míst → segmenty. D3: (1) **Minimální překryv** – pokud jsou třídy a pravidla.minimalniPrekryvMinuty > 0, přidá se syntetický slot (např. 09:00–11:00) s minNaTridu 2 v každé třídě. (2) **Kmenové/vykrývací** – při výběru osoby pro třídu se preferuje kmenová přiřazená k té třídě; u vykrývací se respektuje max počet tříd za den (vykryvaciMaxPresun + 1). (3) **Rotace** – u slotu s rotace: true se preferují osoby s menším počtem přiřazení do daného slotu/místa v týdnu. API: `MSemenyVypocetSmen.vypocetSmen(data)` (js/vypocet-smen.js). V návrhu směn se překryv zobrazí jako „Překryv (09:00–11:00)“.
+  - Algoritmus na vstupu bere konfiguraci (zaměstnanci, budovy, minMaxSloty, pravidla). Výstup: přiřazení „kdo kdy kde“. Každý zaměstnanec má na každý den seznam navazujících segmentů (kde je v daném čase). Sloty jsou kontrolní pravidla (ne přímá přiřazení). Fáze: demand → umístění směn → přiřazení míst → segmenty. D3: (1) **Minimální překryv** – pokud jsou třídy a pravidla.minimalniPrekryvMinuty > 0, přidá se syntetický slot (např. 09:00–11:00) s minNaTridu 2 v každé třídě. (2) **Kmenové/vykrývací** – při výběru osoby pro třídu se preferuje kmenová přiřazená k té třídě; u vykrývací se respektuje max počet tříd za den (vykryvaciMaxPresun + 1). (3) **Rotace** – u slotu s rotace: true se preferují osoby s menším počtem přiřazení do daného slotu/místa v týdnu. API: `MSemenyVypocetSmen.vypocetSmen(data)` (js/vypocet-smen.js). V návrhu směn se překryv zobrazí jako „Překryv (09:00–11:00)“. (4) **Nedostupnost (B1d)** – pro každého zaměstnance a den se sestaví maska dostupnosti; směna se nepokládá do nedostupných minut; úvazek se přerozdělí proporčně podle dostupného času v jednotlivých dnech.
 - **Zobrazení návrhu směn (D2):**
   - Sekce „Návrh směn“: popis, tlačítko „Přepočítat“, po výpočtu tabulka se sloupci Den, Zaměstnanec, Čas, Místo. Chyba výpočtu (např. nedostatek úvazků) se zobrazí pod tlačítkem. Prázdný stav před prvním výpočtem (js/navrh-smen-ui.js).
 - **Grafické zobrazení návrhu pracovní doby (D2b):**
@@ -133,6 +135,8 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2026-02-06: Nedostupnost zaměstnanců (B1d) zapracována do algoritmu výpočtu směn – buildAvailMask/longestAvailBlock, placeShifts respektuje masku, úvazek se přerozdělí proporčně; 8 nových testů.
+- 2026-02-06: Implementován B1d – nedostupnost zaměstnanců v rámci týdne: konfigurace v UI (přidat/odebrat bloky, celý den), model, tabulka, export/import.
 - 2026-02-05: Implementován D2b – grafické zobrazení návrhu pracovní doby: budovy/třídy, časová osa, barevné segmenty, tooltip, legenda, výběr dne (js/navrh-graf.js, test-navrh-graf.js).
 - 2026-02-05: Přepracován algoritmus výpočtu směn (D1/D3): plánování souvislých směn místo přiřazování do slotů; sloty jsou kontrolní pravidla; výstup = segmenty per zaměstnanec; aktualizovány UI (tabulka Den/Zaměstnanec/Čas/Místo), CSV export a testy.
 - 2026-02-05: Oprava: row is not defined v navrh-smen-ui.js; přidán test vykresliNavrh.

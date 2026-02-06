@@ -176,6 +176,27 @@
         T.assert(Array.isArray(d.omezeniNeDohromady) && d.omezeniNeDohromady.length === 1, 'jedna dvojice');
         T.assert(d.omezeniNeDohromady[0].osoba1Id === 'z1' && d.omezeniNeDohromady[0].osoba2Id === 'z2', 'dvojice zachována');
       }
+    },
+    {
+      name: 'import zachová a normalizuje nedostupnost u zaměstnanců (B1d)',
+      run: function () {
+        S.resetCache();
+        var importData = {
+          zamestnanci: [
+            { id: 'z1', jmeno: 'Anna', uvazekMinutyTyden: 480, role: 'učitelka', nedostupnost: [{ den: 1, od: '07:00', do: '12:00' }, { den: 6, od: '07:00', do: '12:00' }] },
+            { id: 'z2', jmeno: 'Béla', uvazekMinutyTyden: 480, role: 'učitelka' }
+          ],
+          budovy: []
+        };
+        var ok = EI.importZeJSON(JSON.stringify(importData));
+        T.assert(ok === true, 'import proběhl');
+        var d = S.getData();
+        T.assert(Array.isArray(d.zamestnanci[0].nedostupnost), 'Anna má nedostupnost pole');
+        T.assert(d.zamestnanci[0].nedostupnost.length === 1, 'Anna: 1 platný blok (den 6 odfiltrován)');
+        T.assert(d.zamestnanci[0].nedostupnost[0].den === 1, 'Anna: den Po');
+        T.assert(Array.isArray(d.zamestnanci[1].nedostupnost), 'Béla má nedostupnost pole');
+        T.assert(d.zamestnanci[1].nedostupnost.length === 0, 'Béla: prázdná nedostupnost (doplněno)');
+      }
     }
   ];
 

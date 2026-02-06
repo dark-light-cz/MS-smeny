@@ -19,6 +19,37 @@
   <p>Spouštění testů datového modelu a Local Storage. Otevřete konzoli (F12) pro výstup.</p>
   <div id="vysledek"></div>
 
+  <!-- DOM scaffold pro testy zaměstnanců (B1d) – potřeba před načtením zamestnanci.js, aby init() připnula listenery -->
+  <div id="test-scaffold-zamestnanci" hidden>
+    <button type="button" id="zamestnanci-pridat"></button>
+    <div id="zamestnanci-formular" hidden>
+      <form id="zamestnanci-form">
+        <input type="hidden" id="zamestnanci-form-id" value="">
+        <input type="text" id="zamestnanci-jmeno" value="">
+        <input type="number" id="zamestnanci-hodiny" value="0">
+        <input type="number" id="zamestnanci-minuty" value="0">
+        <select id="zamestnanci-role"><option value="učitelka">učitelka</option></select>
+        <input type="radio" name="zamestnanci-kategorie" value="kmenová" id="zamestnanci-kmenova">
+        <input type="radio" name="zamestnanci-kategorie" value="vykrývací" id="zamestnanci-vykryvaci">
+        <p id="zamestnanci-trida-wrapper"><select id="zamestnanci-trida"><option value="">—</option></select></p>
+        <div id="nedostupnost-seznam"></div>
+        <select id="nedostupnost-den">
+          <option value="1">Pondělí</option>
+          <option value="2">Úterý</option>
+          <option value="3">Středa</option>
+          <option value="4">Čtvrtek</option>
+          <option value="5">Pátek</option>
+        </select>
+        <input type="time" id="nedostupnost-od" value="07:00">
+        <input type="time" id="nedostupnost-do" value="17:00">
+        <button type="button" id="nedostupnost-btn-pridat">Přidat</button>
+        <button type="button" id="nedostupnost-btn-cely-den">Celý den</button>
+        <button type="button" id="zamestnanci-form-zrusit">Zrušit</button>
+      </form>
+    </div>
+    <div id="zamestnanci-seznam"></div>
+  </div>
+
   <!-- Pořadí: model → storage → export-import → navigace → runner → testy -->
   <script src="../js/data-model.js"></script>
   <script src="../js/storage.js"></script>

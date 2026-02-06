@@ -349,11 +349,8 @@
     vykresliHierarchii();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  // Skripty jsou na konci <body>, DOM je kompletní – init() voláme ihned.
+  init();
 
   global.MSemenyBudovyTridy = {
     vykresliHierarchii: vykresliHierarchii,

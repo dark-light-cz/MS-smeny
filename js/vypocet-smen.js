@@ -45,6 +45,51 @@
     return arr;
   }
 
+  /* === Dostupnost zaměstnanců (nedostupnost B1d) === */
+
+  /**
+   * Sestaví masku dostupnosti zaměstnance pro daný den.
+   * Vrací pole boolean délky dayLen (true = zaměstnanec je dostupný v dané minutě).
+   * @param {Object} zamestnanec - záznam zaměstnance (s polem nedostupnost)
+   * @param {number} den - den v týdnu (1=Po … 5=Pá)
+   * @param {number} rangeStart - začátek pracovního dne v minutách (absolutně)
+   * @param {number} dayLen - délka pracovního dne v minutách
+   * @returns {boolean[]}
+   */
+  function buildAvailMask(zamestnanec, den, rangeStart, dayLen) {
+    var mask = makeArray(dayLen, true);
+    var nedostupnost = zamestnanec.nedostupnost || [];
+    for (var i = 0; i < nedostupnost.length; i++) {
+      var n = nedostupnost[i];
+      if (n.den !== den) continue;
+      var od = Math.max(0, timeToMinuty(n.od) - rangeStart);
+      var doM = Math.min(dayLen, timeToMinuty(n.do) - rangeStart);
+      for (var m = od; m < doM; m++) {
+        mask[m] = false;
+      }
+    }
+    return mask;
+  }
+
+  /**
+   * Najde délku nejdelšího souvislého bloku true v masce.
+   * Slouží ke zjištění, jak dlouhou směnu může zaměstnanec v daný den mít.
+   * @param {boolean[]} mask
+   * @returns {number} délka nejdelšího bloku v minutách
+   */
+  function longestAvailBlock(mask) {
+    var max = 0, current = 0;
+    for (var i = 0; i < mask.length; i++) {
+      if (mask[i]) {
+        current++;
+        if (current > max) max = current;
+      } else {
+        current = 0;
+      }
+    }
+    return max;
+  }
+
   /* === Fáze 0: Otevírací doba === */
 
   /** Zjistí rozsah otevírací doby (min od, max do) ze všech budov. */
@@ -170,8 +215,12 @@
   /**
    * Greedy: seřadí zaměstnance od nejdelší směny, každému přiřadí optimální začátek
    * tak, aby co nejlépe pokryl zbývající poptávku.
+   * @param {Array} empDaily - zaměstnanci s dailyMin
+   * @param {number[]} curve - křivka poptávky
+   * @param {number} dayLen - délka dne v minutách
+   * @param {Object} [availMasks] - zamestnanecId → boolean[] maska dostupnosti (B1d)
    */
-  function placeShifts(empDaily, curve, dayLen) {
+  function placeShifts(empDaily, curve, dayLen, availMasks) {
     var sorted = empDaily.slice().sort(function (a, b) {
       return b.dailyMin - a.dailyMin;
     });
@@ -185,11 +234,22 @@
       if (dm <= 0) continue;
       if (dm > dayLen) dm = dayLen;
 
-      var bestStart = 0;
+      var mask = (availMasks && availMasks[z.id]) ? availMasks[z.id] : null;
+
+      var bestStart = -1;
       var bestScore = -Infinity;
 
       // Zkusit pozice s krokem STEP
       for (var s = 0; s <= dayLen - dm; s += STEP) {
+        // Kontrola dostupnosti: směna nesmí zasahovat do nedostupných minut
+        if (mask) {
+          var avail = true;
+          for (var cm = s; cm < s + dm; cm++) {
+            if (!mask[cm]) { avail = false; break; }
+          }
+          if (!avail) continue;
+        }
+
         var score = 0;
         for (var m = s; m < s + dm; m++) {
           var residual = curve[m] - coverage[m];
@@ -204,15 +264,26 @@
       // Zkusit i pozici zarovnanou na konec dne
       var lastStart = dayLen - dm;
       if (lastStart >= 0 && lastStart % STEP !== 0) {
-        var score2 = 0;
-        for (var m2 = lastStart; m2 < lastStart + dm; m2++) {
-          var r2 = curve[m2] - coverage[m2];
-          score2 += (r2 > 0) ? r2 : -1;
+        var validLast = true;
+        if (mask) {
+          for (var cm2 = lastStart; cm2 < lastStart + dm; cm2++) {
+            if (!mask[cm2]) { validLast = false; break; }
+          }
         }
-        if (score2 > bestScore) {
-          bestStart = lastStart;
+        if (validLast) {
+          var score2 = 0;
+          for (var m2 = lastStart; m2 < lastStart + dm; m2++) {
+            var r2 = curve[m2] - coverage[m2];
+            score2 += (r2 > 0) ? r2 : -1;
+          }
+          if (score2 > bestScore) {
+            bestStart = lastStart;
+          }
         }
       }
+
+      // Pokud nebylo nalezeno žádné platné umístění (plně nedostupný), přeskočit
+      if (bestStart < 0) continue;
 
       // Umístit směnu
       for (var m3 = bestStart; m3 < bestStart + dm; m3++) {
@@ -347,13 +418,12 @@
       }
 
       // Krok 1: Kmenové → jejich třída (mají absolutní přednost)
+      // Kmenová zaměstnankyně je VŽDY ve své třídě, bez ohledu na poptávku.
       for (i = 0; i < onShift.length; i++) {
         var zId1 = onShift[i];
         var emp1 = empMap[zId1];
         if (emp1 && emp1.kmenovaVykryvaci === 'kmenová' && emp1.tridaId) {
-          if (classDem[emp1.tridaId] > 0 && classCount[emp1.tridaId] < classDem[emp1.tridaId]) {
-            doAssign(zId1, null, emp1.tridaId);
-          }
+          doAssign(zId1, null, emp1.tridaId);
         }
       }
 
@@ -580,11 +650,29 @@
       return { ok: false, chyba: 'Přidejte alespoň jednu budovu.' };
     }
 
-    // Denní minuty zaměstnanců (úvazek / 5 pracovních dní)
-    var empDaily = [];
-    for (var ei = 0; ei < zamestnanci.length; ei++) {
-      var weekly = parseInt(zamestnanci[ei].uvazekMinutyTyden, 10) || 0;
-      empDaily.push({ id: zamestnanci[ei].id, dailyMin: Math.round(weekly / 5) });
+    // Příprava dostupnosti (B1d): pro každého zaměstnance a den zjistit masku a max. blok
+    var range = getOpeningRange(budovy);
+    var dayLen0 = range.end - range.start;
+
+    // availInfo[zamId][den] = { mask: boolean[], maxBlock: number }
+    var availInfo = {};
+    for (var ai = 0; ai < zamestnanci.length; ai++) {
+      var zAvail = zamestnanci[ai];
+      availInfo[zAvail.id] = {};
+      for (var ad = 1; ad <= 5; ad++) {
+        var mask = buildAvailMask(zAvail, ad, range.start, dayLen0);
+        availInfo[zAvail.id][ad] = {
+          mask: mask,
+          maxBlock: longestAvailBlock(mask)
+        };
+      }
+    }
+
+    // Pro každého zaměstnance spočítat denní minuty s ohledem na dostupnost.
+    // Minuty se rozdělí proporčně podle dostupného času v jednotlivých dnech.
+    var empWeekly = {};
+    for (var ew = 0; ew < zamestnanci.length; ew++) {
+      empWeekly[zamestnanci[ew].id] = parseInt(zamestnanci[ew].uvazekMinutyTyden, 10) || 0;
     }
 
     var prirazeni = [];
@@ -594,7 +682,34 @@
     for (den = 1; den <= 5; den++) {
       var demandInfo = buildDemand(den, sloty, budovy, pravidla);
       var curve = totalDemandCurve(demandInfo, budovy);
-      var placed = placeShifts(empDaily, curve, demandInfo.dayLen);
+
+      // Sestavit empDaily s ohledem na nedostupnost
+      var empDaily = [];
+      var availMasks = {};
+      for (var ei = 0; ei < zamestnanci.length; ei++) {
+        var zE = zamestnanci[ei];
+        var weekly = empWeekly[zE.id];
+        var info = availInfo[zE.id];
+
+        // Celkový dostupný čas zaměstnance přes všechny dny (suma maxBlock)
+        var totalAvailMin = 0;
+        for (var dd = 1; dd <= 5; dd++) {
+          totalAvailMin += info[dd].maxBlock;
+        }
+
+        var dailyMin = 0;
+        if (totalAvailMin > 0 && info[den].maxBlock > 0) {
+          // Rozdělit úvazek proporčně podle dostupného času
+          dailyMin = Math.round(weekly * info[den].maxBlock / totalAvailMin);
+          // Omezit na skutečně dostupný blok
+          if (dailyMin > info[den].maxBlock) dailyMin = info[den].maxBlock;
+        }
+
+        empDaily.push({ id: zE.id, dailyMin: dailyMin });
+        availMasks[zE.id] = info[den].mask;
+      }
+
+      var placed = placeShifts(empDaily, curve, demandInfo.dayLen, availMasks);
       var locAssignments = assignLocations(
         placed.shifts, demandInfo, budovy, zamestnanci, pravidla, omezeni
       );
@@ -653,6 +768,9 @@
   global.MSemenyVypocetSmen = {
     vypocetSmen: vypocetSmen,
     slotDurationMinuty: slotDurationMinuty,
-    positionsProSlot: positionsProSlot
+    positionsProSlot: positionsProSlot,
+    // Interní helpery exportované pro testy (B1d)
+    _buildAvailMask: buildAvailMask,
+    _longestAvailBlock: longestAvailBlock
   };
 })(typeof window !== 'undefined' ? window : this);

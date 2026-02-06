@@ -173,11 +173,8 @@
     if (seznam) seznam.addEventListener('click', naKlikSeznam);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  // Skripty jsou na konci <body>, DOM je kompletní – init() voláme ihned.
+  init();
 
   global.MSemenyOmezeniNeDohromady = {
     vykresliSeznam: vykresliSeznam,

@@ -79,6 +79,29 @@
             </select>
             <span class="hint">Pouze u kmenové: třída, ke které je zaměstnanec přiřazen</span>
           </p>
+          <fieldset class="nedostupnost-fieldset">
+            <legend>Nedostupnost v rámci týdne</legend>
+            <p class="hint">Období, kdy zaměstnanec nemůže pracovat (např. jiná práce, rodinné důvody, vyhrazený čas pro vedení). Výpočet směn tyto intervaly bude respektovat.</p>
+            <div id="nedostupnost-seznam" class="nedostupnost-seznam">
+              <!-- Seznam bloků nedostupnosti vykresluje JS -->
+            </div>
+            <div class="nedostupnost-pridat">
+              <label for="nedostupnost-den">Den</label>
+              <select id="nedostupnost-den">
+                <option value="1">Pondělí</option>
+                <option value="2">Úterý</option>
+                <option value="3">Středa</option>
+                <option value="4">Čtvrtek</option>
+                <option value="5">Pátek</option>
+              </select>
+              <label for="nedostupnost-od">Od</label>
+              <input type="time" id="nedostupnost-od" value="07:00">
+              <label for="nedostupnost-do">Do</label>
+              <input type="time" id="nedostupnost-do" value="17:00">
+              <button type="button" id="nedostupnost-btn-pridat" class="btn btn-mala">Přidat</button>
+              <button type="button" id="nedostupnost-btn-cely-den" class="btn btn-mala" title="Přidá nedostupnost na celý den (7:00–17:00)">Celý den</button>
+            </div>
+          </fieldset>
           <p class="form-akce">
             <button type="submit" class="btn btn-primarni">Uložit</button>
             <button type="button" id="zamestnanci-form-zrusit" class="btn">Zrušit</button>

@@ -725,6 +725,76 @@ header {
   flex-shrink: 0;
 }
 
+/* Nedostupnost ve formuláři zaměstnance (B1d) */
+.nedostupnost-fieldset {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.nedostupnost-fieldset legend {
+  padding: 0 0.25rem;
+  font-weight: 600;
+}
+
+.nedostupnost-fieldset > .hint {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.nedostupnost-prazdno {
+  color: #888;
+  font-style: italic;
+  margin: 0.25rem 0 0.75rem 0;
+}
+
+.tabulka-nedostupnost {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+}
+
+.tabulka-nedostupnost th,
+.tabulka-nedostupnost td {
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.9rem;
+}
+
+.tabulka-nedostupnost th {
+  font-weight: 600;
+  background: var(--color-bg);
+}
+
+.nedostupnost-pridat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nedostupnost-pridat label {
+  min-width: auto;
+  font-size: 0.9rem;
+}
+
+.nedostupnost-pridat select,
+.nedostupnost-pridat input[type="time"] {
+  padding: 0.3em 0.4em;
+  font-size: 0.9rem;
+}
+
+.td-nedostupnost {
+  font-size: 0.85rem;
+  max-width: 14em;
+  word-break: break-word;
+}
+
 /* Minimální překryv v třídě */
 .pravidla-prekryv .prekryv-form {
   margin-top: 0.5rem;
