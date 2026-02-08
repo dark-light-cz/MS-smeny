@@ -76,9 +76,29 @@
     });
     var normNedost = Model && Model.normalizujNedostupnost ? Model.normalizujNedostupnost : function (n) { return Array.isArray(n) ? n : []; };
     var normPrechod = Model && Model.normalizujPrechodBudovy ? Model.normalizujPrechodBudovy : function (v) { return v === 'zakázat' || v === 'povolit' ? v : 'výchozí'; };
+    var normPrirazenoJen = Model && Model.normalizujPrirazenoJen ? Model.normalizujPrirazenoJen : function (v) { return (typeof v === 'string' && (v.indexOf('b:') === 0 || v.indexOf('t:') === 0)) ? v : null; };
+    var budovyList = data.budovy || [];
+    var validBudovyIds = {};
+    var validTridyIds = {};
+    budovyList.forEach(function (b) {
+      if (b && b.id) validBudovyIds[b.id] = true;
+      (b.tridy || []).forEach(function (t) {
+        if (t && t.id) validTridyIds[t.id] = true;
+      });
+    });
     var zamestnanci = (data.zamestnanci || []).map(function (z) {
       var k = z.kmenovaVykryvaci === 'vykrývací' ? 'vykrývací' : 'kmenová';
       var tid = (k === 'kmenová' && z.tridaId) ? z.tridaId : null;
+      var pj = normPrirazenoJen(z.prirazenoJen);
+      if (pj) {
+        if (pj.indexOf('b:') === 0) {
+          var bid = pj.slice(2);
+          if (!validBudovyIds[bid]) pj = null;
+        } else if (pj.indexOf('t:') === 0) {
+          var trid = pj.slice(2);
+          if (!validTridyIds[trid]) pj = null;
+        }
+      }
       return {
         id: z.id,
         jmeno: z.jmeno != null ? z.jmeno : '',
@@ -87,7 +107,8 @@
         kmenovaVykryvaci: k,
         tridaId: tid,
         nedostupnost: normNedost(z.nedostupnost),
-        prechodMeziBudovami: normPrechod(z.prechodMeziBudovami)
+        prechodMeziBudovami: normPrechod(z.prechodMeziBudovami),
+        prirazenoJen: pj
       };
     });
     var out = {

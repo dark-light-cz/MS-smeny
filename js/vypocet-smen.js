@@ -567,6 +567,21 @@
       return false;
     }
 
+    // B1e: smí být zaměstnanec přiřazen do (budovaId, tridaId)? tridaBudova = map tridaId → budovaId
+    function canAssignEmpToLocation(emp, budovaId, tridaId, tridaBudova) {
+      if (!emp || !emp.prirazenoJen) return true;
+      var pj = emp.prirazenoJen;
+      if (pj.indexOf('t:') === 0) {
+        return tridaId === pj.slice(2);
+      }
+      if (pj.indexOf('b:') === 0) {
+        var allowedBudova = pj.slice(2);
+        var resolved = tridaId ? (tridaBudova[tridaId] || null) : (budovaId || null);
+        return resolved === allowedBudova;
+      }
+      return true;
+    }
+
     // Hlavní smyčka: po minutách
     for (m = 0; m < dayLen; m++) {
       // Kdo je ve směně
@@ -590,6 +605,8 @@
       for (i = 0; i < budovaIds.length; i++) buildingCount[budovaIds[i]] = 0;
 
       function doAssign(zId, bId, tId) {
+        var emp = empMap[zId];
+        if (emp && !canAssignEmpToLocation(emp, bId, tId, demandInfo.tridaBudova)) return;
         assigned[zId] = { budovaId: bId || null, tridaId: tId || null };
         var resolvedBud = null;
         if (tId) {
@@ -688,6 +705,7 @@
           if (forbidden) continue;
           if (!canGoToBuilding(zIdA, demandInfo.tridaBudova[tIdFill])) continue;
           var empA = empMap[zIdA];
+          if (empA && !canAssignEmpToLocation(empA, demandInfo.tridaBudova[tIdFill] || null, tIdFill, demandInfo.tridaBudova)) continue;
           if (empA && empA.kmenovaVykryvaci === 'vykrývací') {
             var prevA = (m > 0 && assignments[zIdA]) ? assignments[zIdA][m - 1] : null;
             if (prevA && prevA.tridaId !== tIdFill && (transitions[zIdA] || 0) >= maxPresun) continue;

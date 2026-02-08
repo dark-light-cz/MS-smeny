@@ -111,6 +111,14 @@
             </select>
             <span class="hint">Lokální nastavení: zda tento zaměstnanec smí v jednom dni pracovat ve více budovách. „Výchozí" respektuje globální pravidlo.</span>
           </p>
+          <p>
+            <label for="zamestnanci-prirazeno-jen">Přiřazen pouze do (B1e)</label>
+            <select id="zamestnanci-prirazeno-jen">
+              <option value="">— žádné —</option>
+              <!-- Možnosti doplní JS z budov a tříd -->
+            </select>
+            <span class="hint">Volitelně: zaměstnanec smí být v návrhu směn přiřazen jen do této budovy nebo jen do této třídy.</span>
+          </p>
           <p class="form-akce">
             <button type="submit" class="btn btn-primarni">Uložit</button>
             <button type="button" id="zamestnanci-form-zrusit" class="btn">Zrušit</button>

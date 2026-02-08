@@ -97,6 +97,42 @@
     }
     }
 
+    // B1e: Kontrola „přiřazen pouze do“ – zaměstnanec smí být jen v povolené budově/třídě
+    if (prirazeni.length > 0) {
+      var budovyB1e = (data && data.budovy) || [];
+      for (var piB = 0; piB < prirazeni.length; piB += 1) {
+        var pB = prirazeni[piB];
+        var zIdB = pB.zamestnanecId;
+        if (!zIdB) continue;
+        var empB = null;
+        for (var ziB = 0; ziB < zamestnanci.length; ziB += 1) {
+          if (zamestnanci[ziB].id === zIdB) { empB = zamestnanci[ziB]; break; }
+        }
+        if (!empB || !empB.prirazenoJen) continue;
+        var pjB = empB.prirazenoJen;
+        var segsB = pB.segmenty || [];
+        for (var siB = 0; siB < segsB.length; siB += 1) {
+          var segB = segsB[siB];
+          var okB = false;
+          if (pjB.indexOf('t:') === 0) {
+            okB = (segB.tridaId === pjB.slice(2));
+          } else if (pjB.indexOf('b:') === 0) {
+            var allowedBudovaB = pjB.slice(2);
+            var segBudovaB = segB.budovaId || (segB.tridaId ? tridaJeVBudove(budovyB1e, segB.tridaId) : null);
+            okB = (segBudovaB === allowedBudovaB);
+          }
+          if (!okB) {
+            polozky.push({
+              typ: 'chyba',
+              pravidlo: 'Přiřazení jen do budovy/třídy (B1e)',
+              kontext: jmenoZamestnance(zamestnanci, zIdB) + ': přiřazen do jiného místa než povoleno (den ' + (pB.den || '?') + ', ' + (segB.od || '') + '–' + (segB.do || '') + ')',
+              zamestnanecId: zIdB
+            });
+          }
+        }
+      }
+    }
+
     // D10b: Kontrola min/max na třídu a budovu (časové sloty z Pravidel) – jen když existuje návrh
     if (prirazeni.length > 0) {
     var budovy = (data && data.budovy) || [];

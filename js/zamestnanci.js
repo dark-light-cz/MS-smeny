@@ -34,6 +34,14 @@
     return h * 60 + min;
   }
 
+  /** Vrátí všechny budovy jako pole { id, nazev }. */
+  function vsechnyBudovy() {
+    var data = Storage ? Storage.getData() : { budovy: [] };
+    return (data.budovy || []).map(function (b) {
+      return { id: b.id, nazev: b.nazev || '(bez názvu)' };
+    });
+  }
+
   /** Vrátí všechny třídy z budov jako pole { id, nazev, budovaNazev }. */
   function vsechnyTridy() {
     var data = Storage ? Storage.getData() : { budovy: [] };
@@ -60,6 +68,17 @@
     return '';
   }
 
+  /** Vrátí název budovy podle id (nebo prázdný řetězec). */
+  function nazevBudovy(budovaId) {
+    if (!budovaId) return '';
+    var budovy = vsechnyBudovy();
+    var i;
+    for (i = 0; i < budovy.length; i += 1) {
+      if (budovy[i].id === budovaId) return budovy[i].nazev;
+    }
+    return '';
+  }
+
   /** Naplní select „Přiřazená třída“ a nastaví vybranou hodnotu. */
   function naplnSelectTridy(vybranId) {
     var sel = document.getElementById('zamestnanci-trida');
@@ -76,6 +95,35 @@
       opt.value = tridy[i].id;
       opt.textContent = tridy[i].budovaNazev ? tridy[i].nazev + ' (' + tridy[i].budovaNazev + ')' : tridy[i].nazev;
       if (tridy[i].id === vybranId) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+
+  /** Naplní select „Přiřazen pouze do“ (B1e): žádné, budovy, třídy. Nastaví vybranou hodnotu ('' | 'b:id' | 't:id'). */
+  function naplnSelectPrirazenoJen(vybranaVal) {
+    var sel = document.getElementById('zamestnanci-prirazeno-jen');
+    if (!sel) return;
+    var budovy = vsechnyBudovy();
+    var tridy = vsechnyTridy();
+    sel.innerHTML = '';
+    var opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = '— žádné —';
+    opt0.selected = !vybranaVal;
+    sel.appendChild(opt0);
+    var i, opt;
+    for (i = 0; i < budovy.length; i += 1) {
+      opt = document.createElement('option');
+      opt.value = 'b:' + budovy[i].id;
+      opt.textContent = 'Budova: ' + budovy[i].nazev;
+      if (vybranaVal === opt.value) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    for (i = 0; i < tridy.length; i += 1) {
+      opt = document.createElement('option');
+      opt.value = 't:' + tridy[i].id;
+      opt.textContent = 'Třída: ' + tridy[i].nazev + (tridy[i].budovaNazev ? ' (' + tridy[i].budovaNazev + ')' : '');
+      if (vybranaVal === opt.value) opt.selected = true;
       sel.appendChild(opt);
     }
   }
@@ -182,6 +230,22 @@
   }
 
   /**
+   * Vrátí textový popis „přiřazen pouze do“ (B1e) pro tabulku.
+   * @param {Object} z - zaměstnanec (z.prirazenoJen = null | 'b:budovaId' | 't:tridaId')
+   * @returns {string}
+   */
+  function souhrPrirazenoJen(z) {
+    if (!z || !z.prirazenoJen) return '';
+    var pj = z.prirazenoJen;
+    if (pj.indexOf('b:') === 0) return nazevBudovy(pj.slice(2)) || pj;
+    if (pj.indexOf('t:') === 0) {
+      var tn = nazevTridy(pj.slice(2));
+      return tn ? tn : pj;
+    }
+    return '';
+  }
+
+  /**
    * Vyplní formulář hodnotami zaměstnance (nebo prázdný při přidávání).
    * @param {Object|null} z - zaměstnanec nebo null
    */
@@ -208,6 +272,8 @@
       var prechodVal = (z && z.prechodMeziBudovami) ? z.prechodMeziBudovami : 'výchozí';
       prechodEl.value = prechodVal;
     }
+    // Přiřazen pouze do (B1e)
+    naplnSelectPrirazenoJen(z && z.prirazenoJen ? z.prirazenoJen : '');
   }
 
   /**
@@ -375,19 +441,21 @@
       thRazeni('kategorie', 'Kategorie'),
       '<th>Nedostupnost</th>',
       '<th>Přechod budovy</th>',
+      '<th>Přiřazen pouze do</th>',
       '<th>Akce</th>',
       '</tr></thead><tbody>'
     ];
-    var i, z, uv, kategText, nedostText, prechodText, btnUpravit, btnSmazat;
+    var i, z, uv, kategText, nedostText, prechodText, prirazenoText, btnUpravit, btnSmazat;
     for (i = 0; i < list.length; i += 1) {
       z = list[i];
       uv = minutyNaHodinyMinuty(z.uvazekMinutyTyden);
       kategText = (z.kmenovaVykryvaci === 'vykrývací') ? 'Vykrývací' : ('Kmenová' + (z.tridaId ? ' (' + escapeHtml(nazevTridy(z.tridaId)) + ')' : ''));
       nedostText = souhrNedostupnosti(z.nedostupnost);
       prechodText = souhrPrechodBudovy(z.prechodMeziBudovami);
+      prirazenoText = souhrPrirazenoJen(z);
       btnUpravit = '<button type="button" class="btn btn-mala" data-akce="upravit" data-id="' + escapeAttr(z.id) + '">Upravit</button>';
       btnSmazat = '<button type="button" class="btn btn-mala" data-akce="smazat" data-id="' + escapeAttr(z.id) + '">Smazat</button>';
-      html.push('<tr><td>' + escapeHtml(z.jmeno || '') + '</td><td>' + uv.hodiny + ' h ' + uv.minuty + ' min</td><td>' + escapeHtml(z.role || '') + '</td><td>' + kategText + '</td><td class="td-nedostupnost">' + (nedostText ? escapeHtml(nedostText) : '<span class="hint">—</span>') + '</td><td>' + escapeHtml(prechodText) + '</td><td>' + btnUpravit + ' ' + btnSmazat + '</td></tr>');
+      html.push('<tr><td>' + escapeHtml(z.jmeno || '') + '</td><td>' + uv.hodiny + ' h ' + uv.minuty + ' min</td><td>' + escapeHtml(z.role || '') + '</td><td>' + kategText + '</td><td class="td-nedostupnost">' + (nedostText ? escapeHtml(nedostText) : '<span class="hint">—</span>') + '</td><td>' + escapeHtml(prechodText) + '</td><td>' + (prirazenoText ? escapeHtml(prirazenoText) : '<span class="hint">—</span>') + '</td><td>' + btnUpravit + ' ' + btnSmazat + '</td></tr>');
     }
     html.push('</tbody></table>');
     el.innerHTML = html.join('');
@@ -450,6 +518,11 @@
     var prechodEl = document.getElementById('zamestnanci-prechod-budovy');
     var prechod = (prechodEl && prechodEl.value) ? prechodEl.value : 'výchozí';
     if (Model && Model.normalizujPrechodBudovy) prechod = Model.normalizujPrechodBudovy(prechod);
+    // Přiřazen pouze do (B1e)
+    var prirazenoEl = document.getElementById('zamestnanci-prirazeno-jen');
+    var prirazenoVal = (prirazenoEl && prirazenoEl.value) ? prirazenoEl.value.trim() : '';
+    var prirazenoJen = (prirazenoVal && (prirazenoVal.indexOf('b:') === 0 || prirazenoVal.indexOf('t:') === 0)) ? prirazenoVal : null;
+    if (Model && Model.normalizujPrirazenoJen) prirazenoJen = Model.normalizujPrirazenoJen(prirazenoJen);
 
     if (id) {
       Storage.replaceData(function (d) {
@@ -464,13 +537,14 @@
             zam[i].tridaId = tridaId;
             zam[i].nedostupnost = nedost;
             zam[i].prechodMeziBudovami = prechod;
+            zam[i].prirazenoJen = prirazenoJen;
             break;
           }
         }
         return d;
       });
     } else {
-      var novy = Model.vytvorZamestnance(jmeno, minuty, role, kateg, tridaId, nedost, prechod);
+      var novy = Model.vytvorZamestnance(jmeno, minuty, role, kateg, tridaId, nedost, prechod, prirazenoJen);
       Storage.replaceData(function (d) {
         d.zamestnanci = d.zamestnanci || [];
         d.zamestnanci.push(novy);

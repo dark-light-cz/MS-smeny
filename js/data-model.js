@@ -172,12 +172,24 @@
   }
 
   /**
-   * Struktura zaměstnance: id, jméno, úvazek, role, kmenová/vykrývací, přiřazená třída, nedostupnost, přechod mezi budovami.
+   * Normalizuje hodnotu „přiřazen pouze do“ (B1e): 'b:budovaId' nebo 't:tridaId', jinak null.
+   * @param {string|*} hodnota
+   * @returns {string|null}
+   */
+  function normalizujPrirazenoJen(hodnota) {
+    if (typeof hodnota !== 'string' || hodnota.length < 4) return null;
+    if (hodnota.indexOf('b:') === 0 || hodnota.indexOf('t:') === 0) return hodnota;
+    return null;
+  }
+
+  /**
+   * Struktura zaměstnance: id, jméno, úvazek, role, kmenová/vykrývací, přiřazená třída, nedostupnost, přechod mezi budovami, přiřazen pouze do (B1e).
    * kmenovaVykryvaci: 'kmenová' | 'vykrývací'. tridaId: id třídy (pouze u kmenové).
    * nedostupnost: pole objektů { den: 1–5 (Po–Pá), od: "HH:mm", do: "HH:mm" } – časová období v týdnu, kdy zaměstnanec nemůže pracovat.
    * prechodMeziBudovami: 'výchozí' | 'zakázat' | 'povolit' – lokální nastavení přechodu mezi budovami v jednom dni.
+   * prirazenoJen: null | 'b:budovaId' | 't:tridaId' – zaměstnanec smí být přiřazen pouze do této budovy nebo pouze do této třídy (B1e).
    */
-  function vytvorZamestnance(jmeno, uvazekMinutyTyden, role, kmenovaVykryvaci, tridaId, nedostupnost, prechodMeziBudovami) {
+  function vytvorZamestnance(jmeno, uvazekMinutyTyden, role, kmenovaVykryvaci, tridaId, nedostupnost, prechodMeziBudovami, prirazenoJen) {
     return {
       id: generujId(),
       jmeno: jmeno || '',
@@ -186,7 +198,8 @@
       kmenovaVykryvaci: kmenovaVykryvaci === 'vykrývací' ? 'vykrývací' : 'kmenová',
       tridaId: (kmenovaVykryvaci === 'kmenová' && tridaId) ? tridaId : null,
       nedostupnost: normalizujNedostupnost(nedostupnost),
-      prechodMeziBudovami: normalizujPrechodBudovy(prechodMeziBudovami)
+      prechodMeziBudovami: normalizujPrechodBudovy(prechodMeziBudovami),
+      prirazenoJen: normalizujPrirazenoJen(prirazenoJen)
     };
   }
 
@@ -235,6 +248,7 @@
     vytvorOmezeniNeDohromady: vytvorOmezeniNeDohromady,
     normalizujNedostupnost: normalizujNedostupnost,
     normalizujPrechodBudovy: normalizujPrechodBudovy,
+    normalizujPrirazenoJen: normalizujPrirazenoJen,
     PRECHOD_BUDOVY_HODNOTY: PRECHOD_BUDOVY_HODNOTY,
     STRIDANI_REZIMY: STRIDANI_REZIMY
   };
