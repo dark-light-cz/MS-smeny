@@ -566,6 +566,76 @@ header {
 }
 
 /* Grafické zobrazení návrhu (D2b) */
+/* Rozbalovací sekce tabulky návrhu (D8) */
+.navrh-tabulka-details {
+  margin-top: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+}
+.navrh-tabulka-details summary {
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  list-style: none;
+}
+.navrh-tabulka-details summary::-webkit-details-marker {
+  display: none;
+}
+.navrh-tabulka-details summary::before {
+  content: '▶';
+  display: inline-block;
+  margin-right: 0.5rem;
+  transition: transform 0.2s;
+}
+.navrh-tabulka-details[open] summary::before {
+  transform: rotate(90deg);
+}
+.navrh-tabulka-details #navrh-vysledek {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Validace návrhu (D10) */
+.navrh-validace-vysledek {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+}
+.navrh-validace-ok {
+  color: #2e7d32;
+  margin: 0;
+}
+.navrh-validace-zadny {
+  color: #666;
+  margin: 0;
+}
+.tabulka-validace {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+.tabulka-validace th,
+.tabulka-validace td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.tabulka-validace th {
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.04);
+}
+.tabulka-validace tr.validace-chyba td {
+  background: #ffebee;
+  color: #b71c1c;
+}
+.tabulka-validace tr.validace-varovani td {
+  background: #fff8e1;
+  color: #e65100;
+}
+
 .navrh-graf-wrapper {
   margin-top: 2rem;
   padding: 1rem 0;

@@ -430,13 +430,22 @@
       <p class="form-akce">
         <button type="button" id="navrh-prepocitat" class="btn btn-primarni">Přepočítat</button>
         <button type="button" id="navrh-stahnout-csv" class="btn btn-sekundarni" hidden>Stáhnout CSV</button>
+        <button type="button" id="navrh-nahrat-csv" class="btn btn-sekundarni">Nahrát CSV</button>
+        <button type="button" id="navrh-validovat" class="btn btn-sekundarni">Validovat</button>
+        <input type="file" id="navrh-csv-input" accept=".csv,text/csv" hidden>
       </p>
+      <div id="navrh-validace-vysledek" class="navrh-validace-vysledek" aria-live="polite" hidden>
+        <!-- Tabulka chyb/varování vykresluje JS -->
+      </div>
       <div id="navrh-graf" class="navrh-graf-wrapper" aria-label="Grafické zobrazení návrhu směn" hidden>
         <!-- Graf budovy / třídy / časová osa vykresluje js/navrh-graf.js -->
       </div>
-      <div id="navrh-vysledek" aria-live="polite">
-        <!-- Tabulka nebo prázdný stav vykresluje JS -->
-      </div>
+      <details id="navrh-tabulka-details" class="navrh-tabulka-details" aria-label="Tabulka návrhu směn">
+        <summary>Tabulka návrhu (Den, Zaměstnanec, Čas, Místo)</summary>
+        <div id="navrh-vysledek" aria-live="polite">
+          <!-- Tabulka nebo prázdný stav vykresluje JS -->
+        </div>
+      </details>
     </section>
   </main>
   <footer>
@@ -455,6 +464,8 @@
   <script src="js/navrh-smen-ui.js"></script>
   <script src="js/navrh-graf.js"></script>
   <script src="js/export-navrh-csv.js"></script>
+  <script src="js/import-navrh-csv.js"></script>
+  <script src="js/validace-navrhu.js"></script>
   <script src="js/export-import-ui.js"></script>
   <script src="js/main.js"></script>
 </body>

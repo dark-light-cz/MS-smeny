@@ -119,6 +119,12 @@
   - Pod tabulkou návrhu: blok s grafem. Každá budova = vlastní blok; v bloku řádek „Budova (společně)“ a po řádku každá třída. Řádek = vodorovná časová osa (od otevírací doby), na ní barevné obdélníky = přiřazení osob (segmenty). Tooltip (title) u segmentu: jméno a časový rozsah (od–do). Legenda barev (kdo jakou barvu má). Výběr dne (Po–Pá) – jeden den = jedna „síť“ budov a tříd. API: `MSemenyNavrhGraf.vykresliNavrhGraf(prirazeni, data, container, vybranyDen)` (js/navrh-graf.js).
 - **Export návrhu směn jako CSV (D2c):**
   - Po přepočtu se v sekci Návrh směn zobrazí tlačítko „Stáhnout CSV“. Stáhne aktuální návrh jako soubor navrh-smen.csv (sloupce Den, Zaměstnanec, Čas, Místo; oddělovač ;, UTF-8 s BOM). API: `MSemenyExportNavrhCsv.navrhToCsv(prirazeni, data)`, `MSemenyExportNavrhCsv.stahnoutNavrhCsv(...)` (js/export-navrh-csv.js). UI používá `MSemenyNavrhSmenUI.getNavrhRows()` pro sdílenou přípravu řádků.
+- **Tabulka návrhu v rozbalovací sekci (D8):**
+  - Tabulka (Den, Zaměstnanec, Čas, Místo) je v sekci Návrh směn v rozbalovacím bloku `<details>`; výchozí stav je sbalený, uživatel ji může rozbalit podle potřeby.
+- **Import návrhu ze CSV (D9):**
+  - Tlačítko „Nahrát CSV“ umožní nahrát soubor ve stejném formátu jako export (Den;Zaměstnanec;Čas;Místo). Načtená data se zobrazí v tabulce a v grafu stejně jako po přepočtu; neznámí zaměstnanci nebo neplatné řádky se přeskočí s varováním. API: `MSemenyImportNavrhCsv.csvToPrirazeni(csvText, data)` (js/import-navrh-csv.js).
+- **Validace návrhu a tabulka chyb/varování (D10):**
+  - Tlačítko „Validovat“ zkontroluje aktuální návrh (vygenerovaný nebo načtený z CSV). Zobrazí tabulku s porušenými pravidly a kontextem; zahrnuje **přečerpaný úvazek** (více minut než úvazek) a **nevyčerpaný úvazek** (méně minut než úvazek). Při splnění pravidel: hláška „Návrh vyhovuje zadaným pravidlům (úvazky v pořádku).“ API: `MSemenyValidaceNavrhu.validujNavrh(prirazeni, data)` (js/validace-navrhu.js).
 - **Rozšířené nastavení D3 (propojení Pravidla ↔ výpočet):**
   - V sekci Pravidla: úvodní text vysvětluje, že nastavení (časové sloty včetně rotace, minimální překryv, pravidla pro vykrývací) ovlivňují výpočet návrhu směn. Na konci sekce odkaz na Návrh směn místo zastaralé poznámky „blok D“.
 - **Export/import – UI (E1):**
@@ -145,6 +151,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2026-02-06: Implementovány D8, D9, D10 – rozbalovací tabulka návrhu (výchozí sbalená); import návrhu ze CSV (tlačítko Nahrát CSV, zobrazení v tabulce a grafu); tlačítko Validovat a tabulka chyb/varování (úvazky přečerpaný/nevyčerpaný). Nové moduly: js/import-navrh-csv.js, js/validace-navrhu.js; testy test-import-navrh-csv.js, test-validace-navrhu.js.
 - 2026-02-06: Implementovány C6 a C7 – konfigurace střídání dopoledne/odpoledne (zapnuto/vypnuto, režim preferenční/tvrdý, hranice 12:00) a konfigurace souvislých bloků a méně dnů (zapnuto/vypnuto, min délka bloku). Model, UI v sekci Pravidla, export/import normalizace; 13 nových testů; celkem 144 testů.
 - 2026-02-06: Implementován D5 – aplikace přechodu mezi budovami ve výpočtu: helper maZakazPrechodu (lokální vs. globální nastavení), canGoToBuilding kontrola v assignLocations, doAssign trackuje budovu zaměstnance; kroky přiřazení (fill classes/buildings/remaining) filtrují dle omezení budovy; 5 unit testů + 3 integrační testy; celkem 131 testů prošlo.
 - 2026-02-06: Implementován C5 – konfigurace přechodu mezi budovami: globální pravidlo (zakazPrechodMeziBudovami v sekci Pravidla), lokální nastavení u zaměstnance (prechodMeziBudovami: výchozí/zakázat/povolit), sloupec v tabulce, export/import normalizace; 16 nových testů.

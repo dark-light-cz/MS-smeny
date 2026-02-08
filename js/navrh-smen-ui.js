@@ -190,6 +190,89 @@
     if (btn) btn.hidden = !zobrazit;
   }
 
+  function nahratCsv() {
+    var input = document.getElementById('navrh-csv-input');
+    if (input) input.click();
+  }
+
+  function validovat() {
+    var container = document.getElementById('navrh-validace-vysledek');
+    if (!container) return;
+
+    if (!lastNavrhResult) {
+      container.hidden = false;
+      container.innerHTML = '<p class="navrh-validace-zadny">Nejprve přepočítejte nebo načtěte návrh z CSV.</p>';
+      return;
+    }
+
+    var Validace = global.MSemenyValidaceNavrhu;
+    if (!Validace || !Validace.validujNavrh) {
+      container.hidden = false;
+      container.innerHTML = '<p class="navrh-validace-zadny">Modul validace není k dispozici.</p>';
+      return;
+    }
+
+    var result = Validace.validujNavrh(lastNavrhResult.prirazeni, lastNavrhResult.data);
+    container.hidden = false;
+
+    if (result.polozky.length === 0) {
+      container.innerHTML = '<p class="navrh-validace-ok">Návrh vyhovuje zadaným pravidlům (úvazky v pořádku).</p>';
+      return;
+    }
+
+    var html = ['<table class="tabulka-validace"><thead><tr><th>Pravidlo</th><th>Kontext</th></tr></thead><tbody>'];
+    for (var i = 0; i < result.polozky.length; i += 1) {
+      var p = result.polozky[i];
+      var trClass = p.typ === 'chyba' ? ' class="validace-chyba"' : ' class="validace-varovani"';
+      html.push('<tr' + trClass + '><td>' + escapeHtml(p.pravidlo) + '</td><td>' + escapeHtml(p.kontext) + '</td></tr>');
+    }
+    html.push('</tbody></table>');
+    container.innerHTML = html.join('');
+  }
+
+  function onCsvFileSelected(event) {
+    var input = event.target;
+    var file = input.files && input.files[0];
+    if (!file) return;
+    input.value = '';
+
+    var ImportCsv = global.MSemenyImportNavrhCsv;
+    if (!ImportCsv || !ImportCsv.csvToPrirazeni) {
+      zobrazChybu('Import CSV není k dispozici.');
+      return;
+    }
+    var data = getData();
+    var reader = new FileReader();
+    reader.onload = function () {
+      var result = ImportCsv.csvToPrirazeni(reader.result, data);
+      if (result.ok) {
+        lastNavrhResult = { prirazeni: result.prirazeni, data: data };
+        vykresliNavrh(result.prirazeni, data);
+        zobrazGraf(result.prirazeni, data);
+        zobrazTlacitkoCsv(true);
+        if (result.varovani && result.varovani.length > 0) {
+          zobrazUspech('CSV načteno. Varování: ' + result.varovani.join(' '));
+        } else {
+          zobrazUspech('Návrh byl načten z CSV.');
+        }
+      } else {
+        lastNavrhResult = null;
+        vykresliNavrh([], data);
+        zobrazGraf([], null);
+        zobrazTlacitkoCsv(false);
+        var msg = result.chyba || 'Import se nezdařil.';
+        if (result.varovani && result.varovani.length > 0) {
+          msg += ' ' + result.varovani.join(' ');
+        }
+        zobrazChybu(msg);
+      }
+    };
+    reader.onerror = function () {
+      zobrazChybu('Soubor se nepodařilo přečíst.');
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
   function zobrazGraf(prirazeni, data) {
     var Graf = global.MSemenyNavrhGraf;
     var container = document.getElementById('navrh-graf');
@@ -206,6 +289,14 @@
       btnCsv.addEventListener('click', stahnoutCsv);
       btnCsv.hidden = true;
     }
+
+    var btnNahrat = document.getElementById('navrh-nahrat-csv');
+    var inputCsv = document.getElementById('navrh-csv-input');
+    if (btnNahrat) btnNahrat.addEventListener('click', nahratCsv);
+    if (inputCsv) inputCsv.addEventListener('change', onCsvFileSelected);
+
+    var btnValidovat = document.getElementById('navrh-validovat');
+    if (btnValidovat) btnValidovat.addEventListener('click', validovat);
 
     var el = document.getElementById('navrh-vysledek');
     if (el && !el.innerHTML.trim()) {
