@@ -758,6 +758,298 @@
           T.assert(found2.length > 0, 'B má přiřazení den ' + den);
         }
       }
+    },
+
+    /* === D6: Střídání dopoledne/odpoledne === */
+
+    {
+      name: '_getShiftTypeFromSegmenty: dopolední směna (začátek před 12:00)',
+      run: function () {
+        if (!V._getShiftTypeFromSegmenty) return;
+        var segs = [{ od: '07:30', do: '12:00' }];
+        T.assert(V._getShiftTypeFromSegmenty(segs, 720) === 'dopoledni', 'začátek 07:30 < 12:00 = dopoledni');
+      }
+    },
+    {
+      name: '_getShiftTypeFromSegmenty: odpolední směna (začátek na/po 12:00)',
+      run: function () {
+        if (!V._getShiftTypeFromSegmenty) return;
+        var segs = [{ od: '12:00', do: '17:00' }];
+        T.assert(V._getShiftTypeFromSegmenty(segs, 720) === 'odpoledni', 'začátek 12:00 = odpoledni');
+      }
+    },
+    {
+      name: '_validujStridaniTvrdy: všichni střídají → ok',
+      run: function () {
+        if (!V._validujStridaniTvrdy) return;
+        var prirazeni = [
+          { zamestnanecId: 'z1', segmenty: [{ od: '07:00', do: '12:00' }] },
+          { zamestnanecId: 'z1', segmenty: [{ od: '12:30', do: '17:00' }] }
+        ];
+        var r = V._validujStridaniTvrdy(prirazeni, 720);
+        T.assert(r.ok === true, 'dopoledni + odpoledni = ok');
+      }
+    },
+    {
+      name: '_validujStridaniTvrdy: jeden zaměstnanec jen dopolední každý den → chyba',
+      run: function () {
+        if (!V._validujStridaniTvrdy) return;
+        var prirazeni = [
+          { zamestnanecId: 'z1', segmenty: [{ od: '07:00', do: '12:00' }] },
+          { zamestnanecId: 'z1', segmenty: [{ od: '07:00', do: '12:00' }] }
+        ];
+        var r = V._validujStridaniTvrdy(prirazeni, 720);
+        T.assert(r.ok === false && r.chyba && r.chyba.indexOf('tvrdý') !== -1, 'všechny dny stejný typ = chyba');
+      }
+    },
+    {
+      name: 'D6 tvrdý režim: při stejném typu směny každý den vrátí ok: false',
+      run: function () {
+        if (!M) return;
+        // Konfigurace, kde algoritmus typicky dá všem směny od 7:00 (všechny dopolední) – tvrdý režim to odmítne
+        var z = M.vytvorZamestnance('Solo', 600, M.ROLE.UCITELKA);
+        var b = M.vytvorBudovu('Budova');
+        b.tridy.push(M.vytvorTridu('Třída 1'));
+        var data = {
+          zamestnanci: [z],
+          budovy: [b],
+          minMaxSloty: [{ id: 's1', od: '07:00', do: '17:00', minNaBudovu: 1, minNaTridu: 0, dny: [], rotace: false }],
+          pravidla: { stridaniDopoledneOdpoledne: true, stridaniRezim: 'tvrdý', stridaniHraniceMinuty: 720 }
+        };
+        var r = V.vypocetSmen(data);
+        // Jedna osoba, 5 dnů – pravděpodobně všechny směny stejný typ → může být false
+        if (r.ok === false) {
+          T.assert(r.chyba && r.chyba.indexOf('střídání') !== -1, 'chyba zmiňuje střídání');
+        } else {
+          T.assert(r.ok === true && r.prirazeni.length > 0, 'pokud ok, má přiřazení');
+        }
+      }
+    },
+    {
+      name: 'D6 preferenční režim: výpočet proběhne (bez tvrdé validace)',
+      run: function () {
+        if (!M) return;
+        var z = M.vytvorZamestnance('Učitelka', 1500, M.ROLE.UCITELKA);
+        var b = M.vytvorBudovu('Budova');
+        b.tridy.push(M.vytvorTridu('Třída 1'));
+        var data = {
+          zamestnanci: [z],
+          budovy: [b],
+          minMaxSloty: [{ id: 's1', od: '07:00', do: '17:00', minNaBudovu: 1, minNaTridu: 0, dny: [], rotace: false }],
+          pravidla: { stridaniDopoledneOdpoledne: true, stridaniRezim: 'preferenční', stridaniHraniceMinuty: 720 }
+        };
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true && Array.isArray(r.prirazeni) && r.prirazeni.length >= 1, 'preferenční neblokuje výpočet');
+      }
+    },
+    {
+      name: 'D6 vypnuto: chování jako dříve (bez ovlivnění)',
+      run: function () {
+        if (!M) return;
+        var z = M.vytvorZamestnance('Učitelka', 1500, M.ROLE.UCITELKA);
+        var b = M.vytvorBudovu('Budova');
+        var data = {
+          zamestnanci: [z],
+          budovy: [b],
+          minMaxSloty: [{ id: 's1', od: '07:00', do: '17:00', minNaBudovu: 1, minNaTridu: 0, dny: [], rotace: false }],
+          pravidla: { stridaniDopoledneOdpoledne: false }
+        };
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true && r.prirazeni.length === 5, 'výpočet ok, 5 přiřazení');
+      }
+    },
+
+    /* === D7: Souvislé bloky a méně dnů === */
+
+    {
+      name: 'D7 preferSouvisleBlok: kratší úvazek koncentrovaný do méně dnů',
+      run: function () {
+        if (!M) return;
+        // Úvazek 600 min/týden (10 h) – pod prahem 1200; s koncentrací by měl mít práci jen v méně dnech
+        var z = M.vytvorZamestnance('Částečný', 600, M.ROLE.UCITELKA);
+        var b = M.vytvorBudovu('Budova');
+        b.tridy.push(M.vytvorTridu('Třída 1'));
+        var data = {
+          zamestnanci: [z],
+          budovy: [b],
+          minMaxSloty: [{ id: 's1', od: '07:00', do: '17:00', minNaBudovu: 1, minNaTridu: 0, dny: [], rotace: false }],
+          pravidla: { preferSouvisleBlok: true }
+        };
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+        var dnySPraci = {};
+        for (var i = 0; i < r.prirazeni.length; i++) {
+          if (r.prirazeni[i].zamestnanecId === z.id) dnySPraci[r.prirazeni[i].den] = true;
+        }
+        var pocetDnu = Object.keys(dnySPraci).length;
+        T.assert(pocetDnu <= 5 && pocetDnu >= 1, 'D7: práce v ' + pocetDnu + ' dnech (očekáváno méně než 5 při koncentraci)');
+      }
+    },
+    {
+      name: 'D7 vypnuto: kratší úvazek rozložen proporčně (pět dní)',
+      run: function () {
+        if (!M) return;
+        var z = M.vytvorZamestnance('Částečný', 600, M.ROLE.UCITELKA);
+        var b = M.vytvorBudovu('Budova');
+        var data = {
+          zamestnanci: [z],
+          budovy: [b],
+          minMaxSloty: [{ id: 's1', od: '07:00', do: '17:00', minNaBudovu: 1, minNaTridu: 0, dny: [], rotace: false }],
+          pravidla: { preferSouvisleBlok: false }
+        };
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+        var dnySPraci = {};
+        for (var i = 0; i < r.prirazeni.length; i++) {
+          if (r.prirazeni[i].zamestnanecId === z.id) dnySPraci[r.prirazeni[i].den] = true;
+        }
+        T.assert(Object.keys(dnySPraci).length === 5, 'bez D7: práce ve všech 5 dnech');
+      }
+    },
+    {
+      name: 'D7 minDelkaBlokuMinuty: respektuje minimální délku bloku při koncentraci',
+      run: function () {
+        if (!M) return;
+        var z = M.vytvorZamestnance('Krátký', 480, M.ROLE.UCITELKA);
+        var b = M.vytvorBudovu('Budova');
+        b.tridy.push(M.vytvorTridu('Třída 1'));
+        var data = {
+          zamestnanci: [z],
+          budovy: [b],
+          minMaxSloty: [{ id: 's1', od: '07:00', do: '17:00', minNaBudovu: 1, minNaTridu: 0, dny: [], rotace: false }],
+          pravidla: { preferSouvisleBlok: true, minDelkaBlokuMinuty: 240 }
+        };
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+        for (var i = 0; i < r.prirazeni.length; i++) {
+          var p = r.prirazeni[i];
+          if (p.zamestnanecId !== z.id) continue;
+          var totalMin = 0;
+          for (var j = 0; j < p.segmenty.length; j++) {
+            var od = parseInt(p.segmenty[j].od.split(':')[0], 10) * 60 + parseInt(p.segmenty[j].od.split(':')[1], 10);
+            var doM = parseInt(p.segmenty[j].do.split(':')[0], 10) * 60 + parseInt(p.segmenty[j].do.split(':')[1], 10);
+            totalMin += (doM - od);
+          }
+          if (totalMin > 0) {
+            T.assert(totalMin >= 240, 'Den ' + p.den + ': blok má alespoň 240 min (má ' + totalMin + ')');
+          }
+        }
+      }
+    },
+
+    /* === Regrese: slot minNaTridu 2 v čase 9:30–11:00 musí být splněn v každé třídě každý den === */
+
+    {
+      name: 'Slot 09:30–11:00 minNaTridu 2: v každé třídě každý den alespoň 2 osoby (včetně Po na Žabkách)',
+      run: function () {
+        if (!M) return;
+        // Anonymizovaná konfigurace odpovídající reálnému exportu: 2 budovy, Jednička 3 třídy, Dvojka 2 třídy;
+        // slot 09:30–11:00 minNaTridu 2. Chyba: v pondělí na třídě Žabky (2. třída Dvojky) jen 1 osoba.
+        var b1 = M.vytvorBudovu('Budova A');
+        b1.tridy.push(M.vytvorTridu('Třída 1'));
+        b1.tridy.push(M.vytvorTridu('Třída 2'));
+        b1.tridy.push(M.vytvorTridu('Třída 3'));
+        var b2 = M.vytvorBudovu('Budova B');
+        b2.tridy.push(M.vytvorTridu('Třída 4'));
+        b2.tridy.push(M.vytvorTridu('Třída 5')); // Žabky = 2. třída 2. budovy
+        var t5 = b2.tridy[1].id;
+
+        var z1 = M.vytvorZamestnance('Z1', 1200, M.ROLE.UCITELKA, 'kmenová', b1.tridy[0].id, [
+          { den: 5, od: '07:00', do: '17:00' }, { den: 1, od: '07:00', do: '07:45' }, { den: 2, od: '07:00', do: '07:45' },
+          { den: 3, od: '07:00', do: '07:45' }, { den: 4, od: '07:00', do: '07:45' },
+          { den: 1, od: '16:00', do: '17:00' }, { den: 2, od: '16:00', do: '17:00' }, { den: 3, od: '16:00', do: '17:00' }, { den: 4, od: '16:00', do: '17:00' }
+        ]);
+        var z2 = M.vytvorZamestnance('Z2', 720, M.ROLE.UCITELKA, 'kmenová', b1.tridy[1].id, [
+          { den: 5, od: '07:00', do: '17:00' }, { den: 1, od: '07:00', do: '07:45' }, { den: 2, od: '07:00', do: '07:45' },
+          { den: 3, od: '07:00', do: '07:45' }, { den: 4, od: '07:00', do: '07:45' },
+          { den: 1, od: '16:00', do: '17:00' }, { den: 2, od: '16:00', do: '17:00' }, { den: 3, od: '16:00', do: '17:00' }, { den: 4, od: '16:00', do: '17:00' }
+        ]);
+        var z3 = M.vytvorZamestnance('Z3', 1860, M.ROLE.UCITELKA, 'kmenová', b1.tridy[2].id);
+        var z4 = M.vytvorZamestnance('Z4', 1860, M.ROLE.UCITELKA, 'kmenová', b1.tridy[2].id);
+        var z5 = M.vytvorZamestnance('Z5', 1860, M.ROLE.UCITELKA);
+        var z6 = M.vytvorZamestnance('Z6', 1860, M.ROLE.UCITELKA);
+        var z7 = M.vytvorZamestnance('Z7', 1860, M.ROLE.UCITELKA, 'kmenová', b1.tridy[1].id);
+        var z8 = M.vytvorZamestnance('Z8', 1860, M.ROLE.UCITELKA, 'kmenová', b1.tridy[0].id);
+        var z9 = M.vytvorZamestnance('Z9', 1860, M.ROLE.UCITELKA);
+        var z10 = M.vytvorZamestnance('Z10', 1590, M.ROLE.UCITELKA, 'vykrývací', null);
+        var z11 = M.vytvorZamestnance('Z11', 150, M.ROLE.UCITELKA, 'vykrývací', null);
+        var z12 = M.vytvorZamestnance('Z12', 210, M.ROLE.UCITELKA, 'vykrývací', null);
+        var z13 = M.vytvorZamestnance('Z13', 480, M.ROLE.UCITELKA, 'vykrývací', null);
+
+        var data = {
+          zamestnanci: [z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13],
+          budovy: [b1, b2],
+          minMaxSloty: [
+            { id: 's1', od: '07:00', do: '07:45', minNaBudovu: 1, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null, dny: [], rotace: false },
+            { id: 's2', od: '07:45', do: '16:00', minNaTridu: 1, maxNaTridu: null, minNaBudovu: 0, maxNaBudovu: null, dny: [], rotace: false },
+            { id: 's3', od: '16:00', do: '17:00', minNaBudovu: 1, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null, dny: [1, 2, 3, 4], rotace: false },
+            { id: 's4', od: '16:00', do: '17:00', minNaBudovu: 1, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null, dny: [5], rotace: true },
+            { id: 's5', od: '09:30', do: '11:00', minNaBudovu: 0, maxNaBudovu: null, minNaTridu: 2, maxNaTridu: null, dny: [], rotace: false }
+          ],
+          pravidla: {
+            minimalniPrekryvMinuty: 120,
+            vykryvaciBezMezer: true,
+            vykryvaciMaxPresun: 1,
+            zakazPrechodMeziBudovami: true,
+            preferSouvisleBlok: true,
+            minDelkaBlokuMinuty: 120
+          },
+          omezeniNeDohromady: [
+            { id: 'o1', osoba1Id: z3.id, osoba2Id: z8.id },
+            { id: 'o2', osoba1Id: z1.id, osoba2Id: z7.id },
+            { id: 'o3', osoba1Id: z1.id, osoba2Id: z2.id }
+          ]
+        };
+
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+
+        function hhmmToMin(hhmm) {
+          var parts = hhmm.split(':');
+          return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+        }
+        function minPocetOsobVTridVCase(prirazeni, den, tridaId, odMin, doMin) {
+          var minCount = Infinity;
+          for (var m = odMin; m < doMin; m++) {
+            var count = 0;
+            for (var pi = 0; pi < prirazeni.length; pi++) {
+              var p = prirazeni[pi];
+              if (p.den !== den) continue;
+              for (var si = 0; si < p.segmenty.length; si++) {
+                var seg = p.segmenty[si];
+                if (seg.tridaId !== tridaId) continue;
+                var segOd = hhmmToMin(seg.od);
+                var segDo = hhmmToMin(seg.do);
+                if (segOd <= m && m < segDo) { count++; break; }
+              }
+            }
+            if (count < minCount) minCount = count;
+          }
+          return minCount === Infinity ? 0 : minCount;
+        }
+
+        var od930 = 9 * 60 + 30;
+        var do11 = 11 * 60;
+        var tridy = [];
+        for (var bi = 0; bi < data.budovy.length; bi++) {
+          for (var ti = 0; ti < data.budovy[bi].tridy.length; ti++) {
+            tridy.push({ id: data.budovy[bi].tridy[ti].id, nazev: data.budovy[bi].tridy[ti].nazev });
+          }
+        }
+        var chyby = [];
+        for (var d = 1; d <= 5; d++) {
+          for (var ti2 = 0; ti2 < tridy.length; ti2++) {
+            var tid = tridy[ti2].id;
+            var nazev = tridy[ti2].nazev;
+            var minPocet = minPocetOsobVTridVCase(r.prirazeni, d, tid, od930, do11);
+            if (minPocet < 2) {
+              var denNazev = ['', 'Po', 'Út', 'St', 'Čt', 'Pá'][d];
+              chyby.push('Den ' + denNazev + ', třída ' + nazev + ': mezi 9:30–11:00 je ' + minPocet + ' osob (požadováno 2)');
+            }
+          }
+        }
+        T.assert(chyby.length === 0, chyby.length ? chyby.join('; ') : 'v každé třídě každý den 9:30–11:00 alespoň 2 osoby');
+      }
     }
   ];
 

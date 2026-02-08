@@ -17,7 +17,31 @@ Webová aplikace (HTML, čistý JavaScript, CSS). Projekt je v přípravě.
 
 ## Spuštění
 
-Otevři `index.html` v prohlížeči (lokálně nebo přes jednoduchý HTTP server).
+Aplikaci můžeš otevřít přímo souborem `index.html` v prohlížeči, nebo ji servírovat přes lokální webový server (vhodné kvůli Local Storage a relativním cestám).
+
+### Lokální webový server
+
+V kořeni projektu spusť **jeden** z následujících příkazů. Pak otevři v prohlížeči uvedenou adresu (např. `http://localhost:8765`).
+
+**Varianta 1 – npm (doporučeno)**  
+Potřebuješ Node.js (viz TROUBLESHOOTING.md, pokud nemáš).
+```bash
+npm start
+```
+Servíruje kořen projektu na **http://localhost:8765**. Ukončení: Ctrl+C.
+
+**Varianta 2 – bez instalace (npx)**  
+```bash
+npx serve -l 8765
+```
+Stejně jako `npm start` – port 8765 (serve se při prvním spuštění dočasně stáhne).
+
+**Varianta 3 – Python**  
+Máš-li v systému Python 3:
+```bash
+python3 -m http.server 8000
+```
+Otevři **http://localhost:8000**. Ukončení: Ctrl+C.
 
 ## Testy
 

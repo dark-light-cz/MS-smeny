@@ -219,14 +219,29 @@
    * @param {number[]} curve - křivka poptávky
    * @param {number} dayLen - délka dne v minutách
    * @param {Object} [availMasks] - zamestnanecId → boolean[] maska dostupnosti (B1d)
+   * @param {Object} [stridaniOpt] - D6: { preferredType: { zamId: 'dopoledni'|'odpoledni' }, boundaryRelative: number }
    */
-  function placeShifts(empDaily, curve, dayLen, availMasks) {
+  function placeShifts(empDaily, curve, dayLen, availMasks, stridaniOpt) {
     var sorted = empDaily.slice().sort(function (a, b) {
       return b.dailyMin - a.dailyMin;
     });
 
     var coverage = makeArray(dayLen, 0);
     var shifts = [];
+    var maxCurve = 0;
+    for (var mc = 0; mc < curve.length; mc++) {
+      if (curve[mc] > maxCurve) maxCurve = curve[mc];
+    }
+    var peakStart = -1;
+    var peakEnd = -1;
+    if (maxCurve > 0) {
+      for (var ps = 0; ps < curve.length; ps++) {
+        if (curve[ps] >= maxCurve) { peakStart = ps; break; }
+      }
+      for (var pe = curve.length - 1; pe >= 0; pe--) {
+        if (curve[pe] >= maxCurve) { peakEnd = pe + 1; break; }
+      }
+    }
 
     for (var ei = 0; ei < sorted.length; ei++) {
       var z = sorted[ei];
@@ -239,8 +254,21 @@
       var bestStart = -1;
       var bestScore = -Infinity;
 
-      // Zkusit pozice s krokem STEP
-      for (var s = 0; s <= dayLen - dm; s += STEP) {
+      var stepStart = 0;
+      var stepEnd = dayLen - dm;
+      var usePeakOnly = false;
+      if (maxCurve > 0 && peakStart >= 0 && dm <= 180) {
+        var overlapStart = Math.max(0, peakStart - dm + 1);
+        var overlapEnd = Math.min(dayLen - dm, peakEnd - 1);
+        if (overlapEnd >= overlapStart) {
+          stepStart = overlapStart;
+          stepEnd = overlapEnd;
+          usePeakOnly = true;
+        }
+      }
+
+      // Zkusit pozice s krokem STEP (nejdřív případně jen špička pro krátké směny)
+      for (var s = stepStart; s <= stepEnd; s += STEP) {
         // Kontrola dostupnosti: směna nesmí zasahovat do nedostupných minut
         if (mask) {
           var avail = true;
@@ -254,10 +282,42 @@
         for (var m = s; m < s + dm; m++) {
           var residual = curve[m] - coverage[m];
           score += (residual > 0) ? residual : -1;
+          if (residual > 0 && maxCurve > 0 && curve[m] >= maxCurve) score += 50;
+        }
+        // D6 preferenční: bonus za souhlas s preferovaným typem směny
+        if (stridaniOpt && stridaniOpt.preferredType && stridaniOpt.preferredType[z.id] && stridaniOpt.boundaryRelative != null) {
+          var isDopoledni = s < stridaniOpt.boundaryRelative;
+          if ((stridaniOpt.preferredType[z.id] === 'dopoledni' && isDopoledni) ||
+              (stridaniOpt.preferredType[z.id] === 'odpoledni' && !isDopoledni)) {
+            score += 0.5;
+          }
         }
         if (score > bestScore) {
           bestScore = score;
           bestStart = s;
+        }
+      }
+
+      if (bestStart < 0 && usePeakOnly) {
+        for (var s2 = 0; s2 <= dayLen - dm; s2 += STEP) {
+          if (mask) {
+            var avail2 = true;
+            for (var cm2 = s2; cm2 < s2 + dm; cm2++) {
+              if (!mask[cm2]) { avail2 = false; break; }
+            }
+            if (!avail2) continue;
+          }
+          var score3 = 0;
+          for (var m3 = s2; m3 < s2 + dm; m3++) {
+            var res3 = curve[m3] - coverage[m3];
+            score3 += (res3 > 0) ? res3 : -1;
+            if (res3 > 0 && maxCurve > 0 && curve[m3] >= maxCurve) score3 += 50;
+          }
+          if (stridaniOpt && stridaniOpt.preferredType && stridaniOpt.preferredType[z.id] && stridaniOpt.boundaryRelative != null) {
+            var isDop = s2 < stridaniOpt.boundaryRelative;
+            if ((stridaniOpt.preferredType[z.id] === 'dopoledni' && isDop) || (stridaniOpt.preferredType[z.id] === 'odpoledni' && !isDop)) score3 += 0.5;
+          }
+          if (score3 > bestScore) { bestScore = score3; bestStart = s2; }
         }
       }
 
@@ -275,6 +335,14 @@
           for (var m2 = lastStart; m2 < lastStart + dm; m2++) {
             var r2 = curve[m2] - coverage[m2];
             score2 += (r2 > 0) ? r2 : -1;
+            if (r2 > 0 && maxCurve > 0 && curve[m2] >= maxCurve) score2 += 50;
+          }
+          if (stridaniOpt && stridaniOpt.preferredType && stridaniOpt.preferredType[z.id] && stridaniOpt.boundaryRelative != null) {
+            var isDopoledniLast = lastStart < stridaniOpt.boundaryRelative;
+            if ((stridaniOpt.preferredType[z.id] === 'dopoledni' && isDopoledniLast) ||
+                (stridaniOpt.preferredType[z.id] === 'odpoledni' && !isDopoledniLast)) {
+              score2 += 0.5;
+            }
           }
           if (score2 > bestScore) {
             bestStart = lastStart;
@@ -292,7 +360,89 @@
       shifts.push({ zamestnanecId: z.id, start: bestStart, end: bestStart + dm });
     }
 
+    // Oprava: pokud v špičce chybí pokrytí, přesunout krátkou směnu z oblasti s přebytkem do špičky
+    if (maxCurve > 0 && peakStart >= 0 && peakEnd > peakStart) {
+      var minPeakCov = Infinity;
+      for (var pc = peakStart; pc < peakEnd; pc++) {
+        if (coverage[pc] < minPeakCov) minPeakCov = coverage[pc];
+      }
+      while (minPeakCov < maxCurve) {
+        var moved = false;
+        for (var ri = 0; ri < shifts.length && !moved; ri++) {
+          var sh = shifts[ri];
+          var dmR = sh.end - sh.start;
+          if (dmR > 120) continue;
+          if (sh.start < peakEnd && sh.end > peakStart) continue;
+          var maskR = (availMasks && availMasks[sh.zamestnanecId]) ? availMasks[sh.zamestnanecId] : null;
+          var newStart = -1;
+          for (var ns = peakStart; ns <= peakEnd - dmR; ns++) {
+            var ok = true;
+            if (maskR) {
+              for (var nm = ns; nm < ns + dmR; nm++) { if (!maskR[nm]) { ok = false; break; } }
+            }
+            if (ok) { newStart = ns; break; }
+          }
+          if (newStart < 0) continue;
+          var hasSlack = true;
+          for (var sm = sh.start; sm < sh.end; sm++) {
+            if (coverage[sm] - 1 < curve[sm]) { hasSlack = false; break; }
+          }
+          if (!hasSlack) continue;
+          for (var m = sh.start; m < sh.end; m++) coverage[m]--;
+          for (var m = newStart; m < newStart + dmR; m++) coverage[m]++;
+          sh.start = newStart;
+          sh.end = newStart + dmR;
+          moved = true;
+        }
+        if (!moved) break;
+        minPeakCov = Infinity;
+        for (var pc2 = peakStart; pc2 < peakEnd; pc2++) {
+          if (coverage[pc2] < minPeakCov) minPeakCov = coverage[pc2];
+        }
+      }
+    }
+
     return { shifts: shifts, coverage: coverage };
+  }
+
+  /* === D6: Střídání dopoledne/odpoledne === */
+
+  /**
+   * Zjistí typ směny z prvního segmentu (dopolední = začátek před hranicí, odpolední = na/po hranici).
+   * @param {Array<{od: string}>} segmenty - segmenty v HH:mm
+   * @param {number} hraniceMinuty - hranice v minutách od půlnoci (např. 720 = 12:00)
+   * @returns {'dopoledni'|'odpoledni'|null}
+   */
+  function getShiftTypeFromSegmenty(segmenty, hraniceMinuty) {
+    if (!segmenty || segmenty.length === 0) return null;
+    var startMin = timeToMinuty(segmenty[0].od);
+    return startMin < hraniceMinuty ? 'dopoledni' : 'odpoledni';
+  }
+
+  /**
+   * Ověří pravidlo střídání (tvrdý režim): žádný zaměstnanec nesmí mít každý den stejný typ směny.
+   * @param {Array} prirazeni - výsledná přiřazení { den, zamestnanecId, segmenty }
+   * @param {number} hraniceMinuty
+   * @returns {{ ok: boolean, chyba?: string }}
+   */
+  function validujStridaniTvrdy(prirazeni, hraniceMinuty) {
+    var typesPerZam = {}; // zamId → { dopoledni: count, odpoledni: count }
+    for (var i = 0; i < prirazeni.length; i++) {
+      var p = prirazeni[i];
+      var t = getShiftTypeFromSegmenty(p.segmenty, hraniceMinuty);
+      if (t == null) continue;
+      if (!typesPerZam[p.zamestnanecId]) typesPerZam[p.zamestnanecId] = { dopoledni: 0, odpoledni: 0 };
+      typesPerZam[p.zamestnanecId][t]++;
+    }
+    for (var zId in typesPerZam) {
+      if (!typesPerZam.hasOwnProperty(zId)) continue;
+      var c = typesPerZam[zId];
+      var total = c.dopoledni + c.odpoledni;
+      if (total >= 2 && (c.dopoledni === 0 || c.odpoledni === 0)) {
+        return { ok: false, chyba: 'Pravidlo střídání dopoledne/odpoledne (tvrdý režim): zaměstnanec má každý den stejný typ směny. Změňte režim na preferenční nebo upravte konfiguraci.' };
+      }
+    }
+    return { ok: true };
   }
 
   /* === D5: Přechod mezi budovami === */
@@ -524,12 +674,10 @@
         var need = (classDem[tIdFill] || 0) - (classCount[tIdFill] || 0);
         if (need <= 0) continue;
 
-        // Najít dostupné zaměstnance
         var avail = [];
         for (j = 0; j < onShift.length; j++) {
           var zIdA = onShift[j];
           if (assigned[zIdA]) continue;
-          // Ne-dohromady
           var forbidden = false;
           if (neDohromady[zIdA]) {
             for (var fi = 0; fi < neDohromady[zIdA].length; fi++) {
@@ -538,9 +686,7 @@
             }
           }
           if (forbidden) continue;
-          // D5: Omezení přechodu mezi budovami
           if (!canGoToBuilding(zIdA, demandInfo.tridaBudova[tIdFill])) continue;
-          // Vykrývací max přesunů
           var empA = empMap[zIdA];
           if (empA && empA.kmenovaVykryvaci === 'vykrývací') {
             var prevA = (m > 0 && assignments[zIdA]) ? assignments[zIdA][m - 1] : null;
@@ -549,7 +695,6 @@
           avail.push(zIdA);
         }
 
-        // Seřadit: nedávno v této třídě → kmenová → méně přesunů
         avail.sort(function (a, b) {
           var aR = wasRecentlyAt(a, tIdFill, 'trida', m) ? 0 : 1;
           var bR = wasRecentlyAt(b, tIdFill, 'trida', m) ? 0 : 1;
@@ -734,11 +879,62 @@
     var allWarnings = [];
     var den;
 
+    // D6: střídání dopoledne/odpoledne – pravidla a sledování typů pro preferenční režim
+    var stridaniZapnuto = !!(pravidla.stridaniDopoledneOdpoledne);
+    var stridaniRezim = (pravidla.stridaniRezim === 'tvrdý') ? 'tvrdý' : 'preferenční';
+    var stridaniHraniceMinuty = parseInt(pravidla.stridaniHraniceMinuty, 10);
+    if (isNaN(stridaniHraniceMinuty)) stridaniHraniceMinuty = 720;
+    var zamTypesSoFar = {};
+    for (var zi0 = 0; zi0 < zamestnanci.length; zi0++) {
+      zamTypesSoFar[zamestnanci[zi0].id] = [];
+    }
+
+    // D7: předpočítat koncentrované denní minuty pro kratší úvazky (méně dnů, delší bloky)
+    var preferSouvisle = !!(pravidla.preferSouvisleBlok);
+    var minDelkaBloku = (pravidla.minDelkaBlokuMinuty != null && pravidla.minDelkaBlokuMinuty !== '')
+      ? parseInt(pravidla.minDelkaBlokuMinuty, 10) : null;
+    if (preferSouvisle && isNaN(minDelkaBloku)) minDelkaBloku = null;
+    var UVAZEK_KRATKY_PRAH = 1200; // 20 h/týden – pod tím aplikujeme koncentraci
+    var empDailyPrecomputed = {}; // zamId → { 1: min, 2: min, ... }
+    if (preferSouvisle) {
+      for (var ep = 0; ep < zamestnanci.length; ep++) {
+        var zP = zamestnanci[ep];
+        var weeklyP = empWeekly[zP.id];
+        if (weeklyP >= UVAZEK_KRATKY_PRAH) continue;
+        var infoP = availInfo[zP.id];
+        // Seřadit dny podle maxBlock (nejdelší blok první)
+        var dnySBlokem = [];
+        for (var dp = 1; dp <= 5; dp++) {
+          dnySBlokem.push({ den: dp, maxBlock: infoP[dp].maxBlock });
+        }
+        dnySBlokem.sort(function (a, b) { return b.maxBlock - a.maxBlock; });
+        var remaining = weeklyP;
+        var denniMin = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        for (var di = 0; di < dnySBlokem.length && remaining > 0; di++) {
+          var d = dnySBlokem[di].den;
+          var maxB = dnySBlokem[di].maxBlock;
+          if (maxB <= 0) continue;
+          var assign = Math.min(remaining, maxB);
+          if (minDelkaBloku != null && assign > 0 && assign < minDelkaBloku && (remaining - assign) > 0) {
+            // Nepřiřazovat příliš krátký blok, pokud ještě můžeme vyplnit další dny
+            continue;
+          }
+          denniMin[d] = assign;
+          remaining -= assign;
+        }
+        if (remaining > 0) {
+          // Koncentrace nevyčerpala úvazek – nepoužít předpočítané, v hlavní smyčce zůstane proporční rozdělení
+          continue;
+        }
+        empDailyPrecomputed[zP.id] = denniMin;
+      }
+    }
+
     for (den = 1; den <= 5; den++) {
       var demandInfo = buildDemand(den, sloty, budovy, pravidla);
       var curve = totalDemandCurve(demandInfo, budovy);
 
-      // Sestavit empDaily s ohledem na nedostupnost
+      // Sestavit empDaily: nedostupnost (B1d) + volitelně D7 koncentrace
       var empDaily = [];
       var availMasks = {};
       for (var ei = 0; ei < zamestnanci.length; ei++) {
@@ -746,25 +942,88 @@
         var weekly = empWeekly[zE.id];
         var info = availInfo[zE.id];
 
-        // Celkový dostupný čas zaměstnance přes všechny dny (suma maxBlock)
-        var totalAvailMin = 0;
-        for (var dd = 1; dd <= 5; dd++) {
-          totalAvailMin += info[dd].maxBlock;
-        }
-
         var dailyMin = 0;
-        if (totalAvailMin > 0 && info[den].maxBlock > 0) {
-          // Rozdělit úvazek proporčně podle dostupného času
-          dailyMin = Math.round(weekly * info[den].maxBlock / totalAvailMin);
-          // Omezit na skutečně dostupný blok
-          if (dailyMin > info[den].maxBlock) dailyMin = info[den].maxBlock;
+        if (empDailyPrecomputed[zE.id]) {
+          dailyMin = empDailyPrecomputed[zE.id][den] || 0;
+        } else {
+          var totalAvailMin = 0;
+          for (var dd = 1; dd <= 5; dd++) {
+            totalAvailMin += info[dd].maxBlock;
+          }
+          if (totalAvailMin > 0 && info[den].maxBlock > 0) {
+            dailyMin = Math.round(weekly * info[den].maxBlock / totalAvailMin);
+            if (dailyMin > info[den].maxBlock) dailyMin = info[den].maxBlock;
+          }
         }
 
         empDaily.push({ id: zE.id, dailyMin: dailyMin });
         availMasks[zE.id] = info[den].mask;
       }
 
-      var placed = placeShifts(empDaily, curve, demandInfo.dayLen, availMasks);
+      // Zajistit dostatek lidí na pokrytí poptávky: v každé minutě musí být alespoň curve[m] osob.
+      // Pokud D7 nebo proporční rozdělení dá 0 minut příliš mnoha lidem, placeShifts nemůže pokrýt sloty (např. 9:30–11 minNaTridu 2).
+      var maxCurve = 0;
+      for (var ci = 0; ci < curve.length; ci++) {
+        if (curve[ci] > maxCurve) maxCurve = curve[ci];
+      }
+      var countPositive = 0;
+      for (var cpi = 0; cpi < empDaily.length; cpi++) {
+        if (empDaily[cpi].dailyMin > 0) countPositive++;
+      }
+      if (maxCurve > 0 && countPositive < maxCurve + 1) {
+        var needMore = Math.max(0, maxCurve + 1 - countPositive);
+        var toGive = Math.max(STEP, 60);
+        var peakStartR = 0;
+        var peakEndR = curve.length;
+        for (var pr = 0; pr < curve.length; pr++) {
+          if (curve[pr] >= maxCurve) { peakStartR = pr; break; }
+        }
+        for (var pr2 = curve.length - 1; pr2 >= 0; pr2--) {
+          if (curve[pr2] >= maxCurve) { peakEndR = pr2 + 1; break; }
+        }
+        function canWorkInPeak(empIdx, len) {
+          var mask = availMasks[empDaily[empIdx].id];
+          if (!mask || mask.length < peakEndR) return false;
+          for (var ss = peakStartR; ss <= peakEndR - len; ss++) {
+            var ok = true;
+            for (var mm = ss; mm < ss + len; mm++) { if (!mask[mm]) { ok = false; break; } }
+            if (ok) return true;
+          }
+          return false;
+        }
+        var donors = [];
+        var zeros = [];
+        for (var di = 0; di < empDaily.length; di++) {
+          if (empDaily[di].dailyMin >= toGive) donors.push(di);
+          else if (empDaily[di].dailyMin === 0 && canWorkInPeak(di, toGive)) zeros.push(di);
+        }
+        donors.sort(function (a, b) { return empDaily[b].dailyMin - empDaily[a].dailyMin; });
+        var toTransfer = Math.min(needMore, donors.length, zeros.length);
+        for (var tt = 0; tt < toTransfer; tt++) {
+          empDaily[donors[tt]].dailyMin -= toGive;
+          empDaily[zeros[tt]].dailyMin = toGive;
+        }
+      }
+
+      // D6 preferenční: preferovaný typ pro tento den (opačný než většina předchozích dnů)
+      var stridaniOpt = null;
+      if (stridaniZapnuto && stridaniRezim === 'preferenční') {
+        var boundaryRel = stridaniHraniceMinuty - demandInfo.range.start;
+        var preferredType = {};
+        for (var ptId in zamTypesSoFar) {
+          if (!zamTypesSoFar.hasOwnProperty(ptId)) continue;
+          var hist = zamTypesSoFar[ptId];
+          if (hist.length === 0) continue;
+          var dop = 0, od = 0;
+          for (var hi = 0; hi < hist.length; hi++) {
+            if (hist[hi] === 'dopoledni') dop++; else od++;
+          }
+          preferredType[ptId] = dop >= od ? 'odpoledni' : 'dopoledni';
+        }
+        stridaniOpt = { preferredType: preferredType, boundaryRelative: boundaryRel };
+      }
+
+      var placed = placeShifts(empDaily, curve, demandInfo.dayLen, availMasks, stridaniOpt);
       var locAssignments = assignLocations(
         placed.shifts, demandInfo, budovy, zamestnanci, pravidla, omezeni
       );
@@ -776,6 +1035,23 @@
           zamestnanecId: segments[si].zamestnanecId,
           segmenty: segments[si].segmenty
         });
+      }
+
+      // D6: zaznamenat typ směny pro tento den (pro preferenční v dalších dnech a pro tvrdý validation)
+      if (stridaniZapnuto) {
+        for (var si2 = 0; si2 < segments.length; si2++) {
+          var zId2 = segments[si2].zamestnanecId;
+          var typ = getShiftTypeFromSegmenty(segments[si2].segmenty, stridaniHraniceMinuty);
+          if (typ && zamTypesSoFar[zId2]) zamTypesSoFar[zId2].push(typ);
+        }
+      }
+    }
+
+    // D6 tvrdý režim: ověřit, že nikdo nemá každý den stejný typ směny
+    if (stridaniZapnuto && stridaniRezim === 'tvrdý') {
+      var validTvrdy = validujStridaniTvrdy(prirazeni, stridaniHraniceMinuty);
+      if (!validTvrdy.ok) {
+        return { ok: false, chyba: validTvrdy.chyba };
       }
     }
 
@@ -824,9 +1100,11 @@
     vypocetSmen: vypocetSmen,
     slotDurationMinuty: slotDurationMinuty,
     positionsProSlot: positionsProSlot,
-    // Interní helpery exportované pro testy (B1d, D5)
+    // Interní helpery exportované pro testy (B1d, D5, D6)
     _buildAvailMask: buildAvailMask,
     _longestAvailBlock: longestAvailBlock,
-    _maZakazPrechodu: maZakazPrechodu
+    _maZakazPrechodu: maZakazPrechodu,
+    _getShiftTypeFromSegmenty: getShiftTypeFromSegmenty,
+    _validujStridaniTvrdy: validujStridaniTvrdy
   };
 })(typeof window !== 'undefined' ? window : this);
