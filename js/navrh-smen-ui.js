@@ -9,6 +9,12 @@
   var Vypocet = global.MSemenyVypocetSmen;
   /** Poslední zobrazený výsledek návrhu (pro export CSV). */
   var lastNavrhResult = null;
+  /** Poslední výsledek validace s chybami (pro chybový report). */
+  var lastValidaceResult = null;
+  /** D2d: režim grafu – 'taby' (jeden den, přepínání záložkami) nebo 'inline' (všechny dny pod sebou). */
+  var grafRezim = 'taby';
+  /** D2d: vybraný den v režimu Taby (1–5). */
+  var grafVybranyDen = 1;
 
   function getData() {
     return Storage ? Storage.getData() : { zamestnanci: [], budovy: [], minMaxSloty: [] };
@@ -165,6 +171,16 @@
       vykresliNavrh(result.prirazeni, data);
       zobrazGraf(result.prirazeni, data, { onSegmentClick: handleSegmentClick, onSegmentDrop: handleSegmentDrop });
       zobrazTlacitkoCsv(true);
+      var Validace = global.MSemenyValidaceNavrhu;
+      var vResult = (Validace && Validace.validujNavrh) ? Validace.validujNavrh(result.prirazeni, data) : { ok: true, polozky: [] };
+      validovat(vResult);
+      if (vResult.polozky && vResult.polozky.length > 0) {
+        lastValidaceResult = { data: data, prirazeni: result.prirazeni, polozky: vResult.polozky };
+        zobrazTlacitkoChybovyReport(true);
+      } else {
+        lastValidaceResult = null;
+        zobrazTlacitkoChybovyReport(false);
+      }
     } else {
       zobrazChybu(result.chyba || 'Výpočet se nezdařil.');
       lastNavrhResult = null;
@@ -190,18 +206,38 @@
     if (btn) btn.hidden = !zobrazit;
   }
 
+  function zobrazTlacitkoChybovyReport(zobrazit) {
+    var btn = document.getElementById('navrh-stahnout-chybovy-report');
+    if (btn) btn.hidden = !zobrazit;
+  }
+
+  function stahnoutChybovyReport() {
+    if (!lastValidaceResult || !global.MSemenyChybovyReport || !global.MSemenyChybovyReport.stahnoutChybovyReport) return;
+    global.MSemenyChybovyReport.stahnoutChybovyReport(
+      lastValidaceResult.data,
+      lastValidaceResult.prirazeni,
+      lastValidaceResult.polozky
+    );
+  }
+
   function nahratCsv() {
     var input = document.getElementById('navrh-csv-input');
     if (input) input.click();
   }
 
-  function validovat() {
+  /**
+   * Spustí validaci a zobrazí výsledek. Volitelně přijme předpočítaný výsledek (např. po Přepočítat).
+   * @param {Object} [optionalResult] - { ok, polozky } z Validace.validujNavrh
+   */
+  function validovat(optionalResult) {
     var container = document.getElementById('navrh-validace-vysledek');
     if (!container) return;
 
     if (!lastNavrhResult) {
       container.hidden = false;
       container.innerHTML = '<p class="navrh-validace-zadny">Nejprve přepočítejte nebo načtěte návrh z CSV.</p>';
+      lastValidaceResult = null;
+      zobrazTlacitkoChybovyReport(false);
       return;
     }
 
@@ -209,13 +245,23 @@
     if (!Validace || !Validace.validujNavrh) {
       container.hidden = false;
       container.innerHTML = '<p class="navrh-validace-zadny">Modul validace není k dispozici.</p>';
+      lastValidaceResult = null;
+      zobrazTlacitkoChybovyReport(false);
       return;
     }
 
-    var result = Validace.validujNavrh(lastNavrhResult.prirazeni, lastNavrhResult.data);
+    var result = (optionalResult && optionalResult.polozky) ? optionalResult : Validace.validujNavrh(lastNavrhResult.prirazeni, lastNavrhResult.data);
     container.hidden = false;
 
-    if (result.polozky.length === 0) {
+    if (result.polozky && result.polozky.length > 0) {
+      lastValidaceResult = { data: lastNavrhResult.data, prirazeni: lastNavrhResult.prirazeni, polozky: result.polozky };
+      zobrazTlacitkoChybovyReport(true);
+    } else {
+      lastValidaceResult = null;
+      zobrazTlacitkoChybovyReport(false);
+    }
+
+    if (!result.polozky || result.polozky.length === 0) {
       container.innerHTML = '<p class="navrh-validace-ok">Návrh vyhovuje zadaným pravidlům (úvazky v pořádku).</p>';
       return;
     }
@@ -309,7 +355,18 @@
     var Graf = global.MSemenyNavrhGraf;
     var container = document.getElementById('navrh-graf');
     if (!Graf || !Graf.vykresliNavrhGraf || !container) return;
-    Graf.vykresliNavrhGraf(prirazeni || [], data || {}, container, 1, grafOpts || {});
+    var opts = Object.assign({}, grafOpts || {}, {
+      rezim: grafRezim,
+      onDenChange: function (d) {
+        grafVybranyDen = d;
+        if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
+      },
+      onRezimChange: function (r) {
+        grafRezim = r;
+        if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
+      }
+    });
+    Graf.vykresliNavrhGraf(prirazeni || [], data || {}, container, grafVybranyDen, opts);
   }
 
   /** Hluboká kopie prirazeni pro úpravy. */
@@ -598,7 +655,10 @@
     if (inputCsv) inputCsv.addEventListener('change', onCsvFileSelected);
 
     var btnValidovat = document.getElementById('navrh-validovat');
-    if (btnValidovat) btnValidovat.addEventListener('click', validovat);
+    if (btnValidovat) btnValidovat.addEventListener('click', function () { validovat(); });
+
+    var btnChybovyReport = document.getElementById('navrh-stahnout-chybovy-report');
+    if (btnChybovyReport) btnChybovyReport.addEventListener('click', stahnoutChybovyReport);
 
     var segmentForm = document.getElementById('navrh-segment-form');
     if (segmentForm) {

@@ -143,35 +143,25 @@
   }
 
   /**
-   * Vykreslí grafický návrh do kontejneru.
-   * @param {Array} prirazeni - celé přiřazení (všechny dny)
-   * @param {Object} data - konfigurace (budovy, zamestnanci)
-   * @param {HTMLElement} container - prvek, do kterého kreslit
-   * @param {number} [vybranyDen] - 1–5, který den zobrazit (default 1)
+   * Sestaví HTML obsah pro jeden den (časová osa + bloky budov/tříd + legenda).
+   * @param {number} den - 1–5
+   * @param {Array} prirazeni - celé přiřazení
+   * @param {Object} data - konfigurace
+   * @param {Object} range - { start, end } v minutách
+   * @param {Object} opts - onSegmentClick, onSegmentDrop
+   * @returns {{ html: string[], prazdny: boolean }}
    */
-  function vykresliNavrhGraf(prirazeni, data, container, vybranyDen, opts) {
-    if (!container) return;
-    opts = (typeof opts === 'object' && opts !== null) ? opts : {};
-    var onSegmentClick = opts.onSegmentClick;
-    var onSegmentDrop = opts.onSegmentDrop;
+  function buildObsahJednohoDne(den, prirazeni, data, range, opts) {
     var budovy = (data && data.budovy) || [];
     var zamestnanci = (data && data.zamestnanci) || [];
-    var den = vybranyDen >= 1 && vybranyDen <= 5 ? vybranyDen : 1;
+    var onSegmentClick = (opts && opts.onSegmentClick);
+    var onSegmentDrop = (opts && opts.onSegmentDrop);
+    var proDen = (prirazeni || []).filter(function (p) { return p.den === den; });
 
-    if (!prirazeni || prirazeni.length === 0) {
-      container.innerHTML = '';
-      container.hidden = true;
-      return;
-    }
-
-    var proDen = prirazeni.filter(function (p) { return p.den === den; });
     if (proDen.length === 0) {
-      container.innerHTML = '<p class="navrh-graf-prazdno">Pro tento den nejsou žádná přiřazení.</p>';
-      container.hidden = false;
-      return;
+      return { html: ['<p class="navrh-graf-prazdno">Pro tento den nejsou žádná přiřazení.</p>'], prazdny: true };
     }
 
-    var range = getTimeRange(budovy);
     var rangeLen = range.end - range.start;
     var barvyMap = mapBarev(proDen, zamestnanci);
 
@@ -185,14 +175,13 @@
       var len = Math.max(0, doM - odM);
       return Math.min(100, (len / rangeLen) * 100);
     }
-
     function minutyToHhmmLabel(minuty) {
       var h = Math.floor(minuty / 60);
       var m = minuty % 60;
       return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
     }
 
-    /** Časová osa: hodinové značky od range.start do range.end */
+    var html = [];
     var casovaOsaHtml = [];
     var startH = Math.floor(range.start / 60);
     var endH = Math.ceil(range.end / 60);
@@ -203,17 +192,6 @@
       var pct = rangeLen > 0 ? ((minuty - range.start) / rangeLen) * 100 : 0;
       casovaOsaHtml.push('<span class="navrh-graf-cas-znacka" style="left:' + pct + '%">' + escapeHtml(minutyToHhmmLabel(minuty)) + '</span>');
     }
-
-    var html = [];
-    html.push('<div class="navrh-graf-hlavicka">');
-    html.push('<label for="navrh-graf-den" class="navrh-graf-label">Den:</label>');
-    html.push('<select id="navrh-graf-den" class="navrh-graf-select">');
-    for (var d = 1; d <= 5; d += 1) {
-      html.push('<option value="' + d + '"' + (d === den ? ' selected' : '') + '>' + NAZVY_DNU[d] + '</option>');
-    }
-    html.push('</select>');
-    html.push('</div>');
-
     html.push('<div class="navrh-graf-casova-osa">');
     html.push('<span class="navrh-graf-osa-label">Čas</span>');
     html.push('<div class="navrh-graf-osa-pruh">' + casovaOsaHtml.join('') + '</div>');
@@ -225,11 +203,9 @@
       var tridy = b.tridy || [];
       html.push('<div class="navrh-graf-blok">');
       html.push('<h3 class="navrh-graf-blok-nadpis">' + escapeHtml(nazevBudovy(budovy, b.id)) + '</h3>');
-
       var rady = [];
       var budovaSegments = [];
-      var tridaSegments = {}; // tridaId → [ { od, do, zamestnanecId, jmeno } ]
-
+      var tridaSegments = {};
       for (var pi = 0; pi < proDen.length; pi += 1) {
         var p = proDen[pi];
         var jmeno = jmenoZamestnance(zamestnanci, p.zamestnanecId);
@@ -252,15 +228,13 @@
           }
         }
       }
-
       if (budovaSegments.length > 0) {
         rady.push({ label: 'Budova (společně)', items: budovaSegments, budovaId: b.id, tridaId: null });
       }
       for (var ti = 0; ti < tridy.length; ti += 1) {
         var t = tridy[ti];
         if (!t.id) continue;
-        var items = tridaSegments[t.id] || [];
-        rady.push({ label: t.nazev || '(třída)', items: items, budovaId: b.id, tridaId: t.id });
+        rady.push({ label: t.nazev || '(třída)', items: tridaSegments[t.id] || [], budovaId: b.id, tridaId: t.id });
       }
       var zobrazenyTridy = {};
       for (var ti2 = 0; ti2 < tridy.length; ti2 += 1) {
@@ -268,13 +242,10 @@
       }
       for (var tid in tridaSegments) {
         if (tridaSegments.hasOwnProperty(tid) && !zobrazenyTridy[tid]) {
-          var bid = findBudovaIdForTrida(budovy, tid);
-          rady.push({ label: nazevTridy(budovy, tid) || '(třída)', items: tridaSegments[tid], budovaId: bid || null, tridaId: tid });
+          rady.push({ label: nazevTridy(budovy, tid) || '(třída)', items: tridaSegments[tid], budovaId: findBudovaIdForTrida(budovy, tid) || null, tridaId: tid });
         }
       }
-
       var canEdit = typeof onSegmentClick === 'function' || typeof onSegmentDrop === 'function';
-
       for (var ri = 0; ri < rady.length; ri += 1) {
         var rada = rady[ri];
         var lanes = assignLanes(rada.items);
@@ -298,35 +269,99 @@
           }
           html.push('</div>');
         }
-        html.push('</div>');
-        html.push('</div>');
+        html.push('</div></div>');
       }
       html.push('</div>');
     }
-
     html.push('<div class="navrh-graf-legenda">');
     html.push('<span class="navrh-graf-legenda-nadpis">Legenda:</span> ');
     var orderedIds = [];
-    for (var ki = 0; ki < (zamestnanci || []).length; ki += 1) {
-      orderedIds.push(zamestnanci[ki].id);
-    }
+    for (var ki = 0; ki < (zamestnanci || []).length; ki += 1) orderedIds.push(zamestnanci[ki].id);
     for (var oi = 0; oi < orderedIds.length; oi += 1) {
       var zid = orderedIds[oi];
       if (!barvyMap[zid]) continue;
       html.push('<span class="navrh-graf-legenda-položka"><span class="navrh-graf-legenda-barvicka" style="background:' + barvyMap[zid] + '"></span> ' + escapeHtml(jmenoZamestnance(zamestnanci, zid)) + '</span>');
     }
     html.push('</div>');
+    return { html: html, prazdny: false };
+  }
+
+  /**
+   * Vykreslí grafický návrh do kontejneru (D2b, D2d: taby + režim Taby/Inline).
+   * @param {Array} prirazeni - celé přiřazení (všechny dny)
+   * @param {Object} data - konfigurace (budovy, zamestnanci)
+   * @param {HTMLElement} container - prvek, do kterého kreslit
+   * @param {number} [vybranyDen] - 1–5, který den zobrazit v režimu Taby (default 1)
+   * @param {Object} [opts] - rezim: 'taby'|'inline', onSegmentClick, onSegmentDrop, onDenChange(den), onRezimChange(rezim)
+   */
+  function vykresliNavrhGraf(prirazeni, data, container, vybranyDen, opts) {
+    if (!container) return;
+    opts = (typeof opts === 'object' && opts !== null) ? opts : {};
+    var onSegmentClick = opts.onSegmentClick;
+    var onSegmentDrop = opts.onSegmentDrop;
+    var onDenChange = opts.onDenChange;
+    var onRezimChange = opts.onRezimChange;
+    var rezim = (opts.rezim === 'inline') ? 'inline' : 'taby';
+    var budovy = (data && data.budovy) || [];
+    var zamestnanci = (data && data.zamestnanci) || [];
+    var den = vybranyDen >= 1 && vybranyDen <= 5 ? vybranyDen : 1;
+
+    if (!prirazeni || prirazeni.length === 0) {
+      container.innerHTML = '';
+      container.hidden = true;
+      return;
+    }
+
+    var range = getTimeRange(budovy);
+    var html = [];
+
+    /* Ovládací prvky: režim (Taby / Inline) a taby pro dny (jen v režimu Taby) */
+    html.push('<div class="navrh-graf-ovladaci">');
+    html.push('<div class="navrh-graf-rezim" role="group" aria-label="Režim zobrazení">');
+    html.push('<button type="button" class="navrh-graf-rezim-btn' + (rezim === 'taby' ? ' is-active' : '') + '" data-rezim="taby">Taby</button>');
+    html.push('<button type="button" class="navrh-graf-rezim-btn' + (rezim === 'inline' ? ' is-active' : '') + '" data-rezim="inline">Inline</button>');
+    html.push('</div>');
+    if (rezim === 'taby') {
+      html.push('<div class="navrh-graf-taby" role="tablist" aria-label="Výběr dne">');
+      for (var d = 1; d <= 5; d += 1) {
+        html.push('<button type="button" class="navrh-graf-tab' + (d === den ? ' is-active' : '') + '" role="tab" aria-selected="' + (d === den) + '" data-den="' + d + '">' + escapeHtml(NAZVY_DNU[d]) + '</button>');
+      }
+      html.push('</div>');
+    }
+    html.push('</div>');
+
+    if (rezim === 'taby') {
+      var jeden = buildObsahJednohoDne(den, prirazeni, data, range, opts);
+      html = html.concat(jeden.html);
+    } else {
+      html.push('<div class="navrh-graf-inline">');
+      for (var d2 = 1; d2 <= 5; d2 += 1) {
+        html.push('<section class="navrh-graf-inline-den" data-den="' + d2 + '" aria-labelledby="navrh-graf-inline-heading-' + d2 + '">');
+        html.push('<h3 id="navrh-graf-inline-heading-' + d2 + '" class="navrh-graf-inline-nadpis">' + escapeHtml(NAZVY_DNU[d2]) + '</h3>');
+        var jeden2 = buildObsahJednohoDne(d2, prirazeni, data, range, opts);
+        html = html.concat(jeden2.html);
+        html.push('</section>');
+      }
+      html.push('</div>');
+    }
 
     container.innerHTML = html.join('');
     container.hidden = false;
 
-    var selectEl = container.querySelector('.navrh-graf-select');
-    if (selectEl) {
-      selectEl.addEventListener('change', function () {
-        var newDen = parseInt(selectEl.value, 10);
-        if (newDen >= 1 && newDen <= 5) {
-          vykresliNavrhGraf(prirazeni, data, container, newDen, opts);
-        }
+    /* Režim: Taby / Inline */
+    var rezimBtns = container.querySelectorAll('.navrh-graf-rezim-btn');
+    for (var rb = 0; rb < rezimBtns.length; rb += 1) {
+      rezimBtns[rb].addEventListener('click', function () {
+        var r = this.getAttribute('data-rezim');
+        if (r && typeof onRezimChange === 'function') onRezimChange(r);
+      });
+    }
+    /* Taby: výběr dne */
+    var tabBtns = container.querySelectorAll('.navrh-graf-tab');
+    for (var tb = 0; tb < tabBtns.length; tb += 1) {
+      tabBtns[tb].addEventListener('click', function () {
+        var newDen = parseInt(this.getAttribute('data-den'), 10);
+        if (newDen >= 1 && newDen <= 5 && typeof onDenChange === 'function') onDenChange(newDen);
       });
     }
 

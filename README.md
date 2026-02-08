@@ -14,6 +14,7 @@ Webová aplikace (HTML, čistý JavaScript, CSS). Projekt je v přípravě.
 - `CHECKLIST.md` – stav úkolů a doporučený postup „Co dál“
 - `OPEN_QUESTIONS.md` – otevřené dotazy a workflow
 - **`TROUBLESHOOTING.md`** – řešení častých problémů (např. instalace Node.js/npm na macOS)
+- **`CHYBOVY_REPORT.md`** – popis chybového reportu pro AI: co obsahuje (anonymizovaná konfigurace, přehled, chyby), jak ho předat AI a jak postupovat při nápravě (test → oprava kódu)
 
 ## Spuštění
 
