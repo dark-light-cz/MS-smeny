@@ -123,8 +123,8 @@
   - Tabulka (Den, Zaměstnanec, Čas, Místo) je v sekci Návrh směn v rozbalovacím bloku `<details>`; výchozí stav je sbalený, uživatel ji může rozbalit podle potřeby.
 - **Import návrhu ze CSV (D9):**
   - Tlačítko „Nahrát CSV“ umožní nahrát soubor ve stejném formátu jako export (Den;Zaměstnanec;Čas;Místo). Načtená data se zobrazí v tabulce a v grafu stejně jako po přepočtu; neznámí zaměstnanci nebo neplatné řádky se přeskočí s varováním. API: `MSemenyImportNavrhCsv.csvToPrirazeni(csvText, data)` (js/import-navrh-csv.js).
-- **Validace návrhu a tabulka chyb/varování (D10):**
-  - Tlačítko „Validovat“ zkontroluje aktuální návrh (vygenerovaný nebo načtený z CSV). Zobrazí tabulku s porušenými pravidly a kontextem; zahrnuje **přečerpaný úvazek** (více minut než úvazek) a **nevyčerpaný úvazek** (méně minut než úvazek). Při splnění pravidel: hláška „Návrh vyhovuje zadaným pravidlům (úvazky v pořádku).“ API: `MSemenyValidaceNavrhu.validujNavrh(prirazeni, data)` (js/validace-navrhu.js).
+- **Validace návrhu a tabulka chyb/varování (D10, D10b):**
+  - Tlačítko „Validovat“ zkontroluje aktuální návrh (vygenerovaný nebo načtený z CSV). Zobrazí tabulku s porušenými pravidly a kontextem; zahrnuje **přečerpaný úvazek** a **nevyčerpaný úvazek** (D10). **D10b:** Kontrola **Požadavků na počet osob v čase** (minMaxSloty z Pravidel): v každém časovém slotu a každém dnu (dle slot.dny) se ověří, že v každé třídě resp. budově je počet osob v intervalu min–max; porušení se zobrazí jako chyby „Min/max na třídu“ nebo „Min/max na budovu“ (den, čas, místo, skutečnost vs. očekávání). API: `MSemenyValidaceNavrhu.validujNavrh(prirazeni, data)` (data obsahuje zamestnanci, budovy, minMaxSloty).
 - **Editace bloků přímo na grafu (D11):**
   - Klik na segment v grafu otevře modal „Upravit blok přiřazení“: změna času od–do, přesun do jiné třídy/budovy (select), tlačítko Smazat blok. Přetažení (drag & drop) segmentu na jiný řádek grafu přesune blok do příslušné třídy nebo budovy. Po uložení nebo přesunu se aktualizuje tabulka návrhu, graf a (je-li zobrazena) tabulka validace. API: `MSemenyNavrhGraf.vykresliNavrhGraf(..., opts)` s `onSegmentClick` a `onSegmentDrop`; `MSemenyNavrhSmenUI.applyNavrhChange(prirazeni)`.
 - **Doplnění nevyčerpaného úvazku z tabulky chyb (D12):**
@@ -155,6 +155,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2026-02-06: Implementován D10b – validace min/max na třídu a budovu: kontrola časových slotů (minMaxSloty) v každém dnu, počet osob v každé třídě/budově v rozsahu slotu; chyby „Min/max na třídu“, „Min/max na budovu“ v tabulce validace; 2 nové testy.
 - 2026-02-06: Implementovány D11 a D12 – editace bloků na grafu (klik = modal úpravy času a místa, Smazat; drag & drop přesun na jiný řádek); doplnění nevyčerpaného úvazku z tabulky validace (klik na jméno u „Nevyčerpaný úvazek“ → modal Den/čas od–do/třída, čas do dopočten).
 - 2026-02-06: Implementovány D8, D9, D10 – rozbalovací tabulka návrhu (výchozí sbalená); import návrhu ze CSV (tlačítko Nahrát CSV, zobrazení v tabulce a grafu); tlačítko Validovat a tabulka chyb/varování (úvazky přečerpaný/nevyčerpaný). Nové moduly: js/import-navrh-csv.js, js/validace-navrhu.js; testy test-import-navrh-csv.js, test-validace-navrhu.js.
 - 2026-02-06: Implementovány C6 a C7 – konfigurace střídání dopoledne/odpoledne (zapnuto/vypnuto, režim preferenční/tvrdý, hranice 12:00) a konfigurace souvislých bloků a méně dnů (zapnuto/vypnuto, min délka bloku). Model, UI v sekci Pravidla, export/import normalizace; 13 nových testů; celkem 144 testů.

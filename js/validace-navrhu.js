@@ -50,12 +50,11 @@
   function validujNavrh(prirazeni, data) {
     var polozky = [];
     var zamestnanci = (data && data.zamestnanci) || [];
-
-    if (!prirazeni || prirazeni.length === 0) {
-      return { ok: true, polozky: [] };
-    }
+    prirazeni = prirazeni || [];
 
     var minutyPerZam = sumMinutyPerZamestnanec(prirazeni);
+
+    if (prirazeni.length > 0) {
 
     for (var i = 0; i < zamestnanci.length; i += 1) {
       var z = zamestnanci[i];
@@ -96,9 +95,170 @@
         });
       }
     }
+    }
+
+    // D10b: Kontrola min/max na třídu a budovu (časové sloty z Pravidel) – jen když existuje návrh
+    if (prirazeni.length > 0) {
+    var budovy = (data && data.budovy) || [];
+    var minMaxSloty = (data && data.minMaxSloty) || [];
+    var NAZVY_DNU = ['', 'Po', 'Út', 'St', 'Čt', 'Pá'];
+    for (var si = 0; si < minMaxSloty.length; si += 1) {
+      var slot = minMaxSloty[si];
+      var slotOdM = timeToMinuty(slot.od);
+      var slotDoM = timeToMinuty(slot.do);
+      if (slotOdM >= slotDoM) continue;
+      var dnySlot = (slot.dny && slot.dny.length > 0) ? slot.dny : [1, 2, 3, 4, 5];
+      var minNaBudovu = (slot.minNaBudovu != null && slot.minNaBudovu !== '') ? parseInt(slot.minNaBudovu, 10) : 0;
+      var maxNaBudovu = (slot.maxNaBudovu != null && slot.maxNaBudovu !== '') ? parseInt(slot.maxNaBudovu, 10) : null;
+      var minNaTridu = (slot.minNaTridu != null && slot.minNaTridu !== '') ? parseInt(slot.minNaTridu, 10) : 0;
+      var maxNaTridu = (slot.maxNaTridu != null && slot.maxNaTridu !== '') ? parseInt(slot.maxNaTridu, 10) : null;
+      var casLabel = (slot.od || '') + '–' + (slot.do || '');
+
+      if (minNaTridu > 0 || maxNaTridu !== null) {
+        for (var di = 0; di < dnySlot.length; di += 1) {
+          var den = dnySlot[di];
+          for (var bi = 0; bi < budovy.length; bi += 1) {
+            var bud = budovy[bi];
+            var tridy = bud.tridy || [];
+            for (var ti = 0; ti < tridy.length; ti += 1) {
+              var tr = tridy[ti];
+              var mm = minMaxPocetOsobVTridVCase(prirazeni, den, tr.id, slotOdM, slotDoM);
+              if (minNaTridu > 0 && mm.min < minNaTridu) {
+                polozky.push({
+                  typ: 'chyba',
+                  pravidlo: 'Min/max na třídu',
+                  kontext: 'Den ' + NAZVY_DNU[den] + ', ' + casLabel + ', třída ' + nazevTridy(budovy, tr.id) + ': ' + mm.min + ' osob (min ' + minNaTridu + ')'
+                });
+              }
+              if (maxNaTridu !== null && mm.max > maxNaTridu) {
+                polozky.push({
+                  typ: 'chyba',
+                  pravidlo: 'Min/max na třídu',
+                  kontext: 'Den ' + NAZVY_DNU[den] + ', ' + casLabel + ', třída ' + nazevTridy(budovy, tr.id) + ': ' + mm.max + ' osob (max ' + maxNaTridu + ')'
+                });
+              }
+            }
+          }
+        }
+      }
+      if (minNaBudovu > 0 || maxNaBudovu !== null) {
+        for (var di2 = 0; di2 < dnySlot.length; di2 += 1) {
+          var den2 = dnySlot[di2];
+          for (var bi2 = 0; bi2 < budovy.length; bi2 += 1) {
+            var bud2 = budovy[bi2];
+            var mmB = minMaxPocetOsobVBudoveVCase(prirazeni, den2, bud2.id, budovy, slotOdM, slotDoM);
+            if (minNaBudovu > 0 && mmB.min < minNaBudovu) {
+              polozky.push({
+                typ: 'chyba',
+                pravidlo: 'Min/max na budovu',
+                kontext: 'Den ' + NAZVY_DNU[den2] + ', ' + casLabel + ', budova ' + nazevBudovy(budovy, bud2.id) + ': ' + mmB.min + ' osob (min ' + minNaBudovu + ')'
+              });
+            }
+            if (maxNaBudovu !== null && mmB.max > maxNaBudovu) {
+              polozky.push({
+                typ: 'chyba',
+                pravidlo: 'Min/max na budovu',
+                kontext: 'Den ' + NAZVY_DNU[den2] + ', ' + casLabel + ', budova ' + nazevBudovy(budovy, bud2.id) + ': ' + mmB.max + ' osob (max ' + maxNaBudovu + ')'
+              });
+            }
+          }
+        }
+      }
+    }
+    }
 
     var hasChyba = polozky.some(function (p) { return p.typ === 'chyba'; });
     return { ok: !hasChyba, polozky: polozky };
+  }
+
+  function nazevTridy(budovy, tridaId) {
+    if (!tridaId) return '(?)';
+    for (var i = 0; i < (budovy || []).length; i += 1) {
+      var b = budovy[i];
+      if (b.tridy) {
+        for (var j = 0; j < b.tridy.length; j += 1) {
+          if (b.tridy[j].id === tridaId) {
+            return (b.tridy[j].nazev || '(bez názvu)') + ' (' + (b.nazev || '') + ')';
+          }
+        }
+      }
+    }
+    return '(?)';
+  }
+
+  function nazevBudovy(budovy, id) {
+    if (!id) return '';
+    for (var i = 0; i < (budovy || []).length; i += 1) {
+      if (budovy[i].id === id) return budovy[i].nazev || '(bez názvu)';
+    }
+    return '(?)';
+  }
+
+  /**
+   * Pro každou minutu v [odMin, doMin) spočítá počet osob v dané třídě; vrátí min a max z těchto počtů (D10b).
+   */
+  function minMaxPocetOsobVTridVCase(prirazeni, den, tridaId, odMin, doMin) {
+    var minCount = Infinity;
+    var maxCount = 0;
+    for (var m = odMin; m < doMin; m += 1) {
+      var count = 0;
+      for (var pi = 0; pi < (prirazeni || []).length; pi += 1) {
+        var p = prirazeni[pi];
+        if (p.den !== den) continue;
+        for (var si = 0; si < (p.segmenty || []).length; si += 1) {
+          var seg = p.segmenty[si];
+          if (seg.tridaId !== tridaId) continue;
+          var segOd = timeToMinuty(seg.od);
+          var segDo = timeToMinuty(seg.do);
+          if (segOd <= m && m < segDo) { count += 1; break; }
+        }
+      }
+      if (count < minCount) minCount = count;
+      if (count > maxCount) maxCount = count;
+    }
+    return { min: minCount === Infinity ? 0 : minCount, max: maxCount };
+  }
+
+  /**
+   * Vrátí id budovy, ve které je třída tridaId, nebo null.
+   */
+  function tridaJeVBudove(budovy, tridaId) {
+    if (!tridaId || !budovy) return null;
+    for (var i = 0; i < budovy.length; i += 1) {
+      var b = budovy[i];
+      if (b.tridy) {
+        for (var j = 0; j < b.tridy.length; j += 1) {
+          if (b.tridy[j].id === tridaId) return b.id;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Pro každou minutu v [odMin, doMin) spočítá počet osob v dané budově (včetně přes třídy); vrátí min a max (D10b).
+   */
+  function minMaxPocetOsobVBudoveVCase(prirazeni, den, budovaId, budovy, odMin, doMin) {
+    var minCount = Infinity;
+    var maxCount = 0;
+    for (var m = odMin; m < doMin; m += 1) {
+      var count = 0;
+      for (var pi = 0; pi < (prirazeni || []).length; pi += 1) {
+        var p = prirazeni[pi];
+        if (p.den !== den) continue;
+        for (var si = 0; si < (p.segmenty || []).length; si += 1) {
+          var seg = p.segmenty[si];
+          var inBudova = (seg.budovaId === budovaId) || (seg.tridaId && tridaJeVBudove(budovy, seg.tridaId) === budovaId);
+          if (!inBudova) continue;
+          var segOd = timeToMinuty(seg.od);
+          var segDo = timeToMinuty(seg.do);
+          if (segOd <= m && m < segDo) { count += 1; break; }
+        }
+      }
+      if (count < minCount) minCount = count;
+      if (count > maxCount) maxCount = count;
+    }
+    return { min: minCount === Infinity ? 0 : minCount, max: maxCount };
   }
 
   global.MSemenyValidaceNavrhu = {
