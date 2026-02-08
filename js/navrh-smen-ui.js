@@ -163,7 +163,7 @@
       zobrazUspech('Návrh byl přepočítán.');
       lastNavrhResult = { prirazeni: result.prirazeni, data: data };
       vykresliNavrh(result.prirazeni, data);
-      zobrazGraf(result.prirazeni, data);
+      zobrazGraf(result.prirazeni, data, { onSegmentClick: handleSegmentClick, onSegmentDrop: handleSegmentDrop });
       zobrazTlacitkoCsv(true);
     } else {
       zobrazChybu(result.chyba || 'Výpočet se nezdařil.');
@@ -224,10 +224,42 @@
     for (var i = 0; i < result.polozky.length; i += 1) {
       var p = result.polozky[i];
       var trClass = p.typ === 'chyba' ? ' class="validace-chyba"' : ' class="validace-varovani"';
-      html.push('<tr' + trClass + '><td>' + escapeHtml(p.pravidlo) + '</td><td>' + escapeHtml(p.kontext) + '</td></tr>');
+      var kontextHtml = escapeHtml(p.kontext);
+      if (p.pravidlo === 'Nevyčerpaný úvazek' && p.zamestnanecId) {
+        var colonIdx = p.kontext.indexOf(': ');
+        if (colonIdx >= 0) {
+          var jmenoPart = p.kontext.slice(0, colonIdx);
+          var restPart = p.kontext.slice(colonIdx);
+          kontextHtml = '<span class="validace-jmeno-link" data-zam-id="' + escapeAttr(p.zamestnanecId) + '" role="button" tabindex="0">' + escapeHtml(jmenoPart) + '</span>' + escapeHtml(restPart);
+        }
+      }
+      html.push('<tr' + trClass + '><td>' + escapeHtml(p.pravidlo) + '</td><td>' + kontextHtml + '</td></tr>');
     }
     html.push('</tbody></table>');
     container.innerHTML = html.join('');
+    var linkEls = container.querySelectorAll('.validace-jmeno-link');
+    for (var li = 0; li < linkEls.length; li += 1) {
+      linkEls[li].addEventListener('click', function () {
+        var zamId = this.getAttribute('data-zam-id');
+        if (zamId) openDoplnitModal(zamId);
+      });
+      linkEls[li].addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          var zamId = this.getAttribute('data-zam-id');
+          if (zamId) openDoplnitModal(zamId);
+        }
+      });
+    }
+  }
+
+  function escapeAttr(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   function onCsvFileSelected(event) {
@@ -248,7 +280,7 @@
       if (result.ok) {
         lastNavrhResult = { prirazeni: result.prirazeni, data: data };
         vykresliNavrh(result.prirazeni, data);
-        zobrazGraf(result.prirazeni, data);
+        zobrazGraf(result.prirazeni, data, { onSegmentClick: handleSegmentClick, onSegmentDrop: handleSegmentDrop });
         zobrazTlacitkoCsv(true);
         if (result.varovani && result.varovani.length > 0) {
           zobrazUspech('CSV načteno. Varování: ' + result.varovani.join(' '));
@@ -273,11 +305,281 @@
     reader.readAsText(file, 'UTF-8');
   }
 
-  function zobrazGraf(prirazeni, data) {
+  function zobrazGraf(prirazeni, data, grafOpts) {
     var Graf = global.MSemenyNavrhGraf;
     var container = document.getElementById('navrh-graf');
     if (!Graf || !Graf.vykresliNavrhGraf || !container) return;
-    Graf.vykresliNavrhGraf(prirazeni || [], data || {}, container, 1);
+    Graf.vykresliNavrhGraf(prirazeni || [], data || {}, container, 1, grafOpts || {});
+  }
+
+  /** Hluboká kopie prirazeni pro úpravy. */
+  function clonePrirazeni(prirazeni) {
+    return JSON.parse(JSON.stringify(prirazeni || []));
+  }
+
+  /**
+   * Aplikuje změněný návrh (po editaci na grafu nebo doplnění úvazku) a obnoví zobrazení.
+   * @param {Array} prirazeni - nové přiřazení
+   */
+  function applyNavrhChange(prirazeni) {
+    if (!lastNavrhResult) return;
+    lastNavrhResult = { prirazeni: prirazeni, data: lastNavrhResult.data };
+    vykresliNavrh(prirazeni, lastNavrhResult.data);
+    zobrazGraf(prirazeni, lastNavrhResult.data, { onSegmentClick: handleSegmentClick, onSegmentDrop: handleSegmentDrop });
+    var validaceEl = document.getElementById('navrh-validace-vysledek');
+    if (validaceEl && !validaceEl.hidden) validovat();
+  }
+
+  function handleSegmentDrop(payload, targetTridaId, targetBudovaId) {
+    if (!lastNavrhResult) return;
+    var prirazeni = clonePrirazeni(lastNavrhResult.prirazeni);
+    var p = prirazeni.find(function (x) { return x.den === payload.den && x.zamestnanecId === payload.zamestnanecId; });
+    if (!p || !p.segmenty || !p.segmenty[payload.segIndex]) return;
+    var seg = p.segmenty[payload.segIndex];
+    seg.tridaId = targetTridaId || undefined;
+    seg.budovaId = targetBudovaId || undefined;
+    applyNavrhChange(prirazeni);
+  }
+
+  var segmentEditState = null; // { den, zamestnanecId, segIndex } při otevřeném modalu
+
+  function handleSegmentClick(ev, info) {
+    if (!lastNavrhResult) return;
+    var p = lastNavrhResult.prirazeni.find(function (x) { return x.den === info.den && x.zamestnanecId === info.zamestnanecId; });
+    if (!p || !p.segmenty || !p.segmenty[info.segIndex]) return;
+    var seg = p.segmenty[info.segIndex];
+    segmentEditState = { den: info.den, zamestnanecId: info.zamestnanecId, segIndex: info.segIndex };
+    var modal = document.getElementById('navrh-segment-modal');
+    var jmenoEl = document.getElementById('navrh-segment-jmeno');
+    var denSelect = document.getElementById('navrh-segment-den');
+    var odInput = document.getElementById('navrh-segment-od');
+    var doInput = document.getElementById('navrh-segment-do');
+    var mistoSelect = document.getElementById('navrh-segment-misto');
+    if (!modal || !jmenoEl || !denSelect) return;
+
+    jmenoEl.textContent = jmenoZamestnance(lastNavrhResult.data.zamestnanci, info.zamestnanecId);
+    denSelect.innerHTML = '';
+    for (var d = 1; d <= 5; d += 1) {
+      var opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = NAZVY_DNU[d];
+      if (d === info.den) opt.selected = true;
+      denSelect.appendChild(opt);
+    }
+    odInput.value = seg.od || '';
+    doInput.value = seg.do || '';
+    mistoSelect.innerHTML = '';
+    var budovy = lastNavrhResult.data.budovy || [];
+    for (var bi = 0; bi < budovy.length; bi += 1) {
+      var b = budovy[bi];
+      var optB = document.createElement('option');
+      optB.value = 'b:' + (b.id || '');
+      optB.textContent = 'Budova: ' + (b.nazev || '(bez názvu)');
+      if (!seg.tridaId && seg.budovaId === b.id) optB.selected = true;
+      mistoSelect.appendChild(optB);
+      var tridy = b.tridy || [];
+      for (var ti = 0; ti < tridy.length; ti += 1) {
+        var t = tridy[ti];
+        var optT = document.createElement('option');
+        optT.value = 't:' + (t.id || '');
+        optT.textContent = (t.nazev || '(třída)') + ' (' + (b.nazev || '') + ')';
+        if (seg.tridaId === t.id) optT.selected = true;
+        mistoSelect.appendChild(optT);
+      }
+    }
+    modal.hidden = false;
+  }
+
+  function closeSegmentModal() {
+    var modal = document.getElementById('navrh-segment-modal');
+    if (modal) modal.hidden = true;
+    segmentEditState = null;
+  }
+
+  function saveSegmentEdit() {
+    if (!segmentEditState || !lastNavrhResult) return;
+    var denSelect = document.getElementById('navrh-segment-den');
+    var odInput = document.getElementById('navrh-segment-od');
+    var doInput = document.getElementById('navrh-segment-do');
+    var mistoSelect = document.getElementById('navrh-segment-misto');
+    if (!denSelect || !odInput || !doInput || !mistoSelect) return;
+    var prirazeni = clonePrirazeni(lastNavrhResult.prirazeni);
+    var p = prirazeni.find(function (x) { return x.den === segmentEditState.den && x.zamestnanecId === segmentEditState.zamestnanecId; });
+    if (!p || !p.segmenty || !p.segmenty[segmentEditState.segIndex]) { closeSegmentModal(); return; }
+    var seg = p.segmenty[segmentEditState.segIndex];
+    seg.od = odInput.value || seg.od;
+    seg.do = doInput.value || seg.do;
+    var val = mistoSelect.value || '';
+    if (val.indexOf('t:') === 0) {
+      seg.tridaId = val.slice(2);
+      seg.budovaId = findBudovaIdForTrida(lastNavrhResult.data.budovy, seg.tridaId) || undefined;
+    } else if (val.indexOf('b:') === 0) {
+      seg.budovaId = val.slice(2);
+      seg.tridaId = undefined;
+    }
+    applyNavrhChange(prirazeni);
+    closeSegmentModal();
+  }
+
+  function findBudovaIdForTrida(budovy, tridaId) {
+    if (!tridaId || !budovy) return null;
+    for (var i = 0; i < budovy.length; i += 1) {
+      var b = budovy[i];
+      if (b.tridy) {
+        for (var j = 0; j < b.tridy.length; j += 1) {
+          if (b.tridy[j].id === tridaId) return b.id;
+        }
+      }
+    }
+    return null;
+  }
+
+  function deleteSegmentEdit() {
+    if (!segmentEditState || !lastNavrhResult) return;
+    var prirazeni = clonePrirazeni(lastNavrhResult.prirazeni);
+    var idx = prirazeni.findIndex(function (x) { return x.den === segmentEditState.den && x.zamestnanecId === segmentEditState.zamestnanecId; });
+    if (idx < 0) { closeSegmentModal(); return; }
+    var p = prirazeni[idx];
+    p.segmenty.splice(segmentEditState.segIndex, 1);
+    if (p.segmenty.length === 0) prirazeni.splice(idx, 1);
+    applyNavrhChange(prirazeni);
+    closeSegmentModal();
+  }
+
+  /* ---------- D12: Doplnění nevyčerpaného úvazku ---------- */
+  var doplnitModalZamId = null;
+
+  function openDoplnitModal(zamestnanecId) {
+    if (!lastNavrhResult || !zamestnanecId) return;
+    var zam = lastNavrhResult.data.zamestnanci.find(function (z) { return z.id === zamestnanecId; });
+    if (!zam) return;
+    doplnitModalZamId = zamestnanecId;
+    var modal = document.getElementById('navrh-doplnit-modal');
+    var jmenoEl = document.getElementById('navrh-doplnit-jmeno');
+    var denSelect = document.getElementById('navrh-doplnit-den');
+    var odInput = document.getElementById('navrh-doplnit-od');
+    var doInput = document.getElementById('navrh-doplnit-do');
+    var tridaSelect = document.getElementById('navrh-doplnit-trida');
+    if (!modal || !jmenoEl || !denSelect || !odInput || !doInput || !tridaSelect) return;
+
+    jmenoEl.textContent = zam.jmeno || '(bez jména)';
+    denSelect.innerHTML = '';
+    for (var d = 1; d <= 5; d += 1) {
+      var opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = NAZVY_DNU[d];
+      denSelect.appendChild(opt);
+    }
+    tridaSelect.innerHTML = '<option value="">— vyberte třídu —</option>';
+    var budovy = lastNavrhResult.data.budovy || [];
+    for (var bi = 0; bi < budovy.length; bi += 1) {
+      var b = budovy[bi];
+      var tridy = b.tridy || [];
+      for (var ti = 0; ti < tridy.length; ti += 1) {
+        var t = tridy[ti];
+        var opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = (t.nazev || '(třída)') + ' (' + (b.nazev || '') + ')';
+        opt.setAttribute('data-budova-id', b.id || '');
+        tridaSelect.appendChild(opt);
+      }
+    }
+    odInput.value = '08:00';
+    doInput.value = '';
+    updateDoplnitCasDo();
+    modal.hidden = false;
+  }
+
+  function getOteviraciDoTridy(tridaId) {
+    var budovy = lastNavrhResult && lastNavrhResult.data && lastNavrhResult.data.budovy ? lastNavrhResult.data.budovy : [];
+    for (var i = 0; i < budovy.length; i += 1) {
+      var b = budovy[i];
+      if (b.tridy) {
+        for (var j = 0; j < b.tridy.length; j += 1) {
+          if (b.tridy[j].id === tridaId) {
+            var o = b.tridy[j].oteviraciDoba || b.oteviraciDoba;
+            return o && o.od && o.do ? { od: o.od, do: o.do } : { od: '07:00', do: '17:00' };
+          }
+        }
+      }
+    }
+    return { od: '07:00', do: '17:00' };
+  }
+
+  function timeToMinuty(hhmm) {
+    if (!hhmm || typeof hhmm !== 'string') return 0;
+    var parts = hhmm.split(':');
+    return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+  }
+  function minutyToHhmm(m) {
+    var h = Math.floor(m / 60);
+    var mm = m % 60;
+    return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+
+  function updateDoplnitCasDo() {
+    if (!doplnitModalZamId || !lastNavrhResult) return;
+    var odInput = document.getElementById('navrh-doplnit-od');
+    var doInput = document.getElementById('navrh-doplnit-do');
+    var tridaSelect = document.getElementById('navrh-doplnit-trida');
+    var denSelect = document.getElementById('navrh-doplnit-den');
+    if (!odInput || !doInput || !tridaSelect || !denSelect) return;
+    var tridaId = tridaSelect.value || null;
+    var odStr = odInput.value || '';
+    if (!odStr || !tridaId) { doInput.value = ''; return; }
+    var Validace = global.MSemenyValidaceNavrhu;
+    var sum = Validace && Validace.sumMinutyPerZamestnanec ? Validace.sumMinutyPerZamestnanec(lastNavrhResult.prirazeni) : {};
+    var vNavrhu = sum[doplnitModalZamId] || 0;
+    var zam = lastNavrhResult.data.zamestnanci.find(function (z) { return z.id === doplnitModalZamId; });
+    var uvazek = (zam && zam.uvazekMinutyTyden != null && zam.uvazekMinutyTyden !== '') ? parseInt(zam.uvazekMinutyTyden, 10) : 0;
+    if (isNaN(uvazek)) uvazek = 0;
+    var zbyvajici = Math.max(0, uvazek - vNavrhu);
+    var maxBlok = Math.min(zbyvajici, 8 * 60);
+    var otev = getOteviraciDoTridy(tridaId);
+    var odM = timeToMinuty(odStr);
+    var doMaxM = timeToMinuty(otev.do);
+    var odStartDne = timeToMinuty(otev.od);
+    if (odM < odStartDne) odM = odStartDne;
+    var doM = Math.min(odM + maxBlok, doMaxM);
+    if (doM <= odM) doM = odM + Math.min(maxBlok, 60);
+    doInput.value = minutyToHhmm(doM);
+  }
+
+  function closeDoplnitModal() {
+    var modal = document.getElementById('navrh-doplnit-modal');
+    if (modal) modal.hidden = true;
+    doplnitModalZamId = null;
+  }
+
+  function saveDoplnitUvazek() {
+    if (!doplnitModalZamId || !lastNavrhResult) return;
+    var denSelect = document.getElementById('navrh-doplnit-den');
+    var odInput = document.getElementById('navrh-doplnit-od');
+    var doInput = document.getElementById('navrh-doplnit-do');
+    var tridaSelect = document.getElementById('navrh-doplnit-trida');
+    if (!denSelect || !odInput || !doInput || !tridaSelect) return;
+    var den = parseInt(denSelect.value, 10);
+    var tridaId = tridaSelect.value || null;
+    if (isNaN(den) || den < 1 || den > 5 || !tridaId) {
+      zobrazChybu('Vyberte den a třídu.');
+      return;
+    }
+    var prirazeni = clonePrirazeni(lastNavrhResult.prirazeni);
+    var p = prirazeni.find(function (x) { return x.den === den && x.zamestnanecId === doplnitModalZamId; });
+    if (!p) {
+      p = { den: den, zamestnanecId: doplnitModalZamId, segmenty: [] };
+      prirazeni.push(p);
+    }
+    var budovaId = findBudovaIdForTrida(lastNavrhResult.data.budovy, tridaId);
+    p.segmenty.push({
+      od: odInput.value,
+      do: doInput.value,
+      tridaId: tridaId,
+      budovaId: budovaId || undefined
+    });
+    applyNavrhChange(prirazeni);
+    closeDoplnitModal();
+    zobrazUspech('Blok byl přidán.');
   }
 
   function init() {
@@ -298,6 +600,32 @@
     var btnValidovat = document.getElementById('navrh-validovat');
     if (btnValidovat) btnValidovat.addEventListener('click', validovat);
 
+    var segmentForm = document.getElementById('navrh-segment-form');
+    if (segmentForm) {
+      segmentForm.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        saveSegmentEdit();
+      });
+    }
+    var segmentSmazat = document.getElementById('navrh-segment-smazat');
+    if (segmentSmazat) segmentSmazat.addEventListener('click', deleteSegmentEdit);
+    var segmentZrusit = document.getElementById('navrh-segment-zrusit');
+    if (segmentZrusit) segmentZrusit.addEventListener('click', closeSegmentModal);
+
+    var doplnitForm = document.getElementById('navrh-doplnit-form');
+    if (doplnitForm) {
+      doplnitForm.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        saveDoplnitUvazek();
+      });
+    }
+    var doplnitZrusit = document.getElementById('navrh-doplnit-zrusit');
+    if (doplnitZrusit) doplnitZrusit.addEventListener('click', closeDoplnitModal);
+    var doplnitOd = document.getElementById('navrh-doplnit-od');
+    var doplnitTrida = document.getElementById('navrh-doplnit-trida');
+    if (doplnitOd) doplnitOd.addEventListener('change', updateDoplnitCasDo);
+    if (doplnitTrida) doplnitTrida.addEventListener('change', updateDoplnitCasDo);
+
     var el = document.getElementById('navrh-vysledek');
     if (el && !el.innerHTML.trim()) {
       el.innerHTML = '<p class="navrh-prazdno">Klikněte na „Přepočítat", aby se vygeneroval návrh směn podle aktuální konfigurace.</p>';
@@ -310,6 +638,7 @@
   global.MSemenyNavrhSmenUI = {
     prepocitat: prepocitat,
     vykresliNavrh: vykresliNavrh,
-    getNavrhRows: getNavrhRows
+    getNavrhRows: getNavrhRows,
+    applyNavrhChange: applyNavrhChange
   };
 })(typeof window !== 'undefined' ? window : this);

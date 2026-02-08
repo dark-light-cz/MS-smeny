@@ -149,8 +149,11 @@
    * @param {HTMLElement} container - prvek, do kterého kreslit
    * @param {number} [vybranyDen] - 1–5, který den zobrazit (default 1)
    */
-  function vykresliNavrhGraf(prirazeni, data, container, vybranyDen) {
+  function vykresliNavrhGraf(prirazeni, data, container, vybranyDen, opts) {
     if (!container) return;
+    opts = (typeof opts === 'object' && opts !== null) ? opts : {};
+    var onSegmentClick = opts.onSegmentClick;
+    var onSegmentDrop = opts.onSegmentDrop;
     var budovy = (data && data.budovy) || [];
     var zamestnanci = (data && data.zamestnanci) || [];
     var den = vybranyDen >= 1 && vybranyDen <= 5 ? vybranyDen : 1;
@@ -237,7 +240,10 @@
           var segTrida = seg.tridaId || null;
           var budovaSegmentu = segTrida ? findBudovaIdForTrida(budovy, segTrida) : segBudova;
           if (budovaSegmentu !== b.id) continue;
-          var item = { od: seg.od, do: seg.do, zamestnanecId: p.zamestnanecId, jmeno: jmeno };
+          var item = {
+            od: seg.od, do: seg.do, zamestnanecId: p.zamestnanecId, jmeno: jmeno,
+            tridaId: segTrida || null, budovaId: segBudova || null, segIndex: si
+          };
           if (segTrida) {
             if (!tridaSegments[segTrida]) tridaSegments[segTrida] = [];
             tridaSegments[segTrida].push(item);
@@ -248,13 +254,13 @@
       }
 
       if (budovaSegments.length > 0) {
-        rady.push({ label: 'Budova (společně)', items: budovaSegments });
+        rady.push({ label: 'Budova (společně)', items: budovaSegments, budovaId: b.id, tridaId: null });
       }
       for (var ti = 0; ti < tridy.length; ti += 1) {
         var t = tridy[ti];
         if (!t.id) continue;
         var items = tridaSegments[t.id] || [];
-        rady.push({ label: t.nazev || '(třída)', items: items });
+        rady.push({ label: t.nazev || '(třída)', items: items, budovaId: b.id, tridaId: t.id });
       }
       var zobrazenyTridy = {};
       for (var ti2 = 0; ti2 < tridy.length; ti2 += 1) {
@@ -262,14 +268,19 @@
       }
       for (var tid in tridaSegments) {
         if (tridaSegments.hasOwnProperty(tid) && !zobrazenyTridy[tid]) {
-          rady.push({ label: nazevTridy(budovy, tid) || '(třída)', items: tridaSegments[tid] });
+          var bid = findBudovaIdForTrida(budovy, tid);
+          rady.push({ label: nazevTridy(budovy, tid) || '(třída)', items: tridaSegments[tid], budovaId: bid || null, tridaId: tid });
         }
       }
+
+      var canEdit = typeof onSegmentClick === 'function' || typeof onSegmentDrop === 'function';
 
       for (var ri = 0; ri < rady.length; ri += 1) {
         var rada = rady[ri];
         var lanes = assignLanes(rada.items);
-        html.push('<div class="navrh-graf-rada">');
+        var dataTrida = rada.tridaId != null ? ' data-trida-id="' + escapeAttr(rada.tridaId) + '"' : '';
+        var dataBudova = rada.budovaId != null ? ' data-budova-id="' + escapeAttr(rada.budovaId) + '"' : '';
+        html.push('<div class="navrh-graf-rada"' + dataTrida + dataBudova + '>');
         html.push('<span class="navrh-graf-rada-label">' + escapeHtml(rada.label) + '</span>');
         html.push('<div class="navrh-graf-rada-pruhy">');
         for (var li = 0; li < lanes.length; li += 1) {
@@ -281,7 +292,9 @@
             var w = widthPct(it.od, it.do);
             var barva = barvyMap[it.zamestnanecId] || '#999';
             var title = it.jmeno + ', ' + (it.od || '') + '–' + (it.do || '');
-            html.push('<span class="navrh-graf-segment" style="left:' + left + '%;width:' + w + '%;background:' + barva + ';" title="' + escapeAttr(title) + '">' + escapeHtml(it.jmeno) + '</span>');
+            var dataAttrs = canEdit ? ' data-den="' + den + '" data-zam-id="' + escapeAttr(it.zamestnanecId) + '" data-seg-index="' + (it.segIndex != null ? it.segIndex : '') + '"' : '';
+            var dragAttr = canEdit && typeof onSegmentDrop === 'function' ? ' draggable="true"' : '';
+            html.push('<span class="navrh-graf-segment" style="left:' + left + '%;width:' + w + '%;background:' + barva + ';" title="' + escapeAttr(title) + '"' + dataAttrs + dragAttr + '>' + escapeHtml(it.jmeno) + '</span>');
           }
           html.push('</div>');
         }
@@ -312,8 +325,65 @@
       selectEl.addEventListener('change', function () {
         var newDen = parseInt(selectEl.value, 10);
         if (newDen >= 1 && newDen <= 5) {
-          vykresliNavrhGraf(prirazeni, data, container, newDen);
+          vykresliNavrhGraf(prirazeni, data, container, newDen, opts);
         }
+      });
+    }
+
+    if (typeof onSegmentClick === 'function') {
+      container.addEventListener('click', function (ev) {
+        var seg = ev.target.closest('.navrh-graf-segment');
+        if (!seg || !seg.hasAttribute('data-den')) return;
+        var d = parseInt(seg.getAttribute('data-den'), 10);
+        var zamId = seg.getAttribute('data-zam-id');
+        var segIdx = parseInt(seg.getAttribute('data-seg-index'), 10);
+        if (isNaN(d) || !zamId || isNaN(segIdx)) return;
+        onSegmentClick(ev, { den: d, zamestnanecId: zamId, segIndex: segIdx });
+      });
+    }
+
+    if (typeof onSegmentDrop === 'function') {
+      container.addEventListener('dragstart', function (ev) {
+        var seg = ev.target.closest('.navrh-graf-segment');
+        if (!seg || !seg.hasAttribute('data-den')) return;
+        ev.dataTransfer.setData('application/json', JSON.stringify({
+          den: parseInt(seg.getAttribute('data-den'), 10),
+          zamestnanecId: seg.getAttribute('data-zam-id'),
+          segIndex: parseInt(seg.getAttribute('data-seg-index'), 10)
+        }));
+        ev.dataTransfer.effectAllowed = 'move';
+        seg.classList.add('dragging');
+      });
+      container.addEventListener('dragend', function (ev) {
+        var seg = ev.target.closest('.navrh-graf-segment');
+        if (seg) seg.classList.remove('dragging');
+      });
+      container.addEventListener('dragover', function (ev) {
+        var row = ev.target.closest('.navrh-graf-rada');
+        if (!row) return;
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = 'move';
+        row.classList.add('drag-over');
+      });
+      container.addEventListener('dragleave', function (ev) {
+        var row = ev.target.closest('.navrh-graf-rada');
+        if (row && !row.contains(ev.relatedTarget)) row.classList.remove('drag-over');
+      });
+      container.addEventListener('drop', function (ev) {
+        var row = ev.target.closest('.navrh-graf-rada');
+        if (!row) return;
+        ev.preventDefault();
+        row.classList.remove('drag-over');
+        var json = ev.dataTransfer.getData('application/json');
+        if (!json) return;
+        try {
+          var payload = JSON.parse(json);
+          var tid = row.getAttribute('data-trida-id') || null;
+          var bid = row.getAttribute('data-budova-id') || null;
+          if (payload.den != null && payload.zamestnanecId && payload.segIndex != null) {
+            onSegmentDrop(payload, tid, bid);
+          }
+        } catch (e) { /* ignore */ }
       });
     }
   }

@@ -125,6 +125,10 @@
   - Tlačítko „Nahrát CSV“ umožní nahrát soubor ve stejném formátu jako export (Den;Zaměstnanec;Čas;Místo). Načtená data se zobrazí v tabulce a v grafu stejně jako po přepočtu; neznámí zaměstnanci nebo neplatné řádky se přeskočí s varováním. API: `MSemenyImportNavrhCsv.csvToPrirazeni(csvText, data)` (js/import-navrh-csv.js).
 - **Validace návrhu a tabulka chyb/varování (D10):**
   - Tlačítko „Validovat“ zkontroluje aktuální návrh (vygenerovaný nebo načtený z CSV). Zobrazí tabulku s porušenými pravidly a kontextem; zahrnuje **přečerpaný úvazek** (více minut než úvazek) a **nevyčerpaný úvazek** (méně minut než úvazek). Při splnění pravidel: hláška „Návrh vyhovuje zadaným pravidlům (úvazky v pořádku).“ API: `MSemenyValidaceNavrhu.validujNavrh(prirazeni, data)` (js/validace-navrhu.js).
+- **Editace bloků přímo na grafu (D11):**
+  - Klik na segment v grafu otevře modal „Upravit blok přiřazení“: změna času od–do, přesun do jiné třídy/budovy (select), tlačítko Smazat blok. Přetažení (drag & drop) segmentu na jiný řádek grafu přesune blok do příslušné třídy nebo budovy. Po uložení nebo přesunu se aktualizuje tabulka návrhu, graf a (je-li zobrazena) tabulka validace. API: `MSemenyNavrhGraf.vykresliNavrhGraf(..., opts)` s `onSegmentClick` a `onSegmentDrop`; `MSemenyNavrhSmenUI.applyNavrhChange(prirazeni)`.
+- **Doplnění nevyčerpaného úvazku z tabulky chyb (D12):**
+  - V tabulce validace je u položky „Nevyčerpaný úvazek“ jméno zaměstnance klikatelné. Klik otevře modal „Doplnit úvazek“: výběr dne, času od, třídy; **čas do** se dopočítá jako min(zbývající čas do úvazku, 8 h), omezený otevírací dobou třídy. Po uložení se přidá nový blok do návrhu a zobrazení včetně validace se obnoví.
 - **Rozšířené nastavení D3 (propojení Pravidla ↔ výpočet):**
   - V sekci Pravidla: úvodní text vysvětluje, že nastavení (časové sloty včetně rotace, minimální překryv, pravidla pro vykrývací) ovlivňují výpočet návrhu směn. Na konci sekce odkaz na Návrh směn místo zastaralé poznámky „blok D“.
 - **Export/import – UI (E1):**
@@ -151,6 +155,7 @@ _(Seznam může být po vyřešení dotazů upřesněn nebo rozšířen.)_
 
 ## Poslední aktualizace
 
+- 2026-02-06: Implementovány D11 a D12 – editace bloků na grafu (klik = modal úpravy času a místa, Smazat; drag & drop přesun na jiný řádek); doplnění nevyčerpaného úvazku z tabulky validace (klik na jméno u „Nevyčerpaný úvazek“ → modal Den/čas od–do/třída, čas do dopočten).
 - 2026-02-06: Implementovány D8, D9, D10 – rozbalovací tabulka návrhu (výchozí sbalená); import návrhu ze CSV (tlačítko Nahrát CSV, zobrazení v tabulce a grafu); tlačítko Validovat a tabulka chyb/varování (úvazky přečerpaný/nevyčerpaný). Nové moduly: js/import-navrh-csv.js, js/validace-navrhu.js; testy test-import-navrh-csv.js, test-validace-navrhu.js.
 - 2026-02-06: Implementovány C6 a C7 – konfigurace střídání dopoledne/odpoledne (zapnuto/vypnuto, režim preferenční/tvrdý, hranice 12:00) a konfigurace souvislých bloků a méně dnů (zapnuto/vypnuto, min délka bloku). Model, UI v sekci Pravidla, export/import normalizace; 13 nových testů; celkem 144 testů.
 - 2026-02-06: Implementován D5 – aplikace přechodu mezi budovami ve výpočtu: helper maZakazPrechodu (lokální vs. globální nastavení), canGoToBuilding kontrola v assignLocations, doAssign trackuje budovu zaměstnance; kroky přiřazení (fill classes/buildings/remaining) filtrují dle omezení budovy; 5 unit testů + 3 integrační testy; celkem 131 testů prošlo.

@@ -635,6 +635,63 @@ header {
   background: #fff8e1;
   color: #e65100;
 }
+.tabulka-validace .validace-jmeno-link {
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 600;
+}
+.tabulka-validace .validace-jmeno-link:hover {
+  color: #bf360c;
+}
+
+/* Modaly pro editaci segmentu a doplnění úvazku (D11, D12) */
+.navrh-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.navrh-modal:not([hidden]) {
+  display: flex;
+}
+.navrh-modal[hidden] {
+  display: none !important;
+}
+.navrh-modal-obal {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  max-width: 420px;
+  width: 90%;
+}
+.navrh-modal h3 {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+}
+.navrh-modal form p {
+  margin: 0.75rem 0;
+}
+.navrh-modal form label {
+  display: inline-block;
+  min-width: 6rem;
+  font-weight: 500;
+}
+.navrh-modal form input[type="time"],
+.navrh-modal form select {
+  padding: 0.35em 0.5em;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 1rem;
+}
+.navrh-modal-tlacitka {
+  margin-top: 1.25rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
 
 .navrh-graf-wrapper {
   margin-top: 2rem;
@@ -743,8 +800,9 @@ header {
   bottom: 2px;
   min-width: 4px;
   border-radius: 3px;
-  cursor: default;
+  cursor: pointer;
   font-size: 0.75rem;
+  user-select: none;
   color: #1a1a1a;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -757,6 +815,13 @@ header {
 .navrh-graf-segment:hover {
   filter: brightness(1.1);
   z-index: 1;
+}
+.navrh-graf-segment.dragging {
+  opacity: 0.6;
+}
+.navrh-graf-rada.drag-over {
+  background: rgba(74, 144, 217, 0.15);
+  border-radius: 4px;
 }
 
 .navrh-graf-prazdno {

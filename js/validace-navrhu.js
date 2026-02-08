@@ -68,13 +68,15 @@
         polozky.push({
           typ: 'chyba',
           pravidlo: 'Přečerpaný úvazek',
-          kontext: jmenoZamestnance(zamestnanci, id) + ': v návrhu ' + vNavrhu + ' min, úvazek max ' + uvazek + ' min'
+          kontext: jmenoZamestnance(zamestnanci, id) + ': v návrhu ' + vNavrhu + ' min, úvazek max ' + uvazek + ' min',
+          zamestnanecId: id
         });
       } else if (uvazek > 0 && vNavrhu < uvazek) {
         polozky.push({
           typ: 'varovani',
           pravidlo: 'Nevyčerpaný úvazek',
-          kontext: jmenoZamestnance(zamestnanci, id) + ': v návrhu ' + vNavrhu + ' min, úvazek ' + uvazek + ' min'
+          kontext: jmenoZamestnance(zamestnanci, id) + ': v návrhu ' + vNavrhu + ' min, úvazek ' + uvazek + ' min',
+          zamestnanecId: id
         });
       }
     }

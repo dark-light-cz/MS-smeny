@@ -446,6 +446,43 @@
           <!-- Tabulka nebo prázdný stav vykresluje JS -->
         </div>
       </details>
+      <!-- Modal pro editaci segmentu na grafu (D11) -->
+      <div id="navrh-segment-modal" class="navrh-modal" role="dialog" aria-labelledby="navrh-segment-modal-nadpis" aria-modal="true" hidden>
+        <div class="navrh-modal-obal">
+          <h3 id="navrh-segment-modal-nadpis">Upravit blok přiřazení</h3>
+          <form id="navrh-segment-form">
+            <p><label>Zaměstnanec:</label> <span id="navrh-segment-jmeno"></span></p>
+            <p><label for="navrh-segment-den">Den:</label>
+              <select id="navrh-segment-den"></select></p>
+            <p><label for="navrh-segment-od">Čas od:</label> <input type="time" id="navrh-segment-od">
+              <label for="navrh-segment-do">do:</label> <input type="time" id="navrh-segment-do"></p>
+            <p><label for="navrh-segment-misto">Přesunout do:</label>
+              <select id="navrh-segment-misto"></select></p>
+            <p class="navrh-modal-tlacitka">
+              <button type="button" id="navrh-segment-smazat" class="btn btn-sekundarni">Smazat blok</button>
+              <button type="submit" class="btn btn-primarni">Uložit</button>
+              <button type="button" id="navrh-segment-zrusit" class="btn btn-sekundarni">Zrušit</button>
+            </p>
+          </form>
+        </div>
+      </div>
+      <!-- Modal pro doplnění nevyčerpaného úvazku (D12) -->
+      <div id="navrh-doplnit-modal" class="navrh-modal" role="dialog" aria-labelledby="navrh-doplnit-modal-nadpis" aria-modal="true" hidden>
+        <div class="navrh-modal-obal">
+          <h3 id="navrh-doplnit-modal-nadpis">Doplnit úvazek</h3>
+          <form id="navrh-doplnit-form">
+            <p><label>Zaměstnanec:</label> <span id="navrh-doplnit-jmeno"></span></p>
+            <p><label for="navrh-doplnit-den">Den:</label> <select id="navrh-doplnit-den"></select></p>
+            <p><label for="navrh-doplnit-od">Čas od:</label> <input type="time" id="navrh-doplnit-od">
+              <label for="navrh-doplnit-do">Čas do:</label> <input type="time" id="navrh-doplnit-do" readonly></p>
+            <p><label for="navrh-doplnit-trida">Třída:</label> <select id="navrh-doplnit-trida"></select></p>
+            <p class="navrh-modal-tlacitka">
+              <button type="submit" class="btn btn-primarni">Přidat blok</button>
+              <button type="button" id="navrh-doplnit-zrusit" class="btn btn-sekundarni">Zrušit</button>
+            </p>
+          </form>
+        </div>
+      </div>
     </section>
   </main>
   <footer>
