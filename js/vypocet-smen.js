@@ -133,6 +133,17 @@
       }
     }
 
+    // Init max arrays (index = minuta relativně k range.start)
+    var budovaMax = {}; // budovaId → [dayLen]
+    var tridaMax = {};  // tridaId → [dayLen]
+    for (i = 0; i < budovy.length; i++) {
+      budovaMax[budovy[i].id] = makeArray(dayLen, null);
+      var tridy = budovy[i].tridy || [];
+      for (j = 0; j < tridy.length; j++) {
+        tridaMax[tridy[j].id] = makeArray(dayLen, null);
+      }
+    }
+
     // Aplikovat slot requirements
     for (i = 0; i < sloty.length; i++) {
       var slot = sloty[i];
@@ -141,6 +152,8 @@
       var doM = Math.min(dayLen, timeToMinuty(slot.do) - range.start);
       var minB = parseInt(slot.minNaBudovu, 10) || 0;
       var minT = parseInt(slot.minNaTridu, 10) || 0;
+      var maxB = (slot.maxNaBudovu != null && slot.maxNaBudovu !== '') ? parseInt(slot.maxNaBudovu, 10) : null;
+      var maxT = (slot.maxNaTridu != null && slot.maxNaTridu !== '') ? parseInt(slot.maxNaTridu, 10) : null;
 
       for (m = od; m < doM; m++) {
         if (minB > 0) {
@@ -153,6 +166,24 @@
           for (var tId in tridaDemand) {
             if (tridaDemand.hasOwnProperty(tId)) {
               if (tridaDemand[tId][m] < minT) tridaDemand[tId][m] = minT;
+            }
+          }
+        }
+        // Nastavit maximální limity (nejpřísnější limit platí)
+        if (maxB !== null) {
+          for (j = 0; j < budovy.length; j++) {
+            var bId2 = budovy[j].id;
+            if (budovaMax[bId2][m] === null || budovaMax[bId2][m] > maxB) {
+              budovaMax[bId2][m] = maxB;
+            }
+          }
+        }
+        if (maxT !== null) {
+          for (var tId2 in tridaDemand) {
+            if (tridaDemand.hasOwnProperty(tId2)) {
+              if (tridaMax[tId2][m] === null || tridaMax[tId2][m] > maxT) {
+                tridaMax[tId2][m] = maxT;
+              }
             }
           }
         }
@@ -178,7 +209,9 @@
       dayLen: dayLen,
       budovaDemand: budovaDemand,
       tridaDemand: tridaDemand,
-      tridaBudova: tridaBudova
+      tridaBudova: tridaBudova,
+      budovaMax: budovaMax,
+      tridaMax: tridaMax
     };
   }
 
@@ -591,11 +624,15 @@
       }
       if (onShift.length === 0) continue;
 
-      // Aktuální demand
+      // Aktuální demand a max limity
       var classDem = {};
       for (i = 0; i < tridaIds.length; i++) classDem[tridaIds[i]] = demandInfo.tridaDemand[tridaIds[i]][m] || 0;
       var buildDem = {};
       for (i = 0; i < budovaIds.length; i++) buildDem[budovaIds[i]] = demandInfo.budovaDemand[budovaIds[i]][m] || 0;
+      var classMax = {};
+      for (i = 0; i < tridaIds.length; i++) classMax[tridaIds[i]] = demandInfo.tridaMax && demandInfo.tridaMax[tridaIds[i]] ? demandInfo.tridaMax[tridaIds[i]][m] : null;
+      var buildMax = {};
+      for (i = 0; i < budovaIds.length; i++) buildMax[budovaIds[i]] = demandInfo.budovaMax && demandInfo.budovaMax[budovaIds[i]] ? demandInfo.budovaMax[budovaIds[i]][m] : null;
 
       // Tracking přiřazení
       var assigned = {};      // zamestnanecId → { budovaId, tridaId }
@@ -607,14 +644,27 @@
       function doAssign(zId, bId, tId) {
         var emp = empMap[zId];
         if (emp && !canAssignEmpToLocation(emp, bId, tId, demandInfo.tridaBudova)) return;
+        // Kontrola maximálních limitů před přiřazením
+        if (tId) {
+          var newClassCount = (classCount[tId] || 0) + 1;
+          if (classMax[tId] !== null && newClassCount > classMax[tId]) return; // Překročení max limitu třídy
+          var parentBud = demandInfo.tridaBudova[tId];
+          if (parentBud) {
+            var newBuildCount = (buildingCount[parentBud] || 0) + 1;
+            if (buildMax[parentBud] !== null && newBuildCount > buildMax[parentBud]) return; // Překročení max limitu budovy
+          }
+        } else if (bId) {
+          var newBuildCount2 = (buildingCount[bId] || 0) + 1;
+          if (buildMax[bId] !== null && newBuildCount2 > buildMax[bId]) return; // Překročení max limitu budovy
+        }
         assigned[zId] = { budovaId: bId || null, tridaId: tId || null };
         var resolvedBud = null;
         if (tId) {
           classCount[tId] = (classCount[tId] || 0) + 1;
-          var parentBud = demandInfo.tridaBudova[tId];
-          if (parentBud) {
-            buildingCount[parentBud] = (buildingCount[parentBud] || 0) + 1;
-            resolvedBud = parentBud;
+          var parentBud2 = demandInfo.tridaBudova[tId];
+          if (parentBud2) {
+            buildingCount[parentBud2] = (buildingCount[parentBud2] || 0) + 1;
+            resolvedBud = parentBud2;
           }
         } else if (bId) {
           buildingCount[bId] = (buildingCount[bId] || 0) + 1;
@@ -747,9 +797,58 @@
         }
       }
 
-      // Krok 5: Zbylí nepřiřazení → zůstat kde byli (v třídě), nebo přiřadit do třídy
+      // Krok 5: Zbylí nepřiřazení → prioritně zaplnit nevyplněné minimální požadavky
+      var unassigned = [];
       for (i = 0; i < onShift.length; i++) {
-        var zIdR = onShift[i];
+        if (!assigned[onShift[i]]) unassigned.push(onShift[i]);
+      }
+      // Najít místa s nevyplněnými minimálními požadavky
+      var unmetDemand = [];
+      for (i = 0; i < tridaIds.length; i++) {
+        var tIdUnmet = tridaIds[i];
+        var needT = (classDem[tIdUnmet] || 0) - (classCount[tIdUnmet] || 0);
+        if (needT > 0) {
+          unmetDemand.push({ type: 'trida', id: tIdUnmet, need: needT });
+        }
+      }
+      for (i = 0; i < budovaIds.length; i++) {
+        var bIdUnmet = budovaIds[i];
+        var needB = (buildDem[bIdUnmet] || 0) - (buildingCount[bIdUnmet] || 0);
+        if (needB > 0) {
+          unmetDemand.push({ type: 'budova', id: bIdUnmet, need: needB });
+        }
+      }
+      // Seřadit podle potřeby (největší potřeba první)
+      unmetDemand.sort(function (a, b) { return b.need - a.need; });
+      // Přiřadit nepřiřazené do míst s nevyplněnými požadavky
+      for (var ud = 0; ud < unmetDemand.length && unassigned.length > 0; ud++) {
+        var unmet = unmetDemand[ud];
+        var assignedCount = 0;
+        for (var ua = 0; ua < unassigned.length && assignedCount < unmet.need; ua++) {
+          var zIdUnmet = unassigned[ua];
+          if (assigned[zIdUnmet]) continue;
+          if (unmet.type === 'trida') {
+            var budovaForTrida = demandInfo.tridaBudova[unmet.id];
+            if (!canGoToBuilding(zIdUnmet, budovaForTrida)) continue;
+            var empUnmet = empMap[zIdUnmet];
+            if (empUnmet && !canAssignEmpToLocation(empUnmet, budovaForTrida || null, unmet.id, demandInfo.tridaBudova)) continue;
+            doAssign(zIdUnmet, null, unmet.id);
+            assignedCount++;
+          } else {
+            if (!canGoToBuilding(zIdUnmet, unmet.id)) continue;
+            var classForUnmet = pickClassInBuilding(unmet.id, zIdUnmet, m);
+            if (classForUnmet) {
+              doAssign(zIdUnmet, null, classForUnmet);
+            } else {
+              doAssign(zIdUnmet, unmet.id, null);
+            }
+            assignedCount++;
+          }
+        }
+      }
+      // Zbylí nepřiřazení → zůstat kde byli (v třídě), nebo přiřadit do třídy
+      for (i = 0; i < unassigned.length; i++) {
+        var zIdR = unassigned[i];
         if (assigned[zIdR]) continue;
         var prevR = (m > 0 && assignments[zIdR]) ? assignments[zIdR][m - 1] : null;
         if (prevR && prevR.tridaId) {
@@ -896,6 +995,11 @@
     var prirazeni = [];
     var allWarnings = [];
     var den;
+    // Sledování celkového počtu minut přiřazených každému zaměstnanci za týden
+    var weeklyAssigned = {};
+    for (var wa = 0; wa < zamestnanci.length; wa++) {
+      weeklyAssigned[zamestnanci[wa].id] = 0;
+    }
 
     // D6: střídání dopoledne/odpoledne – pravidla a sledování typů pro preferenční režim
     var stridaniZapnuto = !!(pravidla.stridaniDopoledneOdpoledne);
@@ -969,8 +1073,20 @@
             totalAvailMin += info[dd].maxBlock;
           }
           if (totalAvailMin > 0 && info[den].maxBlock > 0) {
-            dailyMin = Math.round(weekly * info[den].maxBlock / totalAvailMin);
-            if (dailyMin > info[den].maxBlock) dailyMin = info[den].maxBlock;
+            var remainingWeekly = weekly - weeklyAssigned[zE.id];
+            var remainingDays = 6 - den; // Zbývající dny včetně dnešního
+            var proportional = Math.round(weekly * info[den].maxBlock / totalAvailMin);
+            // Omezit na zbývající úvazek rozdělený mezi zbývající dny (s rezervou)
+            var maxFromRemaining = remainingDays > 0 ? Math.ceil(remainingWeekly / remainingDays) : 0;
+            dailyMin = Math.min(proportional, info[den].maxBlock);
+            // Zajistit, že nepřekročíme celkový úvazek
+            if (weeklyAssigned[zE.id] + dailyMin > weekly) {
+              dailyMin = Math.max(0, weekly - weeklyAssigned[zE.id]);
+            }
+            // Také omezit na maxFromRemaining, pokud je to přísnější
+            if (maxFromRemaining > 0 && dailyMin > maxFromRemaining) {
+              dailyMin = maxFromRemaining;
+            }
           }
         }
 
@@ -1008,7 +1124,7 @@
             if (ok) return true;
           }
           return false;
-        }
+git         }
         var donors = [];
         var zeros = [];
         for (var di = 0; di < empDaily.length; di++) {
@@ -1018,6 +1134,14 @@
         donors.sort(function (a, b) { return empDaily[b].dailyMin - empDaily[a].dailyMin; });
         var toTransfer = Math.min(needMore, donors.length, zeros.length);
         for (var tt = 0; tt < toTransfer; tt++) {
+          var donorId = empDaily[donors[tt]].id;
+          var zeroId = empDaily[zeros[tt]].id;
+          var donorWeekly = weeklyAssigned[donorId] || 0;
+          var zeroWeekly = weeklyAssigned[zeroId] || 0;
+          var donorWeeklyMax = empWeekly[donorId] || 0;
+          var zeroWeeklyMax = empWeekly[zeroId] || 0;
+          // Kontrola, že nepřekročíme úvazek při přerozdělování
+          if (donorWeekly >= donorWeeklyMax || zeroWeekly + toGive > zeroWeeklyMax) continue;
           empDaily[donors[tt]].dailyMin -= toGive;
           empDaily[zeros[tt]].dailyMin = toGive;
         }
@@ -1053,6 +1177,16 @@
           zamestnanecId: segments[si].zamestnanecId,
           segmenty: segments[si].segmenty
         });
+        // Aktualizovat celkový počet přiřazených minut za týden
+        var segZamId = segments[si].zamestnanecId;
+        var dayMinutes = 0;
+        for (var segi = 0; segi < segments[si].segmenty.length; segi++) {
+          var seg = segments[si].segmenty[segi];
+          var segOd = timeToMinuty(seg.od);
+          var segDo = timeToMinuty(seg.do);
+          dayMinutes += (segDo - segOd);
+        }
+        weeklyAssigned[segZamId] = (weeklyAssigned[segZamId] || 0) + dayMinutes;
       }
 
       // D6: zaznamenat typ směny pro tento den (pro preferenční v dalších dnech a pro tvrdý validation)

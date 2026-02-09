@@ -1050,6 +1050,68 @@
         }
         T.assert(chyby.length === 0, chyby.length ? chyby.join('; ') : 'v každé třídě každý den 9:30–11:00 alespoň 2 osoby');
       }
+    },
+
+    /* === Test reprodukující chyby z anonymizovaného reportu === */
+    {
+      name: 'Anonymizovaný report: přečerpaný úvazek, nevyčerpaný úvazek, min/max na budovu/třídu',
+      run: function () {
+        if (!M) return;
+        // Konfigurace z anonymizovaného reportu
+        var b1 = M.vytvorBudovu('budova1');
+        b1.tridy.push(M.vytvorTridu('trida1'));
+        b1.tridy.push(M.vytvorTridu('trida2'));
+        b1.tridy.push(M.vytvorTridu('trida3'));
+        var b2 = M.vytvorBudovu('budova2');
+        b2.tridy.push(M.vytvorTridu('trida4'));
+        b2.tridy.push(M.vytvorTridu('trida5'));
+
+        var zastupkyne1 = M.vytvorZamestnance('zastupkyne1', 1200, M.ROLE.ZASTUPKYNE);
+        var reditelka1 = M.vytvorZamestnance('reditelka1', 720, M.ROLE.REDITELKA);
+        var ucitelka1 = M.vytvorZamestnance('ucitelka1', 1860, M.ROLE.UCITELKA);
+        var ucitelka10 = M.vytvorZamestnance('ucitelka10', 1860, M.ROLE.UCITELKA);
+        var ucitelka11 = M.vytvorZamestnance('ucitelka11', 1860, M.ROLE.UCITELKA);
+        var ucitelka8 = M.vytvorZamestnance('ucitelka8', 1860, M.ROLE.UCITELKA);
+        var ucitelka7 = M.vytvorZamestnance('ucitelka7', 1860, M.ROLE.UCITELKA);
+        var ucitelka6 = M.vytvorZamestnance('ucitelka6', 1860, M.ROLE.UCITELKA);
+        var ucitelka2 = M.vytvorZamestnance('ucitelka2', 1860, M.ROLE.UCITELKA);
+        var ucitelka9 = M.vytvorZamestnance('ucitelka9', 1590, M.ROLE.UCITELKA);
+        var ucitelka5 = M.vytvorZamestnance('ucitelka5', 150, M.ROLE.UCITELKA);
+        var ucitelka3 = M.vytvorZamestnance('ucitelka3', 210, M.ROLE.UCITELKA);
+        var ucitelka4 = M.vytvorZamestnance('ucitelka4', 480, M.ROLE.UCITELKA);
+
+        var data = {
+          zamestnanci: [zastupkyne1, reditelka1, ucitelka1, ucitelka10, ucitelka11, ucitelka8, ucitelka7, ucitelka6, ucitelka2, ucitelka9, ucitelka5, ucitelka3, ucitelka4],
+          budovy: [b1, b2],
+          minMaxSloty: [
+            { id: 's1', od: '07:00', do: '07:45', minNaBudovu: 1, maxNaBudovu: 1, minNaTridu: 0, maxNaTridu: null, dny: [], rotace: false },
+            { id: 's2', od: '07:45', do: '16:00', minNaBudovu: 0, maxNaBudovu: null, minNaTridu: 1, maxNaTridu: null, dny: [], rotace: false },
+            { id: 's3', od: '16:00', do: '17:00', minNaBudovu: 1, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null, dny: [1, 2, 3, 4], rotace: false },
+            { id: 's4', od: '16:00', do: '17:00', minNaBudovu: 1, maxNaBudovu: 1, minNaTridu: 0, maxNaTridu: null, dny: [5], rotace: false },
+            { id: 's5', od: '10:00', do: '12:00', minNaBudovu: 0, maxNaBudovu: null, minNaTridu: 2, maxNaTridu: null, dny: [], rotace: false }
+          ],
+          pravidla: { minimalniPrekryvMinuty: 120, zakazPrechodMeziBudovami: true }
+        };
+
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+
+        // Validace úvazků
+        var Validace = global.MSemenyValidaceNavrhu;
+        if (!Validace || !Validace.validujNavrh) return;
+        var vResult = Validace.validujNavrh(r.prirazeni, data);
+        var chyby = [];
+        var precerpane = vResult.polozky.filter(function (p) { return p.pravidlo === 'Přečerpaný úvazek'; });
+        if (precerpane.length > 0) {
+          chyby.push('Přečerpaný úvazek: ' + precerpane.map(function (p) { return p.kontext; }).join('; '));
+        }
+        // Nevyčerpaný úvazek je varování, ale kontrolujeme hlavní chyby
+        var minMaxChyby = vResult.polozky.filter(function (p) { return p.typ === 'chyba' && (p.pravidlo === 'Min/max na budovu' || p.pravidlo === 'Min/max na třídu'); });
+        if (minMaxChyby.length > 0) {
+          chyby.push('Min/max chyby: ' + minMaxChyby.length + ' položek');
+        }
+        T.assert(chyby.length === 0, chyby.length ? chyby.join('; ') : 'žádné chyby úvazků a min/max');
+      }
     }
   ];
 
