@@ -15,6 +15,8 @@
   var grafRezim = 'taby';
   /** D2d: vybraný den v režimu Taby (1–5). */
   var grafVybranyDen = 1;
+  /** ID vybraných budov pro zobrazení v grafu (null = všechny, jinak objekt { id: true }). */
+  var grafVybraneBudovyIds = null;
 
   function getData() {
     return Storage ? Storage.getData() : { zamestnanci: [], budovy: [], minMaxSloty: [] };
@@ -174,6 +176,7 @@
     if (result.ok) {
       zobrazUspech('Návrh byl přepočítán.');
       lastNavrhResult = { prirazeni: result.prirazeni, data: data };
+      grafVybraneBudovyIds = null;
       vykresliNavrh(result.prirazeni, data);
       zobrazGraf(result.prirazeni, data, { onSegmentClick: handleSegmentClick, onSegmentDrop: handleSegmentDrop });
       zobrazTlacitkoCsv(true);
@@ -352,6 +355,7 @@
       var result = ImportCsv.csvToPrirazeni(reader.result, data);
       if (result.ok) {
         lastNavrhResult = { prirazeni: result.prirazeni, data: data };
+        grafVybraneBudovyIds = null;
         vykresliNavrh(result.prirazeni, data);
         zobrazGraf(result.prirazeni, data, { onSegmentClick: handleSegmentClick, onSegmentDrop: handleSegmentDrop });
         zobrazTlacitkoCsv(true);
@@ -382,8 +386,22 @@
     var Graf = global.MSemenyNavrhGraf;
     var container = document.getElementById('navrh-graf');
     if (!Graf || !Graf.vykresliNavrhGraf || !container) return;
+    var budovy = (data && data.budovy) || [];
+    if (budovy.length > 0 && grafVybraneBudovyIds === null) {
+      grafVybraneBudovyIds = {};
+      budovy.forEach(function (b) { if (b.id) grafVybraneBudovyIds[b.id] = true; });
+    }
+    var vybraneIds = grafVybraneBudovyIds == null ? [] : Object.keys(grafVybraneBudovyIds).filter(function (id) { return grafVybraneBudovyIds[id]; });
+    var dataProGraf = data ? { zamestnanci: data.zamestnanci || [], budovy: vybraneIds.length === 0 ? budovy : budovy.filter(function (b) { return grafVybraneBudovyIds[b.id]; }) } : {};
     var opts = Object.assign({}, grafOpts || {}, {
       rezim: grafRezim,
+      vsechnyBudovy: budovy,
+      vybraneBudovyIds: vybraneIds.length > 0 ? vybraneIds : budovy.map(function (b) { return b.id; }),
+      onBudovyChange: function (selectedIds) {
+        grafVybraneBudovyIds = {};
+        (selectedIds || []).forEach(function (id) { grafVybraneBudovyIds[id] = true; });
+        if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
+      },
       onDenChange: function (d) {
         grafVybranyDen = d;
         if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
@@ -393,7 +411,7 @@
         if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
       }
     });
-    Graf.vykresliNavrhGraf(prirazeni || [], data || {}, container, grafVybranyDen, opts);
+    Graf.vykresliNavrhGraf(prirazeni || [], dataProGraf, container, grafVybranyDen, opts);
   }
 
   /** Hluboká kopie prirazeni pro úpravy. */

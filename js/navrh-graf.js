@@ -333,6 +333,9 @@
     var onSegmentDrop = opts.onSegmentDrop;
     var onDenChange = opts.onDenChange;
     var onRezimChange = opts.onRezimChange;
+    var onBudovyChange = opts.onBudovyChange;
+    var vsechnyBudovy = opts.vsechnyBudovy || [];
+    var vybraneBudovyIds = opts.vybraneBudovyIds || [];
     var rezim = (opts.rezim === 'inline') ? 'inline' : 'taby';
     var budovy = (data && data.budovy) || [];
     var zamestnanci = (data && data.zamestnanci) || [];
@@ -346,6 +349,21 @@
 
     var range = getTimeRange(budovy);
     var html = [];
+
+    /* Checkboxy budov (zobrazit jen vybrané budovy v grafu) */
+    if (vsechnyBudovy.length > 0 && typeof onBudovyChange === 'function') {
+      var vybraneSet = {};
+      for (var vi = 0; vi < vybraneBudovyIds.length; vi += 1) vybraneSet[vybraneBudovyIds[vi]] = true;
+      html.push('<div class="navrh-graf-budovy" role="group" aria-label="Zobrazené budovy">');
+      html.push('<span class="navrh-graf-budovy-label">Budovy:</span>');
+      for (var bi = 0; bi < vsechnyBudovy.length; bi += 1) {
+        var bud = vsechnyBudovy[bi];
+        if (!bud.id) continue;
+        var checked = vybraneSet[bud.id] ? ' checked' : '';
+        html.push('<label class="navrh-graf-budovy-checkbox"><input type="checkbox" class="navrh-graf-budovy-input" data-budova-id="' + escapeAttr(bud.id) + '"' + checked + '> ' + escapeHtml(bud.nazev || bud.id) + '</label>');
+      }
+      html.push('</div>');
+    }
 
     /* Ovládací prvky: režim (Taby / Inline) a taby pro dny (jen v režimu Taby) */
     html.push('<div class="navrh-graf-ovladaci">');
@@ -382,6 +400,19 @@
 
     container.innerHTML = html.join('');
     container.hidden = false;
+
+    /* Checkboxy budov: při změně vrátit seznam vybraných id */
+    if (typeof onBudovyChange === 'function') {
+      var budovyInputs = container.querySelectorAll('.navrh-graf-budovy-input');
+      for (var bxi = 0; bxi < budovyInputs.length; bxi += 1) {
+        budovyInputs[bxi].addEventListener('change', function () {
+          var checked = container.querySelectorAll('.navrh-graf-budovy-input:checked');
+          var ids = [];
+          for (var c = 0; c < checked.length; c += 1) ids.push(checked[c].getAttribute('data-budova-id'));
+          onBudovyChange(ids);
+        });
+      }
+    }
 
     /* Režim: Taby / Inline */
     var rezimBtns = container.querySelectorAll('.navrh-graf-rezim-btn');

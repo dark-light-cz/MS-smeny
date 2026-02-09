@@ -71,10 +71,14 @@
           zamestnanecId: id
         });
       } else if (uvazek > 0 && vNavrhu < uvazek) {
+        var zbyvaMin = uvazek - vNavrhu;
+        var zbyvaH = Math.floor(zbyvaMin / 60);
+        var zbyvaM = zbyvaMin % 60;
+        var zbyvaText = zbyvaH + ':' + (zbyvaM < 10 ? '0' : '') + zbyvaM;
         polozky.push({
           typ: 'varovani',
           pravidlo: 'Nevyčerpaný úvazek',
-          kontext: jmenoZamestnance(zamestnanci, id) + ': v návrhu ' + vNavrhu + ' min, úvazek ' + uvazek + ' min',
+          kontext: jmenoZamestnance(zamestnanci, id) + ': v návrhu ' + vNavrhu + ' min, úvazek ' + uvazek + ' min, což odpovídá ' + zbyvaText,
           zamestnanecId: id
         });
       }

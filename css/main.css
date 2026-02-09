@@ -702,6 +702,35 @@ header {
 }
 
 /* D2d: ovládací prvky – režim Taby/Inline a záložky dnů */
+.navrh-graf-budovy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.navrh-graf-budovy-label {
+  font-weight: 600;
+  margin-right: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.navrh-graf-budovy-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.navrh-graf-budovy-input {
+  margin: 0;
+}
+
 .navrh-graf-ovladaci {
   display: flex;
   flex-wrap: wrap;

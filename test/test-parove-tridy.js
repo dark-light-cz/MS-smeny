@@ -335,6 +335,47 @@
         var precerpane = (val.polozky || []).filter(function (p) { return p.typ === 'chyba' && p.pravidlo === 'Přečerpaný úvazek'; });
         T.assert(precerpane.length === 0, 'žádný přečerpaný úvazek: ' + (precerpane.map(function (p) { return p.kontext; }).join('; ') || 'ok'));
       }
+    },
+    {
+      name: 'Párové třídy: ranní a večerní prodloužení rozložena – nikdo nemá 3× stejný typ v budově',
+      run: function () {
+        if (!M || !V || !R) return;
+        var b = M.vytvorBudovu('B');
+        b.tridy.push(M.vytvorTridu('T1'));
+        b.tridy.push(M.vytvorTridu('T2'));
+        var t1 = b.tridy[0].id;
+        var t2 = b.tridy[1].id;
+        var zam = [
+          M.vytvorZamestnance('A', 1860, M.ROLE.UCITELKA, 'kmenová', t1),
+          M.vytvorZamestnance('B', 1860, M.ROLE.UCITELKA, 'kmenová', t1),
+          M.vytvorZamestnance('C', 1860, M.ROLE.UCITELKA, 'kmenová', t2),
+          M.vytvorZamestnance('D', 1860, M.ROLE.UCITELKA, 'kmenová', t2)
+        ];
+        var data = { zamestnanci: zam, budovy: [b], pravidla: {}, omezeniNeDohromady: [] };
+        var r = V.vypocetSmen(data, 'parove-tridy');
+        T.assert(r.ok === true, 'výpočet ok');
+        var ranniPerZam = {};
+        var vecerniPerZam = {};
+        var budovaId = b.id;
+        for (var i = 0; i < r.prirazeni.length; i++) {
+          var p = r.prirazeni[i];
+          var zamId = p.zamestnanecId;
+          var segs = p.segmenty || [];
+          for (var j = 0; j < segs.length; j++) {
+            var seg = segs[j];
+            var inB = (seg.budovaId === budovaId) || (seg.tridaId && (seg.tridaId === t1 || seg.tridaId === t2));
+            if (!inB) continue;
+            if (seg.od === '07:00') { ranniPerZam[zamId] = (ranniPerZam[zamId] || 0) + 1; }
+            if (seg.do === '17:00') { vecerniPerZam[zamId] = (vecerniPerZam[zamId] || 0) + 1; }
+          }
+        }
+        for (var zid in ranniPerZam) {
+          T.assert(ranniPerZam[zid] <= 2, 'ranní prodloužení (07:00) max 2× v budově pro ' + zid + ', má ' + ranniPerZam[zid]);
+        }
+        for (var zid in vecerniPerZam) {
+          T.assert(vecerniPerZam[zid] <= 2, 'večerní prodloužení (17:00) max 2× v budově pro ' + zid + ', má ' + vecerniPerZam[zid]);
+        }
+      }
     }
   ];
 

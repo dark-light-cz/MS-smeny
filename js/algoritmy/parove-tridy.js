@@ -273,7 +273,8 @@
             for (var s = 0; s < segs.length; s++) {
               if (segs[s].tridaId !== tridaId) continue;
               if (segmentOverlaps(segs[s], dopOd, dopDo)) hasDop = true;
-              if (segmentOverlaps(segs[s], odopOd, odopDo)) hasOdop = true;
+              var segDoMin = timeToMinuty(segs[s].do);
+              if (segmentOverlaps(segs[s], odopOd, odopDo) && segDoMin >= odopDo) hasOdop = true;
             }
           }
           if (!hasDop) {
@@ -395,7 +396,37 @@
     return out;
   }
 
-  /** Fáze 2: Prodloužení směn – primárně prodloužit dopolední (7:45→7:00) a odpolední (16:00→17:00) u někoho, kdo už v budově ten den pracuje. Žádné nové bloky „Budova (společně)“. */
+  /** Kolikrát má zaměstnanec v této budově v týdnu již ranní prodloužení (od 07:00). */
+  function countRanniExtensionsInBuilding(assignmentMap, budovaId, zamId, budovy) {
+    var count = 0;
+    for (var d = 1; d <= 5; d++) {
+      var key = d + '|' + zamId;
+      var segs = assignmentMap[key];
+      if (!segs) continue;
+      for (var s = 0; s < segs.length; s++) {
+        var segBudova = segs[s].budovaId || (segs[s].tridaId && budovy ? findBudovaForTrida(budovy, segs[s].tridaId) : null);
+        if (segBudova === budovaId && segs[s].od === RANNI_EXT_OD) { count++; break; }
+      }
+    }
+    return count;
+  }
+
+  /** Kolikrát má zaměstnanec v této budově v týdnu již večerní prodloužení (do 17:00). */
+  function countVecerniExtensionsInBuilding(assignmentMap, budovaId, zamId, budovy) {
+    var count = 0;
+    for (var d = 1; d <= 5; d++) {
+      var key = d + '|' + zamId;
+      var segs = assignmentMap[key];
+      if (!segs) continue;
+      for (var s = 0; s < segs.length; s++) {
+        var segBudova = segs[s].budovaId || (segs[s].tridaId && budovy ? findBudovaForTrida(budovy, segs[s].tridaId) : null);
+        if (segBudova === budovaId && segs[s].do === VECERNI_DO) { count++; break; }
+      }
+    }
+    return count;
+  }
+
+  /** Fáze 2: Prodloužení směn – primárně prodloužit dopolední (7:45→7:00) a odpolední (16:00→17:00) u někoho, kdo už v budově ten den pracuje. Přednost mají ti, kteří dané prodloužení tento týden ještě neměli (max. 2× ranní a 2× odpolední, nikdo 3×). */
   function phase2(assignmentMap, budovy, zamestnanci, pravidla, assignedSum) {
     var ranniOd = timeToMinuty(RANNI_EXT_OD);
     var ranniDo = timeToMinuty(RANNI_EXT_DO);
@@ -404,8 +435,6 @@
 
     for (var b = 0; b < budovy.length; b++) {
       var budovaId = budovy[b].id;
-      var ranniIndex = 0;
-      var vecerniIndex = 0;
 
       for (var d = 1; d <= 5; d++) {
         var canRanni = getZamWithSegmentStartInBuilding(assignmentMap, d, budovaId, DOPOLEDNI_OD, budovy);
@@ -420,21 +449,41 @@
           return z && (parseInt(z.uvazekMinutyTyden, 10) || 0) - (assignedSum[zamId] || 0) >= MIN_VECERNI && isAvailable(z, d, vecOd, vecDo);
         });
 
-        var pickRanni = canRanni.length > 0 ? canRanni[ranniIndex % canRanni.length] : null;
-        var pickVec = canVecerni.length > 0 ? canVecerni[vecerniIndex % canVecerni.length] : null;
-        if (pickRanni === pickVec && canVecerni.length > 1) pickVec = canVecerni[(vecerniIndex + 1) % canVecerni.length];
-        if (pickRanni && pickRanni === pickVec) pickVec = null;
+        canRanni.sort(function (a, b) {
+          var ca = countRanniExtensionsInBuilding(assignmentMap, budovaId, a, budovy);
+          var cb = countRanniExtensionsInBuilding(assignmentMap, budovaId, b, budovy);
+          return ca - cb;
+        });
+        canVecerni.sort(function (a, b) {
+          var ca = countVecerniExtensionsInBuilding(assignmentMap, budovaId, a, budovy);
+          var cb = countVecerniExtensionsInBuilding(assignmentMap, budovaId, b, budovy);
+          return ca - cb;
+        });
+
+        var MAX_ROZLOZENI_TYPU = 2;
+        var pickRanni = null;
+        if (canRanni.length > 0 && countRanniExtensionsInBuilding(assignmentMap, budovaId, canRanni[0], budovy) < MAX_ROZLOZENI_TYPU) {
+          pickRanni = canRanni[0];
+        }
+        var pickVec = null;
+        if (canVecerni.length > 0 && countVecerniExtensionsInBuilding(assignmentMap, budovaId, canVecerni[0], budovy) < MAX_ROZLOZENI_TYPU) {
+          pickVec = canVecerni[0];
+        }
+        if (pickRanni === pickVec && canVecerni.length > 1) {
+          var alt = canVecerni[1];
+          if (countVecerniExtensionsInBuilding(assignmentMap, budovaId, alt, budovy) < MAX_ROZLOZENI_TYPU) pickVec = alt;
+          else pickVec = null;
+        }
+        if (pickRanni && pickVec && pickRanni === pickVec) pickVec = null;
 
         if (pickRanni) {
           if (extendSegmentStart(assignmentMap, d, pickRanni, DOPOLEDNI_OD, RANNI_EXT_OD, budovaId, budovy)) {
             assignedSum[pickRanni] = (assignedSum[pickRanni] || 0) + MIN_RANNI_EXT;
-            ranniIndex++;
           }
         }
         if (pickVec) {
           if (extendSegmentEnd(assignmentMap, d, pickVec, ODOPOLEDNI_DO, VECERNI_DO, budovaId, budovy)) {
             assignedSum[pickVec] = (assignedSum[pickVec] || 0) + MIN_VECERNI;
-            vecerniIndex++;
           }
         }
       }
@@ -477,13 +526,14 @@
           if (rem < minDelka) continue;
         }
         var alreadyInThisClass = tridaByDoplnujiciZam[z.id] === gap.tridaId;
-        candidates.push({ z: z, alreadyInThisClass: alreadyInThisClass, rem: rem });
+        var uvazek = parseInt(z.uvazekMinutyTyden, 10) || 0;
+        candidates.push({ z: z, alreadyInThisClass: alreadyInThisClass, rem: rem, uvazek: uvazek });
       }
 
       candidates.sort(function (a, b) {
         if (a.alreadyInThisClass && !b.alreadyInThisClass) return -1;
         if (!a.alreadyInThisClass && b.alreadyInThisClass) return 1;
-        return 0;
+        return (b.uvazek - a.uvazek);
       });
 
       if (candidates.length === 0) continue;
