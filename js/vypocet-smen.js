@@ -122,13 +122,17 @@
     var budovaDemand = {}; // budovaId → [dayLen]
     var tridaDemand = {};  // tridaId → [dayLen]
     var tridaBudova = {};  // tridaId → budovaId
+    var budovaMaxDemand = {}; // budovaId → [dayLen] max povolený počet osob
+    var tridaMaxDemand = {};  // tridaId → [dayLen] max povolený počet osob
     var i, j, m;
 
     for (i = 0; i < budovy.length; i++) {
       budovaDemand[budovy[i].id] = makeArray(dayLen, 0);
+      budovaMaxDemand[budovy[i].id] = makeArray(dayLen, Infinity);
       var tridy = budovy[i].tridy || [];
       for (j = 0; j < tridy.length; j++) {
         tridaDemand[tridy[j].id] = makeArray(dayLen, 0);
+        tridaMaxDemand[tridy[j].id] = makeArray(dayLen, Infinity);
         tridaBudova[tridy[j].id] = budovy[i].id;
       }
     }
@@ -141,6 +145,8 @@
       var doM = Math.min(dayLen, timeToMinuty(slot.do) - range.start);
       var minB = parseInt(slot.minNaBudovu, 10) || 0;
       var minT = parseInt(slot.minNaTridu, 10) || 0;
+      var maxB = (slot.maxNaBudovu != null && slot.maxNaBudovu !== '') ? parseInt(slot.maxNaBudovu, 10) : null;
+      var maxT = (slot.maxNaTridu != null && slot.maxNaTridu !== '') ? parseInt(slot.maxNaTridu, 10) : null;
 
       for (m = od; m < doM; m++) {
         if (minB > 0) {
@@ -153,6 +159,20 @@
           for (var tId in tridaDemand) {
             if (tridaDemand.hasOwnProperty(tId)) {
               if (tridaDemand[tId][m] < minT) tridaDemand[tId][m] = minT;
+            }
+          }
+        }
+        // Max omezení na budovu
+        if (maxB !== null && !isNaN(maxB)) {
+          for (j = 0; j < budovy.length; j++) {
+            if (budovaMaxDemand[budovy[j].id][m] > maxB) budovaMaxDemand[budovy[j].id][m] = maxB;
+          }
+        }
+        // Max omezení na třídu
+        if (maxT !== null && !isNaN(maxT)) {
+          for (var tIdMax in tridaMaxDemand) {
+            if (tridaMaxDemand.hasOwnProperty(tIdMax)) {
+              if (tridaMaxDemand[tIdMax][m] > maxT) tridaMaxDemand[tIdMax][m] = maxT;
             }
           }
         }
@@ -178,7 +198,9 @@
       dayLen: dayLen,
       budovaDemand: budovaDemand,
       tridaDemand: tridaDemand,
-      tridaBudova: tridaBudova
+      tridaBudova: tridaBudova,
+      budovaMaxDemand: budovaMaxDemand,
+      tridaMaxDemand: tridaMaxDemand
     };
   }
 
@@ -210,6 +232,29 @@
     return curve;
   }
 
+  /**
+   * Spočítá maximální povolený počet osob v každé minutě (cap z maxNaBudovu).
+   * Pokud v dané minutě žádné max omezení neexistuje, vrátí Infinity.
+   */
+  function totalMaxCapCurve(demandInfo, budovy) {
+    var dayLen = demandInfo.dayLen;
+    var cap = makeArray(dayLen, Infinity);
+    if (!demandInfo.budovaMaxDemand) return cap;
+    for (var m = 0; m < dayLen; m++) {
+      var total = 0;
+      for (var i = 0; i < budovy.length; i++) {
+        var bMax = demandInfo.budovaMaxDemand[budovy[i].id][m];
+        if (bMax === Infinity) {
+          total = Infinity;
+          break;
+        }
+        total += bMax;
+      }
+      cap[m] = total;
+    }
+    return cap;
+  }
+
   /* === Fáze 2: Umístění směn (kdy pracují) === */
 
   /**
@@ -221,7 +266,7 @@
    * @param {Object} [availMasks] - zamestnanecId → boolean[] maska dostupnosti (B1d)
    * @param {Object} [stridaniOpt] - D6: { preferredType: { zamId: 'dopoledni'|'odpoledni' }, boundaryRelative: number }
    */
-  function placeShifts(empDaily, curve, dayLen, availMasks, stridaniOpt) {
+  function placeShifts(empDaily, curve, dayLen, availMasks, stridaniOpt, maxCapCurve) {
     var sorted = empDaily.slice().sort(function (a, b) {
       return b.dailyMin - a.dailyMin;
     });
@@ -283,6 +328,8 @@
           var residual = curve[m] - coverage[m];
           score += (residual > 0) ? residual : -1;
           if (residual > 0 && maxCurve > 0 && curve[m] >= maxCurve) score += 50;
+          // Penalizace za překročení maxNaBudovu/maxNaTridu
+          if (maxCapCurve && maxCapCurve[m] !== Infinity && coverage[m] >= maxCapCurve[m]) score -= 100;
         }
         // D6 preferenční: bonus za souhlas s preferovaným typem směny
         if (stridaniOpt && stridaniOpt.preferredType && stridaniOpt.preferredType[z.id] && stridaniOpt.boundaryRelative != null) {
@@ -312,6 +359,7 @@
             var res3 = curve[m3] - coverage[m3];
             score3 += (res3 > 0) ? res3 : -1;
             if (res3 > 0 && maxCurve > 0 && curve[m3] >= maxCurve) score3 += 50;
+            if (maxCapCurve && maxCapCurve[m3] !== Infinity && coverage[m3] >= maxCapCurve[m3]) score3 -= 100;
           }
           if (stridaniOpt && stridaniOpt.preferredType && stridaniOpt.preferredType[z.id] && stridaniOpt.boundaryRelative != null) {
             var isDop = s2 < stridaniOpt.boundaryRelative;
@@ -336,6 +384,7 @@
             var r2 = curve[m2] - coverage[m2];
             score2 += (r2 > 0) ? r2 : -1;
             if (r2 > 0 && maxCurve > 0 && curve[m2] >= maxCurve) score2 += 50;
+            if (maxCapCurve && maxCapCurve[m2] !== Infinity && coverage[m2] >= maxCapCurve[m2]) score2 -= 100;
           }
           if (stridaniOpt && stridaniOpt.preferredType && stridaniOpt.preferredType[z.id] && stridaniOpt.boundaryRelative != null) {
             var isDopoledniLast = lastStart < stridaniOpt.boundaryRelative;
@@ -380,6 +429,12 @@
             if (maskR) {
               for (var nm = ns; nm < ns + dmR; nm++) { if (!maskR[nm]) { ok = false; break; } }
             }
+            // Nepřesouvat do minut s překročeným max capem
+            if (ok && maxCapCurve) {
+              for (var nm2 = ns; nm2 < ns + dmR; nm2++) {
+                if (maxCapCurve[nm2] !== Infinity && coverage[nm2] >= maxCapCurve[nm2]) { ok = false; break; }
+              }
+            }
             if (ok) { newStart = ns; break; }
           }
           if (newStart < 0) continue;
@@ -400,6 +455,81 @@
           if (coverage[pc2] < minPeakCov) minPeakCov = coverage[pc2];
         }
       }
+    }
+
+    // Oprava: pokud v posledních 60 min dne je NULOVÉ pokrytí při nenulové poptávce, přesunout směnu
+    for (var tailFix = 0; tailFix < 10; tailFix++) {
+      var uncoveredTail = -1;
+      for (var ut = dayLen - 1; ut >= Math.max(0, dayLen - 60); ut--) {
+        if (curve[ut] > 0 && coverage[ut] === 0) { uncoveredTail = ut; break; }
+        if (curve[ut] > 0 && coverage[ut] > 0) break;
+      }
+      if (uncoveredTail < 0) break;
+
+      // Najít směnu s nejmenší „škodou" při přesunu na konec dne
+      var bestTailIdx = -1;
+      var bestTailDamage = Infinity;
+
+      for (var bsi = 0; bsi < shifts.length; bsi++) {
+        var bSh = shifts[bsi];
+        var bLen = bSh.end - bSh.start;
+        // Směna již pokrývá gap → přeskočit
+        if (bSh.start <= uncoveredTail && bSh.end > uncoveredTail) continue;
+        // Nová pozice: pokrýt uncoveredTail, konec max dayLen
+        var bNewEnd = Math.min(dayLen, uncoveredTail + bLen);
+        var bNewStart = bNewEnd - bLen;
+        if (bNewStart < 0 || bNewStart <= bSh.start) continue;
+        // Dostupnost
+        var bMask = (availMasks && availMasks[bSh.zamestnanecId]) ? availMasks[bSh.zamestnanecId] : null;
+        var bOk = true;
+        if (bMask) {
+          for (var bm = bNewStart; bm < bNewEnd; bm++) {
+            if (!bMask[bm]) { bOk = false; break; }
+          }
+        }
+        if (!bOk) continue;
+        // Max cap v nové pozici (jen pro minuty mimo původní rozsah)
+        if (maxCapCurve) {
+          for (var btc = bNewStart; btc < bNewEnd; btc++) {
+            if (btc >= bSh.start && btc < bSh.end) continue;
+            if (maxCapCurve[btc] !== Infinity && coverage[btc] >= maxCapCurve[btc]) { bOk = false; break; }
+          }
+        }
+        if (!bOk) continue;
+        // Spočítat škodu: minuty opuštěné oblasti, kde pokrytí klesne pod poptávku
+        var tailDamage = 0;
+        for (var tdm = bSh.start; tdm < bSh.end; tdm++) {
+          if (tdm >= bNewStart && tdm < bNewEnd) continue;
+          if (coverage[tdm] - 1 < curve[tdm]) tailDamage++;
+        }
+        if (tailDamage < bestTailDamage) {
+          bestTailDamage = tailDamage;
+          bestTailIdx = bsi;
+        }
+      }
+
+      // Povolit přesun, pokud škoda je přijatelná (max 2× pokrytý benefit)
+      var tailBenefit = 0;
+      if (bestTailIdx >= 0) {
+        var mvTest = shifts[bestTailIdx];
+        var mvTestLen = mvTest.end - mvTest.start;
+        var mvTestNewEnd = Math.min(dayLen, uncoveredTail + mvTestLen);
+        var mvTestNewStart = mvTestNewEnd - mvTestLen;
+        for (var tb = mvTestNewStart; tb < mvTestNewEnd; tb++) {
+          if (!(tb >= mvTest.start && tb < mvTest.end) && curve[tb] > 0 && coverage[tb] < curve[tb]) tailBenefit++;
+        }
+      }
+      if (bestTailIdx < 0 || bestTailDamage > tailBenefit) break;
+
+      // Přesunout směnu (jen pokud je nulová škoda – přebytek v opuštěné oblasti)
+      var mvSh = shifts[bestTailIdx];
+      var mvLen = mvSh.end - mvSh.start;
+      var mvNewEnd = Math.min(dayLen, uncoveredTail + mvLen);
+      var mvNewStart = mvNewEnd - mvLen;
+      for (var mvr = mvSh.start; mvr < mvSh.end; mvr++) coverage[mvr]--;
+      for (var mvn = mvNewStart; mvn < mvNewEnd; mvn++) coverage[mvn]++;
+      mvSh.start = mvNewStart;
+      mvSh.end = mvNewEnd;
     }
 
     return { shifts: shifts, coverage: coverage };
@@ -607,6 +737,17 @@
       function doAssign(zId, bId, tId) {
         var emp = empMap[zId];
         if (emp && !canAssignEmpToLocation(emp, bId, tId, demandInfo.tridaBudova)) return;
+        // Max omezení na budovu – nepřiřadit víc než maxNaBudovu
+        var checkBud = tId ? demandInfo.tridaBudova[tId] : bId;
+        if (checkBud && demandInfo.budovaMaxDemand && demandInfo.budovaMaxDemand[checkBud]) {
+          var budMax = demandInfo.budovaMaxDemand[checkBud][m];
+          if (budMax !== Infinity && (buildingCount[checkBud] || 0) >= budMax) return;
+        }
+        // Max omezení na třídu
+        if (tId && demandInfo.tridaMaxDemand && demandInfo.tridaMaxDemand[tId]) {
+          var tMax = demandInfo.tridaMaxDemand[tId][m];
+          if (tMax !== Infinity && (classCount[tId] || 0) >= tMax) return;
+        }
         assigned[zId] = { budovaId: bId || null, tridaId: tId || null };
         var resolvedBud = null;
         if (tId) {
@@ -897,6 +1038,12 @@
     var allWarnings = [];
     var den;
 
+    // Sledování skutečně přidělených minut za týden (ochrana proti přečerpání úvazku)
+    var weeklyUsed = {};
+    for (var wu = 0; wu < zamestnanci.length; wu++) {
+      weeklyUsed[zamestnanci[wu].id] = 0;
+    }
+
     // D6: střídání dopoledne/odpoledne – pravidla a sledování typů pro preferenční režim
     var stridaniZapnuto = !!(pravidla.stridaniDopoledneOdpoledne);
     var stridaniRezim = (pravidla.stridaniRezim === 'tvrdý') ? 'tvrdý' : 'preferenční';
@@ -978,6 +1125,14 @@
         availMasks[zE.id] = info[den].mask;
       }
 
+      // Cap dailyMin na zbývající týdenní budget (ochrana proti přečerpání úvazku)
+      for (var capI = 0; capI < empDaily.length; capI++) {
+        var capRemaining = empWeekly[empDaily[capI].id] - (weeklyUsed[empDaily[capI].id] || 0);
+        if (empDaily[capI].dailyMin > capRemaining) {
+          empDaily[capI].dailyMin = Math.max(0, capRemaining);
+        }
+      }
+
       // Zajistit dostatek lidí na pokrytí poptávky: v každé minutě musí být alespoň curve[m] osob.
       // Pokud D7 nebo proporční rozdělení dá 0 minut příliš mnoha lidem, placeShifts nemůže pokrýt sloty (např. 9:30–11 minNaTridu 2).
       var maxCurve = 0;
@@ -1013,7 +1168,13 @@
         var zeros = [];
         for (var di = 0; di < empDaily.length; di++) {
           if (empDaily[di].dailyMin >= toGive) donors.push(di);
-          else if (empDaily[di].dailyMin === 0 && canWorkInPeak(di, toGive)) zeros.push(di);
+          else if (empDaily[di].dailyMin === 0 && canWorkInPeak(di, toGive)) {
+            // Ochrana: nepřidávat minuty zaměstnanci, který by překročil týdenní úvazek
+            var empIdBump = empDaily[di].id;
+            if ((weeklyUsed[empIdBump] || 0) + toGive <= empWeekly[empIdBump]) {
+              zeros.push(di);
+            }
+          }
         }
         donors.sort(function (a, b) { return empDaily[b].dailyMin - empDaily[a].dailyMin; });
         var toTransfer = Math.min(needMore, donors.length, zeros.length);
@@ -1041,7 +1202,15 @@
         stridaniOpt = { preferredType: preferredType, boundaryRelative: boundaryRel };
       }
 
-      var placed = placeShifts(empDaily, curve, demandInfo.dayLen, availMasks, stridaniOpt);
+      var maxCap = totalMaxCapCurve(demandInfo, budovy);
+      var placed = placeShifts(empDaily, curve, demandInfo.dayLen, availMasks, stridaniOpt, maxCap);
+
+      // Aktualizovat weeklyUsed po umístění směn
+      for (var wu2 = 0; wu2 < placed.shifts.length; wu2++) {
+        var shWu = placed.shifts[wu2];
+        weeklyUsed[shWu.zamestnanecId] = (weeklyUsed[shWu.zamestnanecId] || 0) + (shWu.end - shWu.start);
+      }
+
       var locAssignments = assignLocations(
         placed.shifts, demandInfo, budovy, zamestnanci, pravidla, omezeni
       );
