@@ -150,6 +150,17 @@
     return !(segDo <= odMin || segOd >= doMin);
   }
 
+  /** Má zaměstnanec v daný den již nějaký segment překrývající se s [odMin, doMin]? (Aby nedostal dva překrývající se bloky.) */
+  function hasOverlappingSegmentOnDay(assignmentMap, den, zamId, odMin, doMin) {
+    var key = den + '|' + zamId;
+    var segs = assignmentMap[key];
+    if (!segs) return false;
+    for (var s = 0; s < segs.length; s++) {
+      if (segmentOverlaps(segs[s], odMin, doMin)) return true;
+    }
+    return false;
+  }
+
   /** V daný den mají zaměstnanci alespoň jeden segment v dané třídě? Vrátí pole zamId. */
   function getZamInTridaOnDay(assignmentMap, den, tridaId) {
     var out = [];
@@ -518,6 +529,7 @@
         var z = unassigned[u];
         if (neDohromadySet[z.id]) continue;
         if (!canAssignToLocation(z, gap.tridaId, gap.budovaId)) continue;
+        if (hasOverlappingSegmentOnDay(assignmentMap, gap.den, z.id, gap.odMin, gap.doMin)) continue;
         if (!isAvailable(z, gap.den, gap.odMin, gap.doMin)) continue;
         var rem = (parseInt(z.uvazekMinutyTyden, 10) || 0) - (assignedSum[z.id] || 0);
         if (gap.slot === 'dopoledni') {

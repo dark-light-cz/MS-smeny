@@ -376,6 +376,44 @@
           T.assert(vecerniPerZam[zid] <= 2, 'večerní prodloužení (17:00) max 2× v budově pro ' + zid + ', má ' + vecerniPerZam[zid]);
         }
       }
+    },
+    {
+      name: 'Párové třídy: žádný překryv směn (jedna osoba ve dvou třídách ve stejný čas)',
+      run: function () {
+        if (!M || !V || !R) return;
+        var Validace = global.MSemenyValidaceNavrhu;
+        if (!Validace || typeof Validace.validujNavrh !== 'function') return;
+        var b1 = M.vytvorBudovu('budova1');
+        var b2 = M.vytvorBudovu('budova2');
+        b1.tridy.push(M.vytvorTridu('trida1'));
+        b1.tridy.push(M.vytvorTridu('trida2'));
+        b1.tridy.push(M.vytvorTridu('trida3'));
+        b2.tridy.push(M.vytvorTridu('trida4'));
+        b2.tridy.push(M.vytvorTridu('trida5'));
+        var tid = [b1.tridy[0].id, b1.tridy[0].id, b1.tridy[1].id, b1.tridy[1].id, b1.tridy[2].id, b1.tridy[2].id, b2.tridy[0].id, b2.tridy[0].id, b2.tridy[1].id, b2.tridy[1].id];
+        var zam = [
+          M.vytvorZamestnance('zastupkyne1', 1200, M.ROLE.UCITELKA, 'vykrývací'),
+          M.vytvorZamestnance('reditelka1', 720, M.ROLE.UCITELKA, 'vykrývací')
+        ];
+        for (var i = 0; i < 10; i++) {
+          zam.push(M.vytvorZamestnance('ucitelka' + (i + 1), 1860, M.ROLE.UCITELKA, 'kmenová', tid[i]));
+        }
+        zam.push(M.vytvorZamestnance('ucitelka9b', 1590, M.ROLE.UCITELKA, 'vykrývací'));
+        zam.push(M.vytvorZamestnance('ucitelka5', 150, M.ROLE.UCITELKA, 'vykrývací'));
+        zam.push(M.vytvorZamestnance('ucitelka3', 210, M.ROLE.UCITELKA, 'vykrývací'));
+        zam.push(M.vytvorZamestnance('ucitelka4', 480, M.ROLE.UCITELKA, 'vykrývací'));
+        var data = {
+          zamestnanci: zam,
+          budovy: [b1, b2],
+          pravidla: { minimalniPrekryvMinuty: 120, zakazPrechodMeziBudovami: true },
+          omezeniNeDohromady: []
+        };
+        var r = V.vypocetSmen(data, 'parove-tridy');
+        T.assert(r.ok === true, 'výpočet ok');
+        var val = Validace.validujNavrh(r.prirazeni, data);
+        var prekryv = (val.polozky || []).filter(function (p) { return p.pravidlo === 'Překryv směn'; });
+        T.assert(prekryv.length === 0, 'žádný překryv směn (jedna osoba 2× ve stejný čas): ' + (prekryv.map(function (p) { return p.kontext; }).join('; ') || 'ok'));
+      }
     }
   ];
 

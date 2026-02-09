@@ -939,6 +939,26 @@ header {
 .navrh-graf-segment.dragging {
   opacity: 0.6;
 }
+
+.navrh-graf-segment-resize-edge {
+  cursor: ew-resize;
+}
+
+.navrh-graf-resize-tooltip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  padding: 0.35em 0.6em;
+  font-size: 0.85rem;
+  background: #1a1a1a;
+  color: #fff;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10000;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: none;
+}
 .navrh-graf-rada.drag-over {
   background: rgba(74, 144, 217, 0.15);
   border-radius: 4px;

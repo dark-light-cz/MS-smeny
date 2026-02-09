@@ -411,6 +411,7 @@
         if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
       }
     });
+    opts.onSegmentResize = handleSegmentResize;
     Graf.vykresliNavrhGraf(prirazeni || [], dataProGraf, container, grafVybranyDen, opts);
   }
 
@@ -498,6 +499,19 @@
 
   function handleSegmentClick(ev, info) {
     openSegmentEditModal(info.den, info.zamestnanecId, info.segIndex);
+  }
+
+  /**
+   * Změna času směny tažením okraje v grafu (D11b). Volá se po dokončení tažení.
+   */
+  function handleSegmentResize(den, zamestnanecId, segIndex, newOd, newDo) {
+    if (!lastNavrhResult) return;
+    var prirazeni = clonePrirazeni(lastNavrhResult.prirazeni);
+    var p = prirazeni.find(function (x) { return x.den === den && x.zamestnanecId === zamestnanecId; });
+    if (!p || !p.segmenty || !p.segmenty[segIndex]) return;
+    p.segmenty[segIndex].od = newOd;
+    p.segmenty[segIndex].do = newDo;
+    applyNavrhChange(prirazeni);
   }
 
   function closeSegmentModal() {

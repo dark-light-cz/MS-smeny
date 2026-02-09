@@ -25,6 +25,22 @@
     return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
   }
 
+  /** Minuty na řetězec HH:mm */
+  function minutyToHhmm(minuty) {
+    var m = Math.max(0, Math.floor(minuty));
+    var h = Math.floor(m / 60);
+    var min = m % 60;
+    return (h < 10 ? '0' : '') + h + ':' + (min < 10 ? '0' : '') + min;
+  }
+
+  /** Zaokrouhlí minuty na mřížku po 5 minutách */
+  function snapMinuty(m) {
+    return Math.round(m / 5) * 5;
+  }
+
+  var EDGE_ZONE_PX = 8;
+  var MIN_DELKA_MINUTY = 5;
+
   function nazevBudovy(budovy, id) {
     if (!id) return '';
     for (var i = 0; i < (budovy || []).length; i += 1) {
@@ -331,6 +347,7 @@
     opts = (typeof opts === 'object' && opts !== null) ? opts : {};
     var onSegmentClick = opts.onSegmentClick;
     var onSegmentDrop = opts.onSegmentDrop;
+    var onSegmentResize = opts.onSegmentResize;
     var onDenChange = opts.onDenChange;
     var onRezimChange = opts.onRezimChange;
     var onBudovyChange = opts.onBudovyChange;
@@ -400,6 +417,8 @@
 
     container.innerHTML = html.join('');
     container.hidden = false;
+    container.dataset.rangeStart = String(range.start);
+    container.dataset.rangeEnd = String(range.end);
 
     /* Checkboxy budov: při změně vrátit seznam vybraných id */
     if (typeof onBudovyChange === 'function') {
@@ -431,8 +450,13 @@
       });
     }
 
+    var didResizeJustNow = false;
     if (typeof onSegmentClick === 'function') {
       container.addEventListener('click', function (ev) {
+        if (didResizeJustNow) {
+          didResizeJustNow = false;
+          return;
+        }
         var seg = ev.target.closest('.navrh-graf-segment');
         if (!seg || !seg.hasAttribute('data-den')) return;
         var d = parseInt(seg.getAttribute('data-den'), 10);
@@ -487,6 +511,119 @@
         } catch (e) { /* ignore */ }
       });
     }
+
+    /* Změna délky směny tažením okraje (D11b): kurzor na okraji, mousedown→resize, mřížka 5 min, tooltip */
+    var resizeState = null;
+    var resizeTooltipEl = null;
+
+    function edgeZone(seg, clientX) {
+      var rect = seg.getBoundingClientRect();
+      if (clientX - rect.left <= EDGE_ZONE_PX) return 'left';
+      if (rect.right - clientX <= EDGE_ZONE_PX) return 'right';
+      return null;
+    }
+
+    function clearResizeCursor() {
+      var all = container.querySelectorAll('.navrh-graf-segment-resize-edge');
+      for (var i = 0; i < all.length; i += 1) all[i].classList.remove('navrh-graf-segment-resize-edge');
+    }
+
+    container.addEventListener('mousemove', function (ev) {
+      if (resizeState) return;
+      clearResizeCursor();
+      var seg = ev.target.closest('.navrh-graf-segment');
+      if (!seg || !seg.hasAttribute('data-den')) return;
+      var edge = edgeZone(seg, ev.clientX);
+      if (edge) seg.classList.add('navrh-graf-segment-resize-edge');
+    });
+
+    container.addEventListener('mouseleave', function () {
+      if (!resizeState) clearResizeCursor();
+    });
+
+    container.addEventListener('mousedown', function (ev) {
+      if (resizeState || typeof onSegmentResize !== 'function') return;
+      var seg = ev.target.closest('.navrh-graf-segment');
+      if (!seg || !seg.hasAttribute('data-den')) return;
+      var edge = edgeZone(seg, ev.clientX);
+      if (!edge) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      var rangeStart = parseInt(container.dataset.rangeStart, 10) || 0;
+      var rangeEnd = parseInt(container.dataset.rangeEnd, 10) || rangeStart + 600;
+      var rangeLen = Math.max(1, rangeEnd - rangeStart);
+      var leftPct = parseFloat(seg.style.left) || 0;
+      var widthPct = parseFloat(seg.style.width) || 0;
+      var startOdMin = rangeStart + (leftPct / 100) * rangeLen;
+      var startDoMin = rangeStart + ((leftPct + widthPct) / 100) * rangeLen;
+      startOdMin = snapMinuty(startOdMin);
+      startDoMin = snapMinuty(startDoMin);
+      resizeState = {
+        segment: seg,
+        edge: edge,
+        startOdMin: startOdMin,
+        startDoMin: startDoMin,
+        rangeStart: rangeStart,
+        rangeEnd: rangeEnd,
+        rangeLen: rangeLen,
+        den: parseInt(seg.getAttribute('data-den'), 10),
+        zamId: seg.getAttribute('data-zam-id'),
+        segIndex: parseInt(seg.getAttribute('data-seg-index'), 10),
+        newOd: startOdMin,
+        newDo: startDoMin
+      };
+      if (!resizeTooltipEl) {
+        resizeTooltipEl = document.createElement('div');
+        resizeTooltipEl.className = 'navrh-graf-resize-tooltip';
+        resizeTooltipEl.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(resizeTooltipEl);
+      }
+      resizeTooltipEl.textContent = minutyToHhmm(startOdMin) + '–' + minutyToHhmm(startDoMin);
+      resizeTooltipEl.style.display = 'block';
+
+      function onResizeMove(moveEv) {
+        var osa = resizeState.segment.closest('.navrh-graf-osa');
+        if (!osa) return;
+        var osaRect = osa.getBoundingClientRect();
+        var ratio = (moveEv.clientX - osaRect.left) / Math.max(1, osaRect.width);
+        var timeMin = resizeState.rangeStart + ratio * resizeState.rangeLen;
+        timeMin = snapMinuty(timeMin);
+        timeMin = Math.max(resizeState.rangeStart, Math.min(resizeState.rangeEnd, timeMin));
+        var newOd = resizeState.startOdMin;
+        var newDo = resizeState.startDoMin;
+        if (resizeState.edge === 'left') {
+          newOd = Math.min(timeMin, resizeState.startDoMin - MIN_DELKA_MINUTY);
+          newOd = Math.max(resizeState.rangeStart, newOd);
+        } else {
+          newDo = Math.max(timeMin, resizeState.startOdMin + MIN_DELKA_MINUTY);
+          newDo = Math.min(resizeState.rangeEnd, newDo);
+        }
+        resizeState.newOd = newOd;
+        resizeState.newDo = newDo;
+        var leftPctNew = ((newOd - resizeState.rangeStart) / resizeState.rangeLen) * 100;
+        var widthPctNew = ((newDo - newOd) / resizeState.rangeLen) * 100;
+        resizeState.segment.style.left = leftPctNew + '%';
+        resizeState.segment.style.width = widthPctNew + '%';
+        resizeTooltipEl.textContent = minutyToHhmm(newOd) + '–' + minutyToHhmm(newDo);
+        resizeTooltipEl.style.left = (moveEv.clientX + 12) + 'px';
+        resizeTooltipEl.style.top = (moveEv.clientY + 12) + 'px';
+      }
+
+      function onResizeUp(upEv) {
+        if (!resizeState) return;
+        resizeTooltipEl.style.display = 'none';
+        onSegmentResize(resizeState.den, resizeState.zamId, resizeState.segIndex, minutyToHhmm(resizeState.newOd), minutyToHhmm(resizeState.newDo));
+        didResizeJustNow = true;
+        document.removeEventListener('mousemove', onResizeMove);
+        document.removeEventListener('mouseup', onResizeUp);
+        resizeState = null;
+      }
+
+      resizeTooltipEl.style.left = (ev.clientX + 12) + 'px';
+      resizeTooltipEl.style.top = (ev.clientY + 12) + 'px';
+      document.addEventListener('mousemove', onResizeMove);
+      document.addEventListener('mouseup', onResizeUp);
+    });
   }
 
   function escapeHtml(str) {
