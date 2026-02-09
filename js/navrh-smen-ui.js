@@ -278,6 +278,9 @@
           var restPart = p.kontext.slice(colonIdx);
           kontextHtml = '<span class="validace-jmeno-link" data-zam-id="' + escapeAttr(p.zamestnanecId) + '" role="button" tabindex="0">' + escapeHtml(jmenoPart) + '</span>' + escapeHtml(restPart);
         }
+      } else if (p.pravidlo === 'Překryv směn' && p.seg1Label != null && p.seg2Label != null) {
+        var jmenoPrekryv = jmenoZamestnance(lastNavrhResult.data.zamestnanci, p.zamestnanecId);
+        kontextHtml = escapeHtml(jmenoPrekryv) + ': současně <span class="validace-segment-link" data-den="' + escapeAttr(p.den) + '" data-zam-id="' + escapeAttr(p.zamestnanecId) + '" data-seg-index="' + escapeAttr(p.segIndex1) + '" role="button" tabindex="0">' + escapeHtml(p.seg1Label) + '</span> a <span class="validace-segment-link" data-den="' + escapeAttr(p.den) + '" data-zam-id="' + escapeAttr(p.zamestnanecId) + '" data-seg-index="' + escapeAttr(p.segIndex2) + '" role="button" tabindex="0">' + escapeHtml(p.seg2Label) + '</span>';
       }
       html.push('<tr' + trClass + '><td>' + escapeHtml(p.pravidlo) + '</td><td>' + kontextHtml + '</td></tr>');
     }
@@ -294,6 +297,24 @@
           e.preventDefault();
           var zamId = this.getAttribute('data-zam-id');
           if (zamId) openDoplnitModal(zamId);
+        }
+      });
+    }
+    var segmentLinkEls = container.querySelectorAll('.validace-segment-link');
+    for (var sl = 0; sl < segmentLinkEls.length; sl += 1) {
+      segmentLinkEls[sl].addEventListener('click', function () {
+        var den = parseInt(this.getAttribute('data-den'), 10);
+        var zamId = this.getAttribute('data-zam-id');
+        var segIdx = parseInt(this.getAttribute('data-seg-index'), 10);
+        if (!isNaN(den) && zamId && !isNaN(segIdx)) openSegmentEditModal(den, zamId, segIdx);
+      });
+      segmentLinkEls[sl].addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          var den = parseInt(this.getAttribute('data-den'), 10);
+          var zamId = this.getAttribute('data-zam-id');
+          var segIdx = parseInt(this.getAttribute('data-seg-index'), 10);
+          if (!isNaN(den) && zamId && !isNaN(segIdx)) openSegmentEditModal(den, zamId, segIdx);
         }
       });
     }
@@ -400,12 +421,16 @@
 
   var segmentEditState = null; // { den, zamestnanecId, segIndex } při otevřeném modalu
 
-  function handleSegmentClick(ev, info) {
+  /**
+   * Otevře modal editace segmentu pro daný den, zaměstnance a index segmentu.
+   * Volá se z grafu (handleSegmentClick) i z tabulky validace (řádek „Překryv směn“).
+   */
+  function openSegmentEditModal(den, zamestnanecId, segIndex) {
     if (!lastNavrhResult) return;
-    var p = lastNavrhResult.prirazeni.find(function (x) { return x.den === info.den && x.zamestnanecId === info.zamestnanecId; });
-    if (!p || !p.segmenty || !p.segmenty[info.segIndex]) return;
-    var seg = p.segmenty[info.segIndex];
-    segmentEditState = { den: info.den, zamestnanecId: info.zamestnanecId, segIndex: info.segIndex };
+    var p = lastNavrhResult.prirazeni.find(function (x) { return x.den === den && x.zamestnanecId === zamestnanecId; });
+    if (!p || !p.segmenty || !p.segmenty[segIndex]) return;
+    var seg = p.segmenty[segIndex];
+    segmentEditState = { den: den, zamestnanecId: zamestnanecId, segIndex: segIndex };
     var modal = document.getElementById('navrh-segment-modal');
     var jmenoEl = document.getElementById('navrh-segment-jmeno');
     var denSelect = document.getElementById('navrh-segment-den');
@@ -414,13 +439,13 @@
     var mistoSelect = document.getElementById('navrh-segment-misto');
     if (!modal || !jmenoEl || !denSelect) return;
 
-    jmenoEl.textContent = jmenoZamestnance(lastNavrhResult.data.zamestnanci, info.zamestnanecId);
+    jmenoEl.textContent = jmenoZamestnance(lastNavrhResult.data.zamestnanci, zamestnanecId);
     denSelect.innerHTML = '';
     for (var d = 1; d <= 5; d += 1) {
       var opt = document.createElement('option');
       opt.value = d;
       opt.textContent = NAZVY_DNU[d];
-      if (d === info.den) opt.selected = true;
+      if (d === den) opt.selected = true;
       denSelect.appendChild(opt);
     }
     odInput.value = seg.od || '';
@@ -445,6 +470,10 @@
       }
     }
     modal.hidden = false;
+  }
+
+  function handleSegmentClick(ev, info) {
+    openSegmentEditModal(info.den, info.zamestnanecId, info.segIndex);
   }
 
   function closeSegmentModal() {

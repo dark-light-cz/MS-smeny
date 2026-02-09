@@ -95,6 +95,38 @@
         });
       }
     }
+
+    // Překryv směn: jedna osoba na dvou místech současně (editací lze dosáhnout)
+    var budovyOver = (data && data.budovy) || [];
+    for (var po = 0; po < prirazeni.length; po += 1) {
+      var pp = prirazeni[po];
+      var segsOver = pp.segmenty || [];
+      for (var i = 0; i < segsOver.length; i += 1) {
+        for (var j = i + 1; j < segsOver.length; j += 1) {
+          var odI = timeToMinuty(segsOver[i].od);
+          var doI = timeToMinuty(segsOver[i].do);
+          var odJ = timeToMinuty(segsOver[j].od);
+          var doJ = timeToMinuty(segsOver[j].do);
+          if (odI < doJ && odJ < doI) {
+            var s1 = segsOver[i], s2 = segsOver[j];
+            var seg1Label = (s1.od || '') + '–' + (s1.do || '') + ' ' + mistoLabelSegment(budovyOver, s1);
+            var seg2Label = (s2.od || '') + '–' + (s2.do || '') + ' ' + mistoLabelSegment(budovyOver, s2);
+            var jmenoOver = jmenoZamestnance(zamestnanci, pp.zamestnanecId);
+            polozky.push({
+              typ: 'chyba',
+              pravidlo: 'Překryv směn',
+              kontext: jmenoOver + ': současně ' + seg1Label + ' a ' + seg2Label,
+              zamestnanecId: pp.zamestnanecId,
+              den: pp.den,
+              segIndex1: i,
+              segIndex2: j,
+              seg1Label: seg1Label,
+              seg2Label: seg2Label
+            });
+          }
+        }
+      }
+    }
     }
 
     // B1e: Kontrola „přiřazen pouze do“ – zaměstnanec smí být jen v povolené budově/třídě
@@ -228,6 +260,13 @@
       if (budovy[i].id === id) return budovy[i].nazev || '(bez názvu)';
     }
     return '(?)';
+  }
+
+  /** Popisek místa segmentu pro hlášku (Třída: X (Y) nebo Budova: Z). */
+  function mistoLabelSegment(budovy, seg) {
+    if (seg.tridaId) return 'Třída: ' + nazevTridy(budovy, seg.tridaId);
+    if (seg.budovaId) return 'Budova: ' + nazevBudovy(budovy, seg.budovaId);
+    return '';
   }
 
   /**

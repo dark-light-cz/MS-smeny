@@ -129,6 +129,33 @@
         var minMaxBudovy = r3.polozky.filter(function (p) { return p.pravidlo === 'Min/max na budovu'; });
         T.assert(minMaxBudovy.length >= 1, 'v 07:00–08:00 nikdo v budově = chyba min na budovu');
       }
+    },
+    {
+      name: 'validujNavrh překryv směn (jedna osoba na dvou místech současně) = chyba',
+      run: function () {
+        if (!M) return;
+        var z = M.vytvorZamestnance('Učitelka', 480, M.ROLE.UCITELKA);
+        var b = M.vytvorBudovu('Školka');
+        b.tridy = b.tridy || [];
+        b.tridy.push(M.vytvorTridu('A'));
+        b.tridy.push(M.vytvorTridu('B'));
+        var prirazeni = [
+          {
+            den: 1,
+            zamestnanecId: z.id,
+            segmenty: [
+              { od: '07:00', do: '10:00', tridaId: b.tridy[0].id, budovaId: b.id },
+              { od: '09:00', do: '12:00', tridaId: b.tridy[1].id, budovaId: b.id }
+            ]
+          }
+        ];
+        var data = { zamestnanci: [z], budovy: [b] };
+        var r = Validace.validujNavrh(prirazeni, data);
+        var prekryv = r.polozky.filter(function (p) { return p.pravidlo === 'Překryv směn'; });
+        T.assert(prekryv.length >= 1, 'překryv směn hlásí chybu');
+        T.assert(prekryv[0].segIndex1 === 0 && prekryv[0].segIndex2 === 1 && prekryv[0].den === 1 && prekryv[0].zamestnanecId === z.id, 'polozka obsahuje den, zamestnanecId, segIndex1, segIndex2');
+        T.assert(prekryv[0].seg1Label && prekryv[0].seg2Label && prekryv[0].kontext.indexOf('současně') >= 0, 'kontext a labely obou směn');
+      }
     }
   ];
 

@@ -635,12 +635,14 @@ header {
   background: #fff8e1;
   color: #e65100;
 }
-.tabulka-validace .validace-jmeno-link {
+.tabulka-validace .validace-jmeno-link,
+.tabulka-validace .validace-segment-link {
   cursor: pointer;
   text-decoration: underline;
   font-weight: 600;
 }
-.tabulka-validace .validace-jmeno-link:hover {
+.tabulka-validace .validace-jmeno-link:hover,
+.tabulka-validace .validace-segment-link:hover {
   color: #bf360c;
 }
 
