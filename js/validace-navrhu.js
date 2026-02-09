@@ -199,14 +199,18 @@
                 polozky.push({
                   typ: 'chyba',
                   pravidlo: 'Min/max na třídu',
-                  kontext: 'Den ' + NAZVY_DNU[den] + ', ' + casLabel + ', třída ' + nazevTridy(budovy, tr.id) + ': ' + mm.min + ' osob (min ' + minNaTridu + ')'
+                  kontext: 'Den ' + NAZVY_DNU[den] + ', ' + casLabel + ', třída ' + nazevTridy(budovy, tr.id) + ': ' + mm.min + ' osob (min ' + minNaTridu + ')',
+                  den: den,
+                  tridaId: tr.id
                 });
               }
               if (maxNaTridu !== null && mm.max > maxNaTridu) {
                 polozky.push({
                   typ: 'chyba',
                   pravidlo: 'Min/max na třídu',
-                  kontext: 'Den ' + NAZVY_DNU[den] + ', ' + casLabel + ', třída ' + nazevTridy(budovy, tr.id) + ': ' + mm.max + ' osob (max ' + maxNaTridu + ')'
+                  kontext: 'Den ' + NAZVY_DNU[den] + ', ' + casLabel + ', třída ' + nazevTridy(budovy, tr.id) + ': ' + mm.max + ' osob (max ' + maxNaTridu + ')',
+                  den: den,
+                  tridaId: tr.id
                 });
               }
             }
@@ -223,14 +227,18 @@
               polozky.push({
                 typ: 'chyba',
                 pravidlo: 'Min/max na budovu',
-                kontext: 'Den ' + NAZVY_DNU[den2] + ', ' + casLabel + ', budova ' + nazevBudovy(budovy, bud2.id) + ': ' + mmB.min + ' osob (min ' + minNaBudovu + ')'
+                kontext: 'Den ' + NAZVY_DNU[den2] + ', ' + casLabel + ', budova ' + nazevBudovy(budovy, bud2.id) + ': ' + mmB.min + ' osob (min ' + minNaBudovu + ')',
+                den: den2,
+                budovaId: bud2.id
               });
             }
             if (maxNaBudovu !== null && mmB.max > maxNaBudovu) {
               polozky.push({
                 typ: 'chyba',
                 pravidlo: 'Min/max na budovu',
-                kontext: 'Den ' + NAZVY_DNU[den2] + ', ' + casLabel + ', budova ' + nazevBudovy(budovy, bud2.id) + ': ' + mmB.max + ' osob (max ' + maxNaBudovu + ')'
+                kontext: 'Den ' + NAZVY_DNU[den2] + ', ' + casLabel + ', budova ' + nazevBudovy(budovy, bud2.id) + ': ' + mmB.max + ' osob (max ' + maxNaBudovu + ')',
+                den: den2,
+                budovaId: bud2.id
               });
             }
           }

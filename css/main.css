@@ -800,11 +800,11 @@ header {
 .navrh-graf-inline {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
 }
 
 .navrh-graf-inline-den {
-  padding: 1rem 0;
+  padding: 0.5rem 0;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -841,8 +841,8 @@ header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  padding: 0.25rem 0;
+  margin-bottom: 0.5rem;
+  padding: 0.2rem 0;
 }
 
 .navrh-graf-casova-osa .navrh-graf-osa-label {
@@ -869,24 +869,29 @@ header {
 }
 
 .navrh-graf-blok {
-  margin-bottom: 1.5rem;
-  padding: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
   background: #fff;
   border: 1px solid var(--color-border);
   border-radius: 4px;
 }
 
 .navrh-graf-blok-nadpis {
-  margin: 0 0 0.75rem 0;
-  font-size: 1.1rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.05rem;
   font-weight: 600;
+}
+
+.navrh-graf-varovani-icon {
+  color: #b45309;
+  font-style: normal;
 }
 
 .navrh-graf-rada {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   min-height: 2rem;
 }
 
@@ -958,6 +963,38 @@ header {
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   display: none;
+}
+
+.navrh-graf-context-menu {
+  position: fixed;
+  z-index: 10001;
+  min-width: 10rem;
+  padding: 0.25rem 0;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.navrh-graf-context-menu button {
+  display: block;
+  width: 100%;
+  padding: 0.4em 1rem;
+  text-align: left;
+  border: none;
+  background: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #333;
+}
+
+.navrh-graf-context-menu button:hover {
+  background: #f0f0f0;
+}
+
+.navrh-graf-context-menu button:focus {
+  outline: 2px solid var(--color-primary, #2563eb);
+  outline-offset: -2px;
 }
 .navrh-graf-rada.drag-over {
   background: rgba(74, 144, 217, 0.15);

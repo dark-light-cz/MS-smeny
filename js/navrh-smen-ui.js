@@ -382,6 +382,32 @@
     reader.readAsText(file, 'UTF-8');
   }
 
+  /** Sestaví z výsledku validace mapy budov/tříd s varováním Min/max pro každý den (pro graf). */
+  function buildValidaceVarovaniProGraf(prirazeni, data) {
+    var Validace = global.MSemenyValidaceNavrhu;
+    if (!Validace || !Validace.validujNavrh || !prirazeni || !data) return { budovy: {}, tridy: {} };
+    var result = Validace.validujNavrh(prirazeni, data);
+    var budovy = {};
+    var tridy = {};
+    (result.polozky || []).forEach(function (p) {
+      if (p.pravidlo === 'Min/max na budovu' && p.den != null && p.budovaId) {
+        if (!budovy[p.den]) budovy[p.den] = {};
+        budovy[p.den][p.budovaId] = true;
+      }
+      if (p.pravidlo === 'Min/max na třídu' && p.den != null && p.tridaId) {
+        if (!tridy[p.den]) tridy[p.den] = {};
+        tridy[p.den][p.tridaId] = true;
+      }
+    });
+    var budovyArr = {};
+    var tridyArr = {};
+    for (var d = 1; d <= 5; d += 1) {
+      budovyArr[d] = budovy[d] ? Object.keys(budovy[d]) : [];
+      tridyArr[d] = tridy[d] ? Object.keys(tridy[d]) : [];
+    }
+    return { budovy: budovyArr, tridy: tridyArr };
+  }
+
   function zobrazGraf(prirazeni, data, grafOpts) {
     var Graf = global.MSemenyNavrhGraf;
     var container = document.getElementById('navrh-graf');
@@ -393,7 +419,9 @@
     }
     var vybraneIds = grafVybraneBudovyIds == null ? [] : Object.keys(grafVybraneBudovyIds).filter(function (id) { return grafVybraneBudovyIds[id]; });
     var dataProGraf = data ? { zamestnanci: data.zamestnanci || [], budovy: vybraneIds.length === 0 ? budovy : budovy.filter(function (b) { return grafVybraneBudovyIds[b.id]; }) } : {};
+    var validaceVarovani = buildValidaceVarovaniProGraf(prirazeni || [], data || {});
     var opts = Object.assign({}, grafOpts || {}, {
+      validaceVarovani: validaceVarovani,
       rezim: grafRezim,
       vsechnyBudovy: budovy,
       vybraneBudovyIds: vybraneIds.length > 0 ? vybraneIds : budovy.map(function (b) { return b.id; }),
@@ -412,6 +440,8 @@
       }
     });
     opts.onSegmentResize = handleSegmentResize;
+    opts.onSegmentEdit = openSegmentEditModal;
+    opts.onSegmentDelete = deleteSegmentByIndex;
     Graf.vykresliNavrhGraf(prirazeni || [], dataProGraf, container, grafVybranyDen, opts);
   }
 
@@ -558,15 +588,24 @@
     return null;
   }
 
-  function deleteSegmentEdit() {
-    if (!segmentEditState || !lastNavrhResult) return;
+  /**
+   * Smaže segment v návrhu (den, zamestnanecId, segIndex). Volá se z modalu i z kontextového menu v grafu (D11c).
+   */
+  function deleteSegmentByIndex(den, zamestnanecId, segIndex) {
+    if (!lastNavrhResult) return;
     var prirazeni = clonePrirazeni(lastNavrhResult.prirazeni);
-    var idx = prirazeni.findIndex(function (x) { return x.den === segmentEditState.den && x.zamestnanecId === segmentEditState.zamestnanecId; });
-    if (idx < 0) { closeSegmentModal(); return; }
+    var idx = prirazeni.findIndex(function (x) { return x.den === den && x.zamestnanecId === zamestnanecId; });
+    if (idx < 0) return;
     var p = prirazeni[idx];
-    p.segmenty.splice(segmentEditState.segIndex, 1);
+    if (!p.segmenty || !p.segmenty[segIndex]) return;
+    p.segmenty.splice(segIndex, 1);
     if (p.segmenty.length === 0) prirazeni.splice(idx, 1);
     applyNavrhChange(prirazeni);
+  }
+
+  function deleteSegmentEdit() {
+    if (!segmentEditState || !lastNavrhResult) return;
+    deleteSegmentByIndex(segmentEditState.den, segmentEditState.zamestnanecId, segmentEditState.segIndex);
     closeSegmentModal();
   }
 

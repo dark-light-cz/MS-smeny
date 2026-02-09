@@ -222,12 +222,19 @@
     html.push('<div class="navrh-graf-osa-pruh">' + casovaOsaHtml.join('') + '</div>');
     html.push('</div>');
 
+    var varovaniBudovy = (opts && opts.validaceVarovani && opts.validaceVarovani.budovy && opts.validaceVarovani.budovy[den]) ? opts.validaceVarovani.budovy[den] : [];
+    var varovaniTridy = (opts && opts.validaceVarovani && opts.validaceVarovani.tridy && opts.validaceVarovani.tridy[den]) ? opts.validaceVarovani.tridy[den] : [];
+    var varovaniIcon = '\u26A0\uFE0F';
+    var varovaniTitle = 'Nesplněn požadavek Min/max';
+
     for (var bi = 0; bi < budovy.length; bi += 1) {
       var b = budovy[bi];
       if (!b.id) continue;
       var tridy = b.tridy || [];
+      var budovaNazev = escapeHtml(nazevBudovy(budovy, b.id));
+      if (varovaniBudovy.indexOf(b.id) >= 0) budovaNazev = '<span class="navrh-graf-varovani-icon" title="' + escapeAttr(varovaniTitle + ' na budovu') + '">' + escapeHtml(varovaniIcon) + '</span> ' + budovaNazev;
       html.push('<div class="navrh-graf-blok">');
-      html.push('<h3 class="navrh-graf-blok-nadpis">' + escapeHtml(nazevBudovy(budovy, b.id)) + '</h3>');
+      html.push('<h3 class="navrh-graf-blok-nadpis">' + budovaNazev + '</h3>');
       var rady = [];
       var budovaSegments = [];
       var tridaSegments = {};
@@ -273,11 +280,13 @@
       var canEdit = typeof onSegmentClick === 'function' || typeof onSegmentDrop === 'function';
       for (var ri = 0; ri < rady.length; ri += 1) {
         var rada = rady[ri];
+        var labelHtml = escapeHtml(rada.label);
+        if (rada.tridaId != null && varovaniTridy.indexOf(rada.tridaId) >= 0) labelHtml = '<span class="navrh-graf-varovani-icon" title="' + escapeAttr(varovaniTitle + ' na třídu') + '">' + escapeHtml(varovaniIcon) + '</span> ' + labelHtml;
         var lanes = assignLanes(rada.items);
         var dataTrida = rada.tridaId != null ? ' data-trida-id="' + escapeAttr(rada.tridaId) + '"' : '';
         var dataBudova = rada.budovaId != null ? ' data-budova-id="' + escapeAttr(rada.budovaId) + '"' : '';
         html.push('<div class="navrh-graf-rada"' + dataTrida + dataBudova + '>');
-        html.push('<span class="navrh-graf-rada-label">' + escapeHtml(rada.label) + '</span>');
+        html.push('<span class="navrh-graf-rada-label">' + labelHtml + '</span>');
         html.push('<div class="navrh-graf-rada-pruhy">');
         for (var li = 0; li < lanes.length; li += 1) {
           var laneSegs = lanes[li].segments;
@@ -348,6 +357,8 @@
     var onSegmentClick = opts.onSegmentClick;
     var onSegmentDrop = opts.onSegmentDrop;
     var onSegmentResize = opts.onSegmentResize;
+    var onSegmentEdit = opts.onSegmentEdit;
+    var onSegmentDelete = opts.onSegmentDelete;
     var onDenChange = opts.onDenChange;
     var onRezimChange = opts.onRezimChange;
     var onBudovyChange = opts.onBudovyChange;
@@ -361,8 +372,13 @@
     if (!prirazeni || prirazeni.length === 0) {
       container.innerHTML = '';
       container.hidden = true;
+      var oldCtx = document.body.querySelector('.navrh-graf-context-menu');
+      if (oldCtx) oldCtx.remove();
       return;
     }
+
+    var oldCtxMenu = document.body.querySelector('.navrh-graf-context-menu');
+    if (oldCtxMenu) oldCtxMenu.remove();
 
     var range = getTimeRange(budovy);
     var html = [];
@@ -466,6 +482,56 @@
         onSegmentClick(ev, { den: d, zamestnanecId: zamId, segIndex: segIdx });
       });
     }
+
+    /* Kontextové menu na segmentu (pravé tlačítko): Editovat, Smazat (D11c) */
+    var contextMenuEl = null;
+    function hideContextMenu() {
+      if (contextMenuEl) {
+        contextMenuEl.remove();
+        contextMenuEl = null;
+      }
+      document.removeEventListener('click', hideContextMenu);
+      document.removeEventListener('contextmenu', hideContextMenu);
+    }
+    container.addEventListener('contextmenu', function (ev) {
+      var seg = ev.target.closest('.navrh-graf-segment');
+      if (!seg || !seg.hasAttribute('data-den')) return;
+      var d = parseInt(seg.getAttribute('data-den'), 10);
+      var zamId = seg.getAttribute('data-zam-id');
+      var segIdx = parseInt(seg.getAttribute('data-seg-index'), 10);
+      if (isNaN(d) || !zamId || isNaN(segIdx)) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      hideContextMenu();
+      contextMenuEl = document.createElement('div');
+      contextMenuEl.className = 'navrh-graf-context-menu';
+      contextMenuEl.setAttribute('role', 'menu');
+      contextMenuEl.style.left = ev.clientX + 'px';
+      contextMenuEl.style.top = ev.clientY + 'px';
+      var btnEdit = document.createElement('button');
+      btnEdit.type = 'button';
+      btnEdit.setAttribute('role', 'menuitem');
+      btnEdit.textContent = 'Editovat';
+      btnEdit.addEventListener('click', function () {
+        hideContextMenu();
+        if (typeof onSegmentEdit === 'function') onSegmentEdit(d, zamId, segIdx);
+      });
+      var btnDelete = document.createElement('button');
+      btnDelete.type = 'button';
+      btnDelete.setAttribute('role', 'menuitem');
+      btnDelete.textContent = 'Smazat';
+      btnDelete.addEventListener('click', function () {
+        hideContextMenu();
+        if (typeof onSegmentDelete === 'function') onSegmentDelete(d, zamId, segIdx);
+      });
+      contextMenuEl.appendChild(btnEdit);
+      contextMenuEl.appendChild(btnDelete);
+      document.body.appendChild(contextMenuEl);
+      setTimeout(function () {
+        document.addEventListener('click', hideContextMenu);
+        document.addEventListener('contextmenu', hideContextMenu);
+      }, 0);
+    });
 
     if (typeof onSegmentDrop === 'function') {
       container.addEventListener('dragstart', function (ev) {
