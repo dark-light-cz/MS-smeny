@@ -52,7 +52,7 @@
     } catch (e) { /* ignore */ }
   }
 
-  /** Obnoví návrh ze sessionStorage (po refresh). Pokud je uložen, nastaví lastNavrhResult a překreslí tabulku a graf. */
+  /** Obnoví návrh ze sessionStorage (po refresh). Vyžaduje načtený modul grafu (MSemenyNavrhGraf). */
   function restoreNavrhFromSession() {
     try {
       if (typeof sessionStorage === 'undefined' || !sessionStorage.getItem) return;
@@ -67,6 +67,28 @@
       zobrazTlacitkoCsv(true);
       validovat();
     } catch (e) { /* ignore */ }
+  }
+
+  /** Interval (ms) a max. počet pokusů pro obnovení návrhu. */
+  var RESTORE_RETRY_MS = 50;
+  var RESTORE_RETRY_MAX = 40;
+
+  /**
+   * Zkusí obnovit návrh ze sessionStorage. Pokud ještě není načten modul grafu, naplánuje opakování.
+   * @param {number} [attempt] - číslo pokusu (0 = první)
+   */
+  function tryRestoreNavrhFromSession(attempt) {
+    attempt = attempt || 0;
+    if (typeof sessionStorage === 'undefined' || !sessionStorage.getItem) return;
+    if (!sessionStorage.getItem(NAVRH_SESSION_KEY)) return;
+    var Graf = global.MSemenyNavrhGraf;
+    if (Graf && Graf.vykresliNavrhGraf) {
+      restoreNavrhFromSession();
+      return;
+    }
+    if (attempt < RESTORE_RETRY_MAX) {
+      setTimeout(function () { tryRestoreNavrhFromSession(attempt + 1); }, RESTORE_RETRY_MS);
+    }
   }
 
   function getData() {
@@ -910,7 +932,8 @@
     if (el && !el.innerHTML.trim()) {
       el.innerHTML = '<p class="navrh-prazdno">Klikněte na „Přepočítat", aby se vygeneroval návrh směn podle aktuální konfigurace.</p>';
     }
-    restoreNavrhFromSession();
+    /* Obnovení návrhu až když je k dispozici modul grafu (navrh-graf.js je až za tímto souborem). */
+    tryRestoreNavrhFromSession(0);
   }
 
   // Skripty jsou na konci <body>, DOM je kompletní – init() voláme ihned.
