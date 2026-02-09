@@ -10,6 +10,62 @@
   var T = global.MSemenyTest;
   if (!T || !V) return;
 
+  // Pomocná konfigurace z chybového reportu (anonymizovaná)
+  function buildReportConfig() {
+    return {
+      zamestnanci: [
+        { id: 'r-z1', jmeno: 'Zástupkyně 1', uvazekMinutyTyden: 1200, role: 'zástupkyně' },
+        { id: 'r-r1', jmeno: 'Ředitelka 1', uvazekMinutyTyden: 720, role: 'ředitelka' },
+        { id: 'r-u1', jmeno: 'Učitelka 1', uvazekMinutyTyden: 1860, role: 'učitelka' },
+        { id: 'r-u10', jmeno: 'Učitelka 10', uvazekMinutyTyden: 1860, role: 'učitelka' },
+        { id: 'r-u11', jmeno: 'Učitelka 11', uvazekMinutyTyden: 1860, role: 'učitelka' },
+        { id: 'r-u8', jmeno: 'Učitelka 8', uvazekMinutyTyden: 1860, role: 'učitelka' },
+        { id: 'r-u7', jmeno: 'Učitelka 7', uvazekMinutyTyden: 1860, role: 'učitelka' },
+        { id: 'r-u6', jmeno: 'Učitelka 6', uvazekMinutyTyden: 1860, role: 'učitelka' },
+        { id: 'r-u2', jmeno: 'Učitelka 2', uvazekMinutyTyden: 1860, role: 'učitelka' },
+        { id: 'r-u9', jmeno: 'Učitelka 9', uvazekMinutyTyden: 1590, role: 'učitelka' },
+        { id: 'r-u5', jmeno: 'Učitelka 5', uvazekMinutyTyden: 150, role: 'učitelka' },
+        { id: 'r-u3', jmeno: 'Učitelka 3', uvazekMinutyTyden: 210, role: 'učitelka' },
+        { id: 'r-u4', jmeno: 'Učitelka 4', uvazekMinutyTyden: 480, role: 'učitelka' }
+      ],
+      budovy: [
+        { id: 'r-b1', nazev: 'Budova 1',
+          oteviraciDoba: { dny: [1,2,3,4,5], od: '07:00', do: '17:00' },
+          tridy: [
+            { id: 'r-t1', nazev: 'Třída 1' },
+            { id: 'r-t2', nazev: 'Třída 2' },
+            { id: 'r-t3', nazev: 'Třída 3' }
+          ]
+        },
+        { id: 'r-b2', nazev: 'Budova 2',
+          oteviraciDoba: { dny: [1,2,3,4,5], od: '07:00', do: '17:00' },
+          tridy: [
+            { id: 'r-t4', nazev: 'Třída 4' },
+            { id: 'r-t5', nazev: 'Třída 5' }
+          ]
+        }
+      ],
+      minMaxSloty: [
+        { id: 'rs1', od: '07:00', do: '07:45', minNaBudovu: 1, maxNaBudovu: 1, minNaTridu: 0, maxNaTridu: null, dny: [], rotace: false },
+        { id: 'rs2', od: '07:45', do: '16:00', minNaBudovu: 0, maxNaBudovu: null, minNaTridu: 1, maxNaTridu: null, dny: [], rotace: false },
+        { id: 'rs3', od: '16:00', do: '17:00', minNaBudovu: 1, maxNaBudovu: null, minNaTridu: 0, maxNaTridu: null, dny: [1,2,3,4], rotace: false },
+        { id: 'rs4', od: '16:00', do: '17:00', minNaBudovu: 1, maxNaBudovu: 1, minNaTridu: 0, maxNaTridu: null, dny: [5], rotace: false },
+        { id: 'rs5', od: '10:00', do: '12:00', minNaBudovu: 0, maxNaBudovu: null, minNaTridu: 2, maxNaTridu: null, dny: [], rotace: false }
+      ],
+      pravidla: {
+        minimalniPrekryvMinuty: 120,
+        zakazPrechodMeziBudovami: true,
+        preferSouvisleBlok: true
+      },
+      omezeniNeDohromady: []
+    };
+  }
+
+  function reportHhmmToMin(hhmm) {
+    var parts = hhmm.split(':');
+    return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+  }
+
   var tests = [
     {
       name: 'MSemenyVypocetSmen existuje a má vypocetSmen',
@@ -1049,6 +1105,127 @@
           }
         }
         T.assert(chyby.length === 0, chyby.length ? chyby.join('; ') : 'v každé třídě každý den 9:30–11:00 alespoň 2 osoby');
+      }
+    },
+
+    /* === Testy z chybového reportu === */
+
+    {
+      name: 'Chybový report: žádný zaměstnanec nepřekročí svůj týdenní úvazek',
+      run: function () {
+        var data = buildReportConfig();
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+
+        var minutyPerZam = {};
+        for (var i = 0; i < r.prirazeni.length; i++) {
+          var p = r.prirazeni[i];
+          if (!minutyPerZam[p.zamestnanecId]) minutyPerZam[p.zamestnanecId] = 0;
+          for (var j = 0; j < p.segmenty.length; j++) {
+            minutyPerZam[p.zamestnanecId] += reportHhmmToMin(p.segmenty[j].do) - reportHhmmToMin(p.segmenty[j].od);
+          }
+        }
+
+        var chyby = [];
+        for (var zi = 0; zi < data.zamestnanci.length; zi++) {
+          var z = data.zamestnanci[zi];
+          var total = minutyPerZam[z.id] || 0;
+          // Tolerance 5 min pro zaokrouhlování
+          if (total > z.uvazekMinutyTyden + 5) {
+            chyby.push(z.jmeno + ': v návrhu ' + total + ' min, úvazek max ' + z.uvazekMinutyTyden + ' min');
+          }
+        }
+        T.assert(chyby.length === 0, 'Přečerpaný úvazek: ' + chyby.join('; '));
+      }
+    },
+    {
+      name: 'Chybový report: maxNaBudovu=1 v slotu 07:00–07:45 je dodržen',
+      run: function () {
+        var data = buildReportConfig();
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+
+        // Mapa tridaId → budovaId
+        var tridaBudova = {};
+        for (var bi = 0; bi < data.budovy.length; bi++) {
+          var bud = data.budovy[bi];
+          for (var ti = 0; ti < bud.tridy.length; ti++) {
+            tridaBudova[bud.tridy[ti].id] = bud.id;
+          }
+        }
+
+        var chyby = [];
+        for (var den = 1; den <= 5; den++) {
+          for (var bi2 = 0; bi2 < data.budovy.length; bi2++) {
+            var bId = data.budovy[bi2].id;
+            var bNazev = data.budovy[bi2].nazev;
+            var maxCount = 0;
+            for (var m = 7 * 60; m < 7 * 60 + 45; m++) {
+              var count = 0;
+              for (var pi = 0; pi < r.prirazeni.length; pi++) {
+                var pr = r.prirazeni[pi];
+                if (pr.den !== den) continue;
+                for (var si = 0; si < pr.segmenty.length; si++) {
+                  var seg = pr.segmenty[si];
+                  var segBud = seg.tridaId ? tridaBudova[seg.tridaId] : seg.budovaId;
+                  if (segBud !== bId) continue;
+                  if (reportHhmmToMin(seg.od) <= m && m < reportHhmmToMin(seg.do)) { count++; break; }
+                }
+              }
+              if (count > maxCount) maxCount = count;
+            }
+            if (maxCount > 1) {
+              var denNazev = ['', 'Po', 'Út', 'St', 'Čt', 'Pá'][den];
+              chyby.push('Den ' + denNazev + ', ' + bNazev + ': ' + maxCount + ' osob (max 1)');
+            }
+          }
+        }
+        T.assert(chyby.length === 0, 'maxNaBudovu porušeno: ' + chyby.join('; '));
+      }
+    },
+    {
+      name: 'Chybový report: v každé budově 16:00–17:00 alespoň 1 osoba (Po–Čt)',
+      run: function () {
+        var data = buildReportConfig();
+        var r = V.vypocetSmen(data);
+        T.assert(r.ok === true, 'výpočet ok');
+
+        var tridaBudova = {};
+        for (var bi = 0; bi < data.budovy.length; bi++) {
+          var bud = data.budovy[bi];
+          for (var ti = 0; ti < bud.tridy.length; ti++) {
+            tridaBudova[bud.tridy[ti].id] = bud.id;
+          }
+        }
+
+        var chyby = [];
+        for (var den = 1; den <= 4; den++) {
+          for (var bi2 = 0; bi2 < data.budovy.length; bi2++) {
+            var bId = data.budovy[bi2].id;
+            var bNazev = data.budovy[bi2].nazev;
+            // Ověřit, že v celém intervalu 16:00–17:00 je alespoň 1 osoba
+            var minCount = Infinity;
+            for (var m = 16 * 60; m < 17 * 60; m++) {
+              var count = 0;
+              for (var pi = 0; pi < r.prirazeni.length; pi++) {
+                var pr = r.prirazeni[pi];
+                if (pr.den !== den) continue;
+                for (var si = 0; si < pr.segmenty.length; si++) {
+                  var seg = pr.segmenty[si];
+                  var segBud = seg.tridaId ? tridaBudova[seg.tridaId] : seg.budovaId;
+                  if (segBud !== bId) continue;
+                  if (reportHhmmToMin(seg.od) <= m && m < reportHhmmToMin(seg.do)) { count++; break; }
+                }
+              }
+              if (count < minCount) minCount = count;
+            }
+            if (minCount < 1) {
+              var denNazev = ['', 'Po', 'Út', 'St', 'Čt', 'Pá'][den];
+              chyby.push('Den ' + denNazev + ', ' + bNazev + ': ' + minCount + ' osob (min 1)');
+            }
+          }
+        }
+        T.assert(chyby.length === 0, 'MinNaBudovu 16:00–17:00 porušeno: ' + chyby.join('; '));
       }
     }
   ];
