@@ -13,6 +13,9 @@
   if (global.MSemenyAlgoritmusZakladni) {
     algoritmy.push(global.MSemenyAlgoritmusZakladni);
   }
+  if (global.MSemenyAlgoritmusParoveTridy) {
+    algoritmy.push(global.MSemenyAlgoritmusParoveTridy);
+  }
 
   /**
    * Vrátí seznam dostupných algoritmů pro výběr v UI.

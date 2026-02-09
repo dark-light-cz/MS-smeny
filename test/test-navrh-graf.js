@@ -48,6 +48,49 @@
         T.assert(div.querySelector('.navrh-graf-segment') !== null, 'segment na ose');
         T.assert(div.querySelector('.navrh-graf-legenda') !== null, 'legenda');
       }
+    },
+    {
+      name: 'BARVY a doplnBarvyZamestnancum exportovány',
+      run: function () {
+        T.assert(Array.isArray(Graf.BARVY) && Graf.BARVY.length > 0, 'BARVY je pole');
+        T.assert(typeof Graf.doplnBarvyZamestnancum === 'function', 'doplnBarvyZamestnancum');
+      }
+    },
+    {
+      name: 'graf používá barvu zaměstnance (zamestnanec.barva)',
+      run: function () {
+        var div = document.createElement('div');
+        var barva = '#ff0000';
+        var prirazeni = [
+          { den: 1, zamestnanecId: 'z1', segmenty: [{ od: '08:00', do: '12:00', budovaId: 'b1', tridaId: null }] }
+        ];
+        var data = {
+          budovy: [{ id: 'b1', nazev: 'Pavilon', tridy: [] }],
+          zamestnanci: [{ id: 'z1', jmeno: 'Anna', barva: barva }]
+        };
+        Graf.vykresliNavrhGraf(prirazeni, data, div, 1);
+        var segment = div.querySelector('.navrh-graf-segment');
+        T.assert(segment !== null && segment.getAttribute('style') && segment.getAttribute('style').indexOf(barva) >= 0, 'segment má barvu z zaměstnance');
+      }
+    },
+    {
+      name: 'režim inline: jedna legenda (ne u každého dne)',
+      run: function () {
+        var div = document.createElement('div');
+        var prirazeni = [
+          { den: 1, zamestnanecId: 'z1', segmenty: [{ od: '08:00', do: '12:00', budovaId: 'b1', tridaId: null }] },
+          { den: 2, zamestnanecId: 'z1', segmenty: [{ od: '08:00', do: '12:00', budovaId: 'b1', tridaId: null }] }
+        ];
+        var data = {
+          budovy: [{ id: 'b1', nazev: 'Pavilon', tridy: [] }],
+          zamestnanci: [{ id: 'z1', jmeno: 'Anna' }]
+        };
+        Graf.vykresliNavrhGraf(prirazeni, data, div, 1, { rezim: 'inline' });
+        var inline = div.querySelector('.navrh-graf-inline');
+        T.assert(inline !== null, 'inline kontejner');
+        var legendy = inline ? inline.querySelectorAll('.navrh-graf-legenda') : [];
+        T.assert(legendy.length === 1, 'v režimu inline je jedna legenda');
+      }
     }
   ];
 

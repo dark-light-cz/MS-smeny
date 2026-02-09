@@ -119,6 +119,11 @@
             </select>
             <span class="hint">Volitelně: zaměstnanec smí být v návrhu směn přiřazen jen do této budovy nebo jen do této třídy.</span>
           </p>
+          <p>
+            <label for="zamestnanci-barva">Barva v grafu návrhu</label>
+            <input type="color" id="zamestnanci-barva" value="#4a90d9" title="Barva pro zobrazení v grafu návrhu směn">
+            <span class="hint">Používá se v legendě a blocích na záložce Návrh směn.</span>
+          </p>
           <p class="form-akce">
             <button type="submit" class="btn btn-primarni">Uložit</button>
             <button type="button" id="zamestnanci-form-zrusit" class="btn">Zrušit</button>
@@ -514,6 +519,7 @@
   <script src="js/pravidla-prekryv.js"></script>
   <script src="js/omezeni-ne-dohromady.js"></script>
   <script src="js/algoritmy/zakladni.js"></script>
+  <script src="js/algoritmy/parove-tridy.js"></script>
   <script src="js/algoritmy/registr.js"></script>
   <script src="js/vypocet-smen.js"></script>
   <script src="js/navrh-smen-ui.js"></script>

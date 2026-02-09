@@ -99,6 +99,7 @@
           if (!validTridyIds[trid]) pj = null;
         }
       }
+      var barva = (z.barva && typeof z.barva === 'string' && /^#[0-9a-fA-F]{6}$/.test(z.barva)) ? z.barva : undefined;
       return {
         id: z.id,
         jmeno: z.jmeno != null ? z.jmeno : '',
@@ -108,7 +109,8 @@
         tridaId: tid,
         nedostupnost: normNedost(z.nedostupnost),
         prechodMeziBudovami: normPrechod(z.prechodMeziBudovami),
-        prirazenoJen: pj
+        prirazenoJen: pj,
+        barva: barva
       };
     });
     var out = {
@@ -194,6 +196,9 @@
       }
       var data = doplnVychoziPole(parsed);
       Storage.setData(data);
+      if (global.MSemenyNavrhGraf && typeof global.MSemenyNavrhGraf.doplnBarvyZamestnancum === 'function') {
+        global.MSemenyNavrhGraf.doplnBarvyZamestnancum();
+      }
       return true;
     } catch (e) {
       return false;

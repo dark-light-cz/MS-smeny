@@ -8,12 +8,16 @@
 
   var NAZVY_DNU = ['', 'Po', 'Út', 'St', 'Čt', 'Pá'];
 
-  /** Paleta barev pro zaměstnance (odlišitelné, ne příliš křiklavé). */
+  /** Paleta barev pro zaměstnance (odlišitelné, ne příliš křiklavé). Exportována pro doplnBarvyZamestnancum. */
   var BARVY = [
     '#4a90d9', '#7ed56f', '#f5a623', '#bd10e0', '#50e3c2',
     '#d0021b', '#417505', '#f8e71c', '#9013fe', '#b8e986',
     '#8b572a', '#4ecdc4'
   ];
+
+  function jePlatnaBarva(str) {
+    return typeof str === 'string' && /^#[0-9a-fA-F]{6}$/.test(str);
+  }
 
   function timeToMinuty(hhmm) {
     if (!hhmm || typeof hhmm !== 'string') return 0;
@@ -115,9 +119,9 @@
   }
 
   /**
-   * Vybere barvu pro zaměstnance: mapa zamestnanecId → barva (pořadí podle prvního výskytu v prirazeni).
-   * @param {Array} prirazeni - pro daný den
-   * @param {Array} zamestnanci - seznam (pro pořadí)
+   * Vybere barvu pro zaměstnance: mapa zamestnanecId → barva. Použije zamestnanec.barva, pokud je platná; jinak z palety.
+   * @param {Array} prirazeni - pro daný den (nebo celé pro buildBarvyMapGlobal)
+   * @param {Array} zamestnanci - seznam (pro pořadí a barva)
    * @returns {Object} id → barva
    */
   function mapBarev(prirazeni, zamestnanci) {
@@ -136,19 +140,24 @@
       if (!seen[id]) order.push(id);
     }
     var map = {};
+    var zamById = {};
+    for (i = 0; i < (zamestnanci || []).length; i += 1) {
+      zamById[zamestnanci[i].id] = zamestnanci[i];
+    }
     for (i = 0; i < order.length; i += 1) {
-      map[order[i]] = BARVY[i % BARVY.length];
+      var z = zamById[order[i]];
+      map[order[i]] = (z && jePlatnaBarva(z.barva)) ? z.barva : BARVY[i % BARVY.length];
     }
     return map;
   }
 
   /**
-   * Sestaví HTML obsah pro jeden den (časová osa + bloky budov/tříd + legenda).
+   * Sestaví HTML obsah pro jeden den (časová osa + bloky budov/tříd + volitelně legenda).
    * @param {number} den - 1–5
    * @param {Array} prirazeni - celé přiřazení
    * @param {Object} data - konfigurace
    * @param {Object} range - { start, end } v minutách
-   * @param {Object} opts - onSegmentClick, onSegmentDrop
+   * @param {Object} opts - onSegmentClick, onSegmentDrop, skipLegenda (true = nevykreslovat legendu)
    * @returns {{ html: string[], prazdny: boolean }}
    */
   function buildObsahJednohoDne(den, prirazeni, data, range, opts) {
@@ -163,7 +172,7 @@
     }
 
     var rangeLen = range.end - range.start;
-    var barvyMap = mapBarev(proDen, zamestnanci);
+    var barvyMap = (opts && opts.barvyMap) ? opts.barvyMap : mapBarev(proDen, zamestnanci);
 
     function leftPct(odHhmm) {
       var m = timeToMinuty(odHhmm) - range.start;
@@ -273,17 +282,40 @@
       }
       html.push('</div>');
     }
-    html.push('<div class="navrh-graf-legenda">');
-    html.push('<span class="navrh-graf-legenda-nadpis">Legenda:</span> ');
+    if (!(opts && opts.skipLegenda)) {
+      html.push('<div class="navrh-graf-legenda">');
+      html.push('<span class="navrh-graf-legenda-nadpis">Legenda:</span> ');
+      var orderedIds = [];
+      for (var ki = 0; ki < (zamestnanci || []).length; ki += 1) orderedIds.push(zamestnanci[ki].id);
+      for (var oi = 0; oi < orderedIds.length; oi += 1) {
+        var zid = orderedIds[oi];
+        if (!barvyMap[zid]) continue;
+        html.push('<span class="navrh-graf-legenda-položka"><span class="navrh-graf-legenda-barvicka" style="background:' + barvyMap[zid] + '"></span> ' + escapeHtml(jmenoZamestnance(zamestnanci, zid)) + '</span>');
+      }
+      html.push('</div>');
+    }
+    return { html: html, prazdny: false };
+  }
+
+  /**
+   * Vrátí HTML řádky pro jednu legendu (pro režim inline – jedna legenda pro všechny dny).
+   * @param {Object} barvyMap - id → barva (z mapBarev)
+   * @param {Array} zamestnanci
+   * @returns {string[]}
+   */
+  function buildLegendaHtml(barvyMap, zamestnanci) {
+    var out = [];
+    out.push('<div class="navrh-graf-legenda">');
+    out.push('<span class="navrh-graf-legenda-nadpis">Legenda:</span> ');
     var orderedIds = [];
     for (var ki = 0; ki < (zamestnanci || []).length; ki += 1) orderedIds.push(zamestnanci[ki].id);
     for (var oi = 0; oi < orderedIds.length; oi += 1) {
       var zid = orderedIds[oi];
       if (!barvyMap[zid]) continue;
-      html.push('<span class="navrh-graf-legenda-položka"><span class="navrh-graf-legenda-barvicka" style="background:' + barvyMap[zid] + '"></span> ' + escapeHtml(jmenoZamestnance(zamestnanci, zid)) + '</span>');
+      out.push('<span class="navrh-graf-legenda-položka"><span class="navrh-graf-legenda-barvicka" style="background:' + barvyMap[zid] + '"></span> ' + escapeHtml(jmenoZamestnance(zamestnanci, zid)) + '</span>');
     }
-    html.push('</div>');
-    return { html: html, prazdny: false };
+    out.push('</div>');
+    return out;
   }
 
   /**
@@ -335,13 +367,16 @@
       html = html.concat(jeden.html);
     } else {
       html.push('<div class="navrh-graf-inline">');
+      var barvyMapInline = mapBarev(prirazeni || [], zamestnanci);
       for (var d2 = 1; d2 <= 5; d2 += 1) {
+        var optsDen = Object.assign({}, opts || {}, { skipLegenda: true, barvyMap: barvyMapInline });
         html.push('<section class="navrh-graf-inline-den" data-den="' + d2 + '" aria-labelledby="navrh-graf-inline-heading-' + d2 + '">');
         html.push('<h3 id="navrh-graf-inline-heading-' + d2 + '" class="navrh-graf-inline-nadpis">' + escapeHtml(NAZVY_DNU[d2]) + '</h3>');
-        var jeden2 = buildObsahJednohoDne(d2, prirazeni, data, range, opts);
+        var jeden2 = buildObsahJednohoDne(d2, prirazeni, data, range, optsDen);
         html = html.concat(jeden2.html);
         html.push('</section>');
       }
+      html = html.concat(buildLegendaHtml(barvyMapInline, zamestnanci));
       html.push('</div>');
     }
 
@@ -436,7 +471,52 @@
       .replace(/>/g, '&gt;');
   }
 
+  /**
+   * Doplní chybějící barvy zaměstnancům (nevyužitá z palety) a uloží do úložiště.
+   * Volat po načtení stránky a po importu konfigurace.
+   */
+  function doplnBarvyZamestnancum() {
+    var Storage = global.MSemenyStorage;
+    if (!Storage || !Storage.getData || !Storage.replaceData || !Storage.ulozNyni) return;
+    var data = Storage.getData();
+    var zam = data.zamestnanci || [];
+    var used = {};
+    var i, z, barva;
+    for (i = 0; i < zam.length; i += 1) {
+      z = zam[i];
+      if (z && jePlatnaBarva(z.barva)) used[z.barva] = true;
+    }
+    var changed = false;
+    for (i = 0; i < zam.length; i += 1) {
+      z = zam[i];
+      if (!z) continue;
+      if (jePlatnaBarva(z.barva)) continue;
+      for (var bi = 0; bi < BARVY.length; bi += 1) {
+        barva = BARVY[bi];
+        if (!used[barva]) {
+          z.barva = barva;
+          used[barva] = true;
+          changed = true;
+          break;
+        }
+      }
+      if (!z.barva) {
+        z.barva = BARVY[i % BARVY.length];
+        changed = true;
+      }
+    }
+    if (changed) {
+      Storage.replaceData(function (d) {
+        d.zamestnanci = zam;
+        return d;
+      });
+      Storage.ulozNyni();
+    }
+  }
+
   global.MSemenyNavrhGraf = {
-    vykresliNavrhGraf: vykresliNavrhGraf
+    BARVY: BARVY,
+    vykresliNavrhGraf: vykresliNavrhGraf,
+    doplnBarvyZamestnancum: doplnBarvyZamestnancum
   };
 })(typeof window !== 'undefined' ? window : this);

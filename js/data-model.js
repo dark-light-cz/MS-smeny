@@ -183,7 +183,7 @@
   }
 
   /**
-   * Struktura zaměstnance: id, jméno, úvazek, role, kmenová/vykrývací, přiřazená třída, nedostupnost, přechod mezi budovami, přiřazen pouze do (B1e).
+   * Struktura zaměstnance: id, jméno, úvazek, role, kmenová/vykrývací, přiřazená třída, nedostupnost, přechod mezi budovami, přiřazen pouze do (B1e), barva (hex pro graf návrhu, volitelné).
    * kmenovaVykryvaci: 'kmenová' | 'vykrývací'. tridaId: id třídy (pouze u kmenové).
    * nedostupnost: pole objektů { den: 1–5 (Po–Pá), od: "HH:mm", do: "HH:mm" } – časová období v týdnu, kdy zaměstnanec nemůže pracovat.
    * prechodMeziBudovami: 'výchozí' | 'zakázat' | 'povolit' – lokální nastavení přechodu mezi budovami v jednom dni.

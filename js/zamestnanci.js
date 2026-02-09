@@ -274,6 +274,28 @@
     }
     // Přiřazen pouze do (B1e)
     naplnSelectPrirazenoJen(z && z.prirazenoJen ? z.prirazenoJen : '');
+    // Barva v grafu návrhu (D2e)
+    var barvaEl = document.getElementById('zamestnanci-barva');
+    if (barvaEl) {
+      var barvaVal = (z && z.barva && typeof z.barva === 'string' && /^#[0-9a-fA-F]{6}$/.test(z.barva)) ? z.barva : prvniVolnaBarva(z ? z.id : null);
+      barvaEl.value = barvaVal;
+    }
+  }
+
+  /** Vrátí první nevyužitou barvu z palety (pro nového zaměstnance nebo když barva chybí). */
+  function prvniVolnaBarva(vyloucitId) {
+    var BARVY = (global.MSemenyNavrhGraf && global.MSemenyNavrhGraf.BARVY) ? global.MSemenyNavrhGraf.BARVY : ['#4a90d9'];
+    var data = Storage ? Storage.getData() : { zamestnanci: [] };
+    var used = {};
+    var i, z;
+    for (i = 0; i < (data.zamestnanci || []).length; i += 1) {
+      z = data.zamestnanci[i];
+      if (z && z.barva && z.id !== vyloucitId) used[z.barva] = true;
+    }
+    for (i = 0; i < BARVY.length; i += 1) {
+      if (!used[BARVY[i]]) return BARVY[i];
+    }
+    return BARVY[0];
   }
 
   /**
@@ -524,6 +546,9 @@
     var prirazenoJen = (prirazenoVal && (prirazenoVal.indexOf('b:') === 0 || prirazenoVal.indexOf('t:') === 0)) ? prirazenoVal : null;
     if (Model && Model.normalizujPrirazenoJen) prirazenoJen = Model.normalizujPrirazenoJen(prirazenoJen);
 
+    var barvaEl = document.getElementById('zamestnanci-barva');
+    var barva = (barvaEl && typeof barvaEl.value === 'string' && /^#[0-9a-fA-F]{6}$/.test(barvaEl.value)) ? barvaEl.value : undefined;
+
     if (id) {
       Storage.replaceData(function (d) {
         var zam = d.zamestnanci || [];
@@ -538,6 +563,7 @@
             zam[i].nedostupnost = nedost;
             zam[i].prechodMeziBudovami = prechod;
             zam[i].prirazenoJen = prirazenoJen;
+            zam[i].barva = barva;
             break;
           }
         }
@@ -545,11 +571,15 @@
       });
     } else {
       var novy = Model.vytvorZamestnance(jmeno, minuty, role, kateg, tridaId, nedost, prechod, prirazenoJen);
+      if (barva) novy.barva = barva;
       Storage.replaceData(function (d) {
         d.zamestnanci = d.zamestnanci || [];
         d.zamestnanci.push(novy);
         return d;
       });
+    }
+    if (global.MSemenyNavrhGraf && typeof global.MSemenyNavrhGraf.doplnBarvyZamestnancum === 'function') {
+      global.MSemenyNavrhGraf.doplnBarvyZamestnancum();
     }
     skryjFormular();
     vykresliSeznam();

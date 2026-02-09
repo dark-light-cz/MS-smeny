@@ -20,12 +20,14 @@
       }
     },
     {
-      name: 'dostupneAlgoritmy vrací alespoň jeden algoritmus (Základní)',
+      name: 'dostupneAlgoritmy vrací alespoň dva algoritmy (Základní, Párové třídy)',
       run: function () {
         var seznam = R.dostupneAlgoritmy();
-        T.assert(Array.isArray(seznam) && seznam.length >= 1, 'ne prázdný seznam');
+        T.assert(Array.isArray(seznam) && seznam.length >= 2, 'alespoň dva algoritmy');
         var zakladni = seznam.filter(function (a) { return a.id === 'zakladni'; })[0];
+        var parove = seznam.filter(function (a) { return a.id === 'parove-tridy'; })[0];
         T.assert(zakladni && zakladni.nazev && zakladni.nazev.indexOf('Základní') !== -1, 'Základní algoritmus v seznamu');
+        T.assert(parove && parove.nazev && parove.nazev.indexOf('Párové') !== -1, 'Párové třídy v seznamu');
       }
     },
     {
