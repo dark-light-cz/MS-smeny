@@ -265,6 +265,76 @@
         }
         T.assert(odpoledniCount >= 1, 'vyplňují se odpolední směny 10–16 (360 min >= 300)');
       }
+    },
+    {
+      name: 'Párové třídy: odpolední blok zkrácen zprava při nedostatku zbývajícího úvazku',
+      run: function () {
+        if (!M) return;
+        var b = M.vytvorBudovu('B');
+        b.tridy.push(M.vytvorTridu('T'));
+        var z = M.vytvorZamestnance('Jediná', 480, M.ROLE.UCITELKA, 'vykrývací');
+        var data = {
+          zamestnanci: [z],
+          budovy: [b],
+          pravidla: { minDelkaBlokuMinuty: 120 },
+          omezeniNeDohromady: []
+        };
+        var r = V.vypocetSmen(data, 'parove-tridy');
+        T.assert(r.ok === true, 'výpočet ok');
+        var odpoledniZkracene = [];
+        for (var i = 0; i < r.prirazeni.length; i++) {
+          var segs = r.prirazeni[i].segmenty || [];
+          for (var j = 0; j < segs.length; j++) {
+            var odM = timeToMinuty(segs[j].od);
+            var doM = timeToMinuty(segs[j].do);
+            if (odM <= 10 * 60 && doM >= 10 * 60 && (doM - odM) < 360) {
+              odpoledniZkracene.push(doM - odM);
+            }
+          }
+        }
+        T.assert(odpoledniZkracene.length >= 1, 'alespoň jeden odpolední blok je zkrácen (kratší než 360 min)');
+        T.assert(odpoledniZkracene.some(function (len) { return len >= 120; }), 'zkrácený blok má délku alespoň minDelkaBlokuMinuty (120)');
+      }
+    },
+    {
+      name: 'Párové třídy: žádný přečerpaný úvazek (anonymizovaná konfigurace z chybového reportu)',
+      run: function () {
+        if (!M || !V || !R) return;
+        var Validace = global.MSemenyValidaceNavrhu;
+        if (!Validace || typeof Validace.validujNavrh !== 'function') return;
+
+        var b1 = M.vytvorBudovu('budova1');
+        var b2 = M.vytvorBudovu('budova2');
+        b1.tridy.push(M.vytvorTridu('trida1'));
+        b1.tridy.push(M.vytvorTridu('trida2'));
+        b1.tridy.push(M.vytvorTridu('trida3'));
+        b2.tridy.push(M.vytvorTridu('trida4'));
+        b2.tridy.push(M.vytvorTridu('trida5'));
+
+        var zam = [];
+        zam.push(M.vytvorZamestnance('zastupkyne1', 1200, M.ROLE.UCITELKA, 'vykrývací'));
+        zam.push(M.vytvorZamestnance('reditelka1', 720, M.ROLE.UCITELKA, 'vykrývací'));
+        var tid = [b1.tridy[0].id, b1.tridy[0].id, b1.tridy[1].id, b1.tridy[1].id, b1.tridy[2].id, b1.tridy[2].id, b2.tridy[0].id, b2.tridy[0].id, b2.tridy[1].id, b2.tridy[1].id];
+        for (var i = 0; i < 10; i++) {
+          zam.push(M.vytvorZamestnance('ucitelka' + (i + 1), 1860, M.ROLE.UCITELKA, 'kmenová', tid[i]));
+        }
+        zam.push(M.vytvorZamestnance('ucitelka9b', 1590, M.ROLE.UCITELKA, 'vykrývací'));
+        zam.push(M.vytvorZamestnance('ucitelka5', 150, M.ROLE.UCITELKA, 'vykrývací'));
+        zam.push(M.vytvorZamestnance('ucitelka3', 210, M.ROLE.UCITELKA, 'vykrývací'));
+        zam.push(M.vytvorZamestnance('ucitelka4', 480, M.ROLE.UCITELKA, 'vykrývací'));
+
+        var data = {
+          zamestnanci: zam,
+          budovy: [b1, b2],
+          pravidla: { minimalniPrekryvMinuty: 120, zakazPrechodMeziBudovami: true },
+          omezeniNeDohromady: []
+        };
+        var r = V.vypocetSmen(data, 'parove-tridy');
+        T.assert(r.ok === true, 'výpočet ok');
+        var val = Validace.validujNavrh(r.prirazeni, data);
+        var precerpane = (val.polozky || []).filter(function (p) { return p.typ === 'chyba' && p.pravidlo === 'Přečerpaný úvazek'; });
+        T.assert(precerpane.length === 0, 'žádný přečerpaný úvazek: ' + (precerpane.map(function (p) { return p.kontext; }).join('; ') || 'ok'));
+      }
     }
   ];
 

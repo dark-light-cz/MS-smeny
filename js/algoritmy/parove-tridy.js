@@ -181,6 +181,8 @@
 
     /** Učitelka již přiřazená k nějaké třídě v tomto týdnu – nemůže do jiné třídy. zamId -> tridaId */
     var assignedZamToTrida = {};
+    /** Během fáze 1: součet již přiřazených minut za týden (aby nedošlo k přečerpání úvazku). */
+    var phase1Assigned = {};
 
     for (b = 0; b < budovy.length; b++) {
       var budova = budovy[b];
@@ -196,6 +198,8 @@
 
         var zamA = pair[0];
         var zamB = pair[1];
+        var uvazekA = parseInt(zamA.uvazekMinutyTyden, 10) || 0;
+        var uvazekB = parseInt(zamB.uvazekMinutyTyden, 10) || 0;
         assignedZamToTrida[zamA.id] = tridaId;
         assignedZamToTrida[zamB.id] = tridaId;
         var dopOd = timeToMinuty(DOPOLEDNI_OD);
@@ -213,12 +217,30 @@
           if (!aDopoledni && !bDopOk) aDopoledni = true;
           if (aDopoledni && !aDopOk) aDopoledni = false;
 
+          var asgA = phase1Assigned[zamA.id] || 0;
+          var asgB = phase1Assigned[zamB.id] || 0;
+
           if (aDopoledni) {
-            if (aDopOk) addSegment(assignmentMap, d, zamA.id, DOPOLEDNI_OD, DOPOLEDNI_DO, tridaId, budovaId);
-            if (bOdopOk) addSegment(assignmentMap, d, zamB.id, ODOPOLEDNI_OD, ODOPOLEDNI_DO, tridaId, budovaId);
+            if (aDopOk && asgA + MIN_DOPOLEDNI <= uvazekA) {
+              addSegment(assignmentMap, d, zamA.id, DOPOLEDNI_OD, DOPOLEDNI_DO, tridaId, budovaId);
+              phase1Assigned[zamA.id] = asgA + MIN_DOPOLEDNI;
+              asgA = phase1Assigned[zamA.id];
+            }
+            if (bOdopOk && asgB + MIN_ODOPOLEDNI <= uvazekB) {
+              addSegment(assignmentMap, d, zamB.id, ODOPOLEDNI_OD, ODOPOLEDNI_DO, tridaId, budovaId);
+              phase1Assigned[zamB.id] = (phase1Assigned[zamB.id] || 0) + MIN_ODOPOLEDNI;
+              asgB = phase1Assigned[zamB.id];
+            }
           } else {
-            if (bDopOk) addSegment(assignmentMap, d, zamB.id, DOPOLEDNI_OD, DOPOLEDNI_DO, tridaId, budovaId);
-            if (aOdopOk) addSegment(assignmentMap, d, zamA.id, ODOPOLEDNI_OD, ODOPOLEDNI_DO, tridaId, budovaId);
+            if (bDopOk && asgB + MIN_DOPOLEDNI <= uvazekB) {
+              addSegment(assignmentMap, d, zamB.id, DOPOLEDNI_OD, DOPOLEDNI_DO, tridaId, budovaId);
+              phase1Assigned[zamB.id] = (phase1Assigned[zamB.id] || 0) + MIN_DOPOLEDNI;
+              asgB = phase1Assigned[zamB.id];
+            }
+            if (aOdopOk && asgA + MIN_ODOPOLEDNI <= uvazekA) {
+              addSegment(assignmentMap, d, zamA.id, ODOPOLEDNI_OD, ODOPOLEDNI_DO, tridaId, budovaId);
+              phase1Assigned[zamA.id] = (phase1Assigned[zamA.id] || 0) + MIN_ODOPOLEDNI;
+            }
           }
         }
       }
@@ -449,9 +471,13 @@
         if (!canAssignToLocation(z, gap.tridaId, gap.budovaId)) continue;
         if (!isAvailable(z, gap.den, gap.odMin, gap.doMin)) continue;
         var rem = (parseInt(z.uvazekMinutyTyden, 10) || 0) - (assignedSum[z.id] || 0);
-        if (rem < gap.lengthMin) continue;
+        if (gap.slot === 'dopoledni') {
+          if (rem < gap.lengthMin) continue;
+        } else {
+          if (rem < minDelka) continue;
+        }
         var alreadyInThisClass = tridaByDoplnujiciZam[z.id] === gap.tridaId;
-        candidates.push({ z: z, alreadyInThisClass: alreadyInThisClass });
+        candidates.push({ z: z, alreadyInThisClass: alreadyInThisClass, rem: rem });
       }
 
       candidates.sort(function (a, b) {
@@ -461,10 +487,17 @@
       });
 
       if (candidates.length === 0) continue;
-      var chosen = candidates[0].z;
-      addSegment(assignmentMap, gap.den, chosen.id, gap.od, gap.do, gap.tridaId, gap.budovaId);
-      assignedSum[chosen.id] = (assignedSum[chosen.id] || 0) + gap.lengthMin;
-      tridaByDoplnujiciZam[chosen.id] = gap.tridaId;
+      var chosen = candidates[0];
+      var actualOd = gap.od;
+      var actualDo = gap.do;
+      var actualLength = gap.lengthMin;
+      if (gap.slot === 'odpoledni' && chosen.rem >= minDelka && chosen.rem < gap.lengthMin) {
+        actualLength = chosen.rem;
+        actualDo = minutyToHhmm(gap.odMin + chosen.rem);
+      }
+      addSegment(assignmentMap, gap.den, chosen.z.id, actualOd, actualDo, gap.tridaId, gap.budovaId);
+      assignedSum[chosen.z.id] = (assignedSum[chosen.z.id] || 0) + actualLength;
+      tridaByDoplnujiciZam[chosen.z.id] = gap.tridaId;
     }
   }
 
