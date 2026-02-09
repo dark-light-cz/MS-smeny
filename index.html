@@ -433,6 +433,13 @@
       <p class="navrh-popis">
         Návrh přiřazení osob do budov a tříd podle časových slotů a úvazků. Kliknutím na „Přepočítat“ se vygeneruje nové řešení z aktuální konfigurace.
       </p>
+      <p class="navrh-algoritmus-row">
+        <label for="navrh-algoritmus">Výpočetní logika</label>
+        <select id="navrh-algoritmus" aria-describedby="navrh-algoritmus-hint">
+          <!-- Možnosti naplní JS z registru algoritmů -->
+        </select>
+        <span id="navrh-algoritmus-hint" class="hint">Algoritmus použitý pro výpočet návrhu; později lze přidat další varianty.</span>
+      </p>
       <div id="navrh-zprava" class="sloty-zprava sloty-chyba" role="alert" aria-live="assertive" hidden></div>
       <div id="navrh-uspech" class="sloty-zprava sloty-uspech" role="status" aria-live="polite" hidden></div>
       <p class="form-akce">
@@ -506,6 +513,8 @@
   <script src="js/min-max-sloty.js"></script>
   <script src="js/pravidla-prekryv.js"></script>
   <script src="js/omezeni-ne-dohromady.js"></script>
+  <script src="js/algoritmy/zakladni.js"></script>
+  <script src="js/algoritmy/registr.js"></script>
   <script src="js/vypocet-smen.js"></script>
   <script src="js/navrh-smen-ui.js"></script>
   <script src="js/navrh-graf.js"></script>

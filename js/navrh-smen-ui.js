@@ -160,10 +160,16 @@
     if (err) err.hidden = true;
   }
 
+  function getVybranyAlgoritmusId() {
+    var sel = document.getElementById('navrh-algoritmus');
+    return (sel && sel.value) ? sel.value : null;
+  }
+
   function prepocitat() {
     if (!Storage || !Vypocet || !Vypocet.vypocetSmen) return;
     var data = getData();
-    var result = Vypocet.vypocetSmen(data);
+    var algorithmId = getVybranyAlgoritmusId();
+    var result = Vypocet.vypocetSmen(data, algorithmId);
 
     if (result.ok) {
       zobrazUspech('Návrh byl přepočítán.');
@@ -668,7 +674,26 @@
     zobrazUspech('Blok byl přidán.');
   }
 
+  function initAlgoritmusSelect() {
+    var sel = document.getElementById('navrh-algoritmus');
+    var Algoritmy = global.MSemenyAlgoritmy;
+    if (!sel || !Algoritmy || !Algoritmy.dostupneAlgoritmy) return;
+    var seznam = Algoritmy.dostupneAlgoritmy();
+    sel.innerHTML = '';
+    for (var i = 0; i < seznam.length; i++) {
+      var opt = document.createElement('option');
+      opt.value = seznam[i].id;
+      opt.textContent = seznam[i].nazev;
+      if (seznam[i].id === (Algoritmy.vychoziId ? Algoritmy.vychoziId() : 'zakladni')) {
+        opt.selected = true;
+      }
+      sel.appendChild(opt);
+    }
+  }
+
   function init() {
+    initAlgoritmusSelect();
+
     var btn = document.getElementById('navrh-prepocitat');
     if (btn) btn.addEventListener('click', prepocitat);
 
