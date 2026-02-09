@@ -18,6 +18,57 @@
   /** ID vybraných budov pro zobrazení v grafu (null = všechny, jinak objekt { id: true }). */
   var grafVybraneBudovyIds = null;
 
+  var GRAF_NASTAVENI_KEY = 'ms-smeny-graf-nastaveni';
+  /** Klíč pro uložení aktuálního návrhu (prirazeni) do sessionStorage – po refresh se obnoví. */
+  var NAVRH_SESSION_KEY = 'ms-smeny-navrh-prirazeni';
+
+  function loadGrafNastaveni() {
+    try {
+      var raw = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem) ? sessionStorage.getItem(GRAF_NASTAVENI_KEY) : null;
+      if (!raw) return;
+      var o = JSON.parse(raw);
+      if (o.rezim === 'inline' || o.rezim === 'taby') grafRezim = o.rezim;
+      if (typeof o.den === 'number' && o.den >= 1 && o.den <= 5) grafVybranyDen = o.den;
+    } catch (e) { /* ignore */ }
+  }
+
+  function saveGrafNastaveni() {
+    try {
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.setItem) {
+        sessionStorage.setItem(GRAF_NASTAVENI_KEY, JSON.stringify({ rezim: grafRezim, den: grafVybranyDen }));
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  /** Uloží aktuální návrh (prirazeni) do sessionStorage, aby přežil refresh stránky. */
+  function saveNavrhToSession() {
+    try {
+      if (typeof sessionStorage === 'undefined' || !sessionStorage.setItem) return;
+      if (lastNavrhResult && Array.isArray(lastNavrhResult.prirazeni)) {
+        sessionStorage.setItem(NAVRH_SESSION_KEY, JSON.stringify(lastNavrhResult.prirazeni));
+      } else {
+        sessionStorage.removeItem(NAVRH_SESSION_KEY);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  /** Obnoví návrh ze sessionStorage (po refresh). Pokud je uložen, nastaví lastNavrhResult a překreslí tabulku a graf. */
+  function restoreNavrhFromSession() {
+    try {
+      if (typeof sessionStorage === 'undefined' || !sessionStorage.getItem) return;
+      var raw = sessionStorage.getItem(NAVRH_SESSION_KEY);
+      if (!raw) return;
+      var prirazeni = JSON.parse(raw);
+      if (!Array.isArray(prirazeni)) return;
+      var data = getData();
+      lastNavrhResult = { prirazeni: prirazeni, data: data };
+      vykresliNavrh(prirazeni, data);
+      zobrazGraf(prirazeni, data, { onSegmentClick: handleSegmentClick, onSegmentDrop: handleSegmentDrop });
+      zobrazTlacitkoCsv(true);
+      validovat();
+    } catch (e) { /* ignore */ }
+  }
+
   function getData() {
     return Storage ? Storage.getData() : { zamestnanci: [], budovy: [], minMaxSloty: [] };
   }
@@ -176,6 +227,7 @@
     if (result.ok) {
       zobrazUspech('Návrh byl přepočítán.');
       lastNavrhResult = { prirazeni: result.prirazeni, data: data };
+      saveNavrhToSession();
       grafVybraneBudovyIds = null;
       vykresliNavrh(result.prirazeni, data);
       zobrazGraf(result.prirazeni, data, { onSegmentClick: handleSegmentClick, onSegmentDrop: handleSegmentDrop });
@@ -193,6 +245,7 @@
     } else {
       zobrazChybu(result.chyba || 'Výpočet se nezdařil.');
       lastNavrhResult = null;
+      saveNavrhToSession();
       zobrazGraf([], null);
       zobrazTlacitkoCsv(false);
       var vysledekEl = document.getElementById('navrh-vysledek');
@@ -355,6 +408,7 @@
       var result = ImportCsv.csvToPrirazeni(reader.result, data);
       if (result.ok) {
         lastNavrhResult = { prirazeni: result.prirazeni, data: data };
+        saveNavrhToSession();
         grafVybraneBudovyIds = null;
         vykresliNavrh(result.prirazeni, data);
         zobrazGraf(result.prirazeni, data, { onSegmentClick: handleSegmentClick, onSegmentDrop: handleSegmentDrop });
@@ -366,6 +420,7 @@
         }
       } else {
         lastNavrhResult = null;
+        saveNavrhToSession();
         vykresliNavrh([], data);
         zobrazGraf([], null);
         zobrazTlacitkoCsv(false);
@@ -382,21 +437,29 @@
     reader.readAsText(file, 'UTF-8');
   }
 
-  /** Sestaví z výsledku validace mapy budov/tříd s varováním Min/max pro každý den (pro graf). */
+  /** Sestaví z výsledku validace mapy budov/tříd s varováním Min/max a seznamy chyb pro každý den (pro graf). */
   function buildValidaceVarovaniProGraf(prirazeni, data) {
     var Validace = global.MSemenyValidaceNavrhu;
-    if (!Validace || !Validace.validujNavrh || !prirazeni || !data) return { budovy: {}, tridy: {} };
+    if (!Validace || !Validace.validujNavrh || !prirazeni || !data) return { budovy: {}, tridy: {}, chybyBudovy: {}, chybyTridy: {} };
     var result = Validace.validujNavrh(prirazeni, data);
     var budovy = {};
     var tridy = {};
+    var chybyBudovy = {};
+    var chybyTridy = {};
     (result.polozky || []).forEach(function (p) {
       if (p.pravidlo === 'Min/max na budovu' && p.den != null && p.budovaId) {
         if (!budovy[p.den]) budovy[p.den] = {};
         budovy[p.den][p.budovaId] = true;
+        if (!chybyBudovy[p.den]) chybyBudovy[p.den] = {};
+        if (!chybyBudovy[p.den][p.budovaId]) chybyBudovy[p.den][p.budovaId] = [];
+        if (p.kontext) chybyBudovy[p.den][p.budovaId].push(p.kontext);
       }
       if (p.pravidlo === 'Min/max na třídu' && p.den != null && p.tridaId) {
         if (!tridy[p.den]) tridy[p.den] = {};
         tridy[p.den][p.tridaId] = true;
+        if (!chybyTridy[p.den]) chybyTridy[p.den] = {};
+        if (!chybyTridy[p.den][p.tridaId]) chybyTridy[p.den][p.tridaId] = [];
+        if (p.kontext) chybyTridy[p.den][p.tridaId].push(p.kontext);
       }
     });
     var budovyArr = {};
@@ -405,13 +468,15 @@
       budovyArr[d] = budovy[d] ? Object.keys(budovy[d]) : [];
       tridyArr[d] = tridy[d] ? Object.keys(tridy[d]) : [];
     }
-    return { budovy: budovyArr, tridy: tridyArr };
+    return { budovy: budovyArr, tridy: tridyArr, chybyBudovy: chybyBudovy, chybyTridy: chybyTridy };
   }
 
   function zobrazGraf(prirazeni, data, grafOpts) {
     var Graf = global.MSemenyNavrhGraf;
     var container = document.getElementById('navrh-graf');
     if (!Graf || !Graf.vykresliNavrhGraf || !container) return;
+    loadGrafNastaveni();
+    saveGrafNastaveni();
     var budovy = (data && data.budovy) || [];
     if (budovy.length > 0 && grafVybraneBudovyIds === null) {
       grafVybraneBudovyIds = {};
@@ -432,14 +497,17 @@
       },
       onDenChange: function (d) {
         grafVybranyDen = d;
+        saveGrafNastaveni();
         if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
       },
       onRezimChange: function (r) {
         grafRezim = r;
+        saveGrafNastaveni();
         if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
       }
     });
     opts.onSegmentResize = handleSegmentResize;
+    opts.onSegmentMoveTime = handleSegmentMoveTime;
     opts.onSegmentEdit = openSegmentEditModal;
     opts.onSegmentDelete = deleteSegmentByIndex;
     Graf.vykresliNavrhGraf(prirazeni || [], dataProGraf, container, grafVybranyDen, opts);
@@ -457,20 +525,40 @@
   function applyNavrhChange(prirazeni) {
     if (!lastNavrhResult) return;
     lastNavrhResult = { prirazeni: prirazeni, data: lastNavrhResult.data };
+    saveNavrhToSession();
     vykresliNavrh(prirazeni, lastNavrhResult.data);
     zobrazGraf(prirazeni, lastNavrhResult.data, { onSegmentClick: handleSegmentClick, onSegmentDrop: handleSegmentDrop });
     var validaceEl = document.getElementById('navrh-validace-vysledek');
     if (validaceEl && !validaceEl.hidden) validovat();
   }
 
-  function handleSegmentDrop(payload, targetTridaId, targetBudovaId) {
+  /**
+   * Drop segmentu na řádek (třída/budova). Cíl může být jiný den (D11d) – pak přesuneme blok do toho dne.
+   * @param {Object} payload - { den, zamestnanecId, segIndex }
+   * @param {string|null} targetTridaId
+   * @param {string|null} targetBudovaId
+   * @param {number} [targetDen] - den cílového řádku (1–5); pokud chybí, = payload.den
+   */
+  function handleSegmentDrop(payload, targetTridaId, targetBudovaId, targetDen) {
     if (!lastNavrhResult) return;
     var prirazeni = clonePrirazeni(lastNavrhResult.prirazeni);
-    var p = prirazeni.find(function (x) { return x.den === payload.den && x.zamestnanecId === payload.zamestnanecId; });
-    if (!p || !p.segmenty || !p.segmenty[payload.segIndex]) return;
-    var seg = p.segmenty[payload.segIndex];
+    var srcDen = payload.den;
+    var dstDen = (targetDen >= 1 && targetDen <= 5) ? targetDen : srcDen;
+    var pSrc = prirazeni.find(function (x) { return x.den === srcDen && x.zamestnanecId === payload.zamestnanecId; });
+    if (!pSrc || !pSrc.segmenty || !pSrc.segmenty[payload.segIndex]) return;
+    var seg = pSrc.segmenty[payload.segIndex];
     seg.tridaId = targetTridaId || undefined;
     seg.budovaId = targetBudovaId || undefined;
+    if (dstDen !== srcDen) {
+      seg = pSrc.segmenty.splice(payload.segIndex, 1)[0];
+      if (pSrc.segmenty.length === 0) prirazeni.splice(prirazeni.indexOf(pSrc), 1);
+      var pDst = prirazeni.find(function (x) { return x.den === dstDen && x.zamestnanecId === payload.zamestnanecId; });
+      if (!pDst) {
+        pDst = { den: dstDen, zamestnanecId: payload.zamestnanecId, segmenty: [] };
+        prirazeni.push(pDst);
+      }
+      pDst.segmenty.push(seg);
+    }
     applyNavrhChange(prirazeni);
   }
 
@@ -542,6 +630,13 @@
     p.segmenty[segIndex].od = newOd;
     p.segmenty[segIndex].do = newDo;
     applyNavrhChange(prirazeni);
+  }
+
+  /**
+   * Horizontální posun času segmentu (D11d) – volá se po puštění tažení bez dropu na řádek.
+   */
+  function handleSegmentMoveTime(den, zamestnanecId, segIndex, newOd, newDo) {
+    handleSegmentResize(den, zamestnanecId, segIndex, newOd, newDo);
   }
 
   function closeSegmentModal() {
@@ -815,6 +910,7 @@
     if (el && !el.innerHTML.trim()) {
       el.innerHTML = '<p class="navrh-prazdno">Klikněte na „Přepočítat", aby se vygeneroval návrh směn podle aktuální konfigurace.</p>';
     }
+    restoreNavrhFromSession();
   }
 
   // Skripty jsou na konci <body>, DOM je kompletní – init() voláme ihned.

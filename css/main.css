@@ -965,6 +965,30 @@ header {
   display: none;
 }
 
+/* Popup se seznamem chyb při hoveru nad ikonou varování u budovy/třídy */
+.navrh-graf-varovani-popup-okno {
+  position: fixed;
+  left: 0;
+  top: 0;
+  padding: 0.5em 0.75em;
+  font-size: 0.85rem;
+  background: #1a1a1a;
+  color: #fff;
+  border-radius: 4px;
+  z-index: 10000;
+  max-width: 320px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: none;
+}
+.navrh-graf-varovani-popup-okno ul {
+  margin: 0;
+  padding-left: 1.2em;
+  list-style: disc;
+}
+.navrh-graf-varovani-popup-okno li {
+  margin: 0.2em 0;
+}
+
 .navrh-graf-context-menu {
   position: fixed;
   z-index: 10001;

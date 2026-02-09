@@ -224,15 +224,20 @@
 
     var varovaniBudovy = (opts && opts.validaceVarovani && opts.validaceVarovani.budovy && opts.validaceVarovani.budovy[den]) ? opts.validaceVarovani.budovy[den] : [];
     var varovaniTridy = (opts && opts.validaceVarovani && opts.validaceVarovani.tridy && opts.validaceVarovani.tridy[den]) ? opts.validaceVarovani.tridy[den] : [];
+    var chybyBudovyDen = (opts && opts.validaceVarovani && opts.validaceVarovani.chybyBudovy) ? opts.validaceVarovani.chybyBudovy[den] : {};
+    var chybyTridyDen = (opts && opts.validaceVarovani && opts.validaceVarovani.chybyTridy) ? opts.validaceVarovani.chybyTridy[den] : {};
     var varovaniIcon = '\u26A0\uFE0F';
-    var varovaniTitle = 'Nesplněn požadavek Min/max';
 
     for (var bi = 0; bi < budovy.length; bi += 1) {
       var b = budovy[bi];
       if (!b.id) continue;
       var tridy = b.tridy || [];
       var budovaNazev = escapeHtml(nazevBudovy(budovy, b.id));
-      if (varovaniBudovy.indexOf(b.id) >= 0) budovaNazev = '<span class="navrh-graf-varovani-icon" title="' + escapeAttr(varovaniTitle + ' na budovu') + '">' + escapeHtml(varovaniIcon) + '</span> ' + budovaNazev;
+      if (varovaniBudovy.indexOf(b.id) >= 0) {
+        var chybyB = (chybyBudovyDen[b.id] || []);
+        var dataChybyB = chybyB.length ? ' data-chyby="' + escapeAttr(JSON.stringify(chybyB)) + '"' : '';
+        budovaNazev = '<span class="navrh-graf-varovani-icon navrh-graf-varovani-popup"' + dataChybyB + '>' + escapeHtml(varovaniIcon) + '</span> ' + budovaNazev;
+      }
       html.push('<div class="navrh-graf-blok">');
       html.push('<h3 class="navrh-graf-blok-nadpis">' + budovaNazev + '</h3>');
       var rady = [];
@@ -281,11 +286,15 @@
       for (var ri = 0; ri < rady.length; ri += 1) {
         var rada = rady[ri];
         var labelHtml = escapeHtml(rada.label);
-        if (rada.tridaId != null && varovaniTridy.indexOf(rada.tridaId) >= 0) labelHtml = '<span class="navrh-graf-varovani-icon" title="' + escapeAttr(varovaniTitle + ' na třídu') + '">' + escapeHtml(varovaniIcon) + '</span> ' + labelHtml;
+        if (rada.tridaId != null && varovaniTridy.indexOf(rada.tridaId) >= 0) {
+          var chybyT = (chybyTridyDen[rada.tridaId] || []);
+          var dataChybyT = chybyT.length ? ' data-chyby="' + escapeAttr(JSON.stringify(chybyT)) + '"' : '';
+          labelHtml = '<span class="navrh-graf-varovani-icon navrh-graf-varovani-popup"' + dataChybyT + '>' + escapeHtml(varovaniIcon) + '</span> ' + labelHtml;
+        }
         var lanes = assignLanes(rada.items);
         var dataTrida = rada.tridaId != null ? ' data-trida-id="' + escapeAttr(rada.tridaId) + '"' : '';
         var dataBudova = rada.budovaId != null ? ' data-budova-id="' + escapeAttr(rada.budovaId) + '"' : '';
-        html.push('<div class="navrh-graf-rada"' + dataTrida + dataBudova + '>');
+        html.push('<div class="navrh-graf-rada" data-den="' + den + '"' + dataTrida + dataBudova + '>');
         html.push('<span class="navrh-graf-rada-label">' + labelHtml + '</span>');
         html.push('<div class="navrh-graf-rada-pruhy">');
         for (var li = 0; li < lanes.length; li += 1) {
@@ -359,6 +368,7 @@
     var onSegmentResize = opts.onSegmentResize;
     var onSegmentEdit = opts.onSegmentEdit;
     var onSegmentDelete = opts.onSegmentDelete;
+    var onSegmentMoveTime = opts.onSegmentMoveTime;
     var onDenChange = opts.onDenChange;
     var onRezimChange = opts.onRezimChange;
     var onBudovyChange = opts.onBudovyChange;
@@ -414,6 +424,7 @@
     html.push('</div>');
 
     if (rezim === 'taby') {
+      container.dataset.currentDen = String(den);
       var jeden = buildObsahJednohoDne(den, prirazeni, data, range, opts);
       html = html.concat(jeden.html);
     } else {
@@ -533,21 +544,114 @@
       }, 0);
     });
 
+    /* Popup se seznamem chyb při najetí na ikonu varování u budovy/třídy */
+    var varovaniPopupEl = null;
+    container.addEventListener('mouseover', function (ev) {
+      var icon = ev.target.closest('.navrh-graf-varovani-popup[data-chyby]');
+      if (!icon) return;
+      var raw = icon.getAttribute('data-chyby');
+      if (!raw) return;
+      var chyby = [];
+      try {
+        chyby = JSON.parse(raw);
+      } catch (e) { /* ignore */ }
+      if (!Array.isArray(chyby) || chyby.length === 0) return;
+      if (!varovaniPopupEl) {
+        varovaniPopupEl = document.createElement('div');
+        varovaniPopupEl.className = 'navrh-graf-varovani-popup-okno';
+        varovaniPopupEl.setAttribute('role', 'tooltip');
+        varovaniPopupEl.setAttribute('aria-hidden', 'true');
+        varovaniPopupEl.addEventListener('mouseleave', function () {
+          varovaniPopupEl.style.display = 'none';
+        });
+        document.body.appendChild(varovaniPopupEl);
+      }
+      varovaniPopupEl.innerHTML = '<ul>' + chyby.map(function (c) { return '<li>' + escapeHtml(c) + '</li>'; }).join('') + '</ul>';
+      varovaniPopupEl.style.display = 'block';
+      varovaniPopupEl.style.left = (ev.clientX + 12) + 'px';
+      varovaniPopupEl.style.top = (ev.clientY + 12) + 'px';
+    });
+    container.addEventListener('mouseout', function (ev) {
+      var icon = ev.target.closest('.navrh-graf-varovani-popup[data-chyby]');
+      if (icon && icon.contains(ev.relatedTarget)) return;
+      if (varovaniPopupEl && varovaniPopupEl.contains(ev.relatedTarget)) return;
+      if (varovaniPopupEl) varovaniPopupEl.style.display = 'none';
+    });
+    container.addEventListener('mousemove', function (ev) {
+      var icon = ev.target.closest('.navrh-graf-varovani-popup[data-chyby]');
+      if (icon && varovaniPopupEl && varovaniPopupEl.style.display === 'block') {
+        varovaniPopupEl.style.left = (ev.clientX + 12) + 'px';
+        varovaniPopupEl.style.top = (ev.clientY + 12) + 'px';
+      }
+    });
+
     if (typeof onSegmentDrop === 'function') {
+      var draggedSegment = null;
+      var dragPayload = null;
+      var dragAxisEl = null;
+      var droppedOnRow = false;
+      var moveTimeTooltipEl = null;
+
       container.addEventListener('dragstart', function (ev) {
         var seg = ev.target.closest('.navrh-graf-segment');
         if (!seg || !seg.hasAttribute('data-den')) return;
-        ev.dataTransfer.setData('application/json', JSON.stringify({
+        droppedOnRow = false;
+        draggedSegment = seg;
+        var rangeStart = parseInt(container.dataset.rangeStart, 10) || 0;
+        var rangeEnd = parseInt(container.dataset.rangeEnd, 10) || rangeStart + 600;
+        var rangeLen = Math.max(1, rangeEnd - rangeStart);
+        var leftPct = parseFloat(seg.style.left) || 0;
+        var widthPct = parseFloat(seg.style.width) || 0;
+        var odMin = rangeStart + (leftPct / 100) * rangeLen;
+        var doMin = rangeStart + ((leftPct + widthPct) / 100) * rangeLen;
+        dragPayload = {
           den: parseInt(seg.getAttribute('data-den'), 10),
           zamestnanecId: seg.getAttribute('data-zam-id'),
-          segIndex: parseInt(seg.getAttribute('data-seg-index'), 10)
-        }));
+          segIndex: parseInt(seg.getAttribute('data-seg-index'), 10),
+          odMin: odMin,
+          doMin: doMin
+        };
+        dragAxisEl = seg.parentElement;
+        ev.dataTransfer.setData('application/json', JSON.stringify({ den: dragPayload.den, zamestnanecId: dragPayload.zamestnanecId, segIndex: dragPayload.segIndex }));
         ev.dataTransfer.effectAllowed = 'move';
         seg.classList.add('dragging');
+        if (typeof onSegmentMoveTime === 'function') {
+          if (!moveTimeTooltipEl) {
+            moveTimeTooltipEl = document.createElement('div');
+            moveTimeTooltipEl.className = 'navrh-graf-resize-tooltip';
+            moveTimeTooltipEl.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(moveTimeTooltipEl);
+          }
+          moveTimeTooltipEl.textContent = minutyToHhmm(odMin) + '–' + minutyToHhmm(doMin);
+          moveTimeTooltipEl.style.display = 'block';
+        }
       });
       container.addEventListener('dragend', function (ev) {
-        var seg = ev.target.closest('.navrh-graf-segment');
-        if (seg) seg.classList.remove('dragging');
+        if (draggedSegment) draggedSegment.classList.remove('dragging');
+        if (moveTimeTooltipEl) moveTimeTooltipEl.style.display = 'none';
+        if (!droppedOnRow && dragPayload && dragAxisEl && typeof onSegmentMoveTime === 'function') {
+          var rangeStart = parseInt(container.dataset.rangeStart, 10) || 0;
+          var rangeEnd = parseInt(container.dataset.rangeEnd, 10) || rangeStart + 600;
+          var rangeLen = Math.max(1, rangeEnd - rangeStart);
+          var rect = dragAxisEl.getBoundingClientRect();
+          var ratio = (ev.clientX - rect.left) / Math.max(1, rect.width);
+          var releaseTime = rangeStart + ratio * rangeLen;
+          releaseTime = snapMinuty(releaseTime);
+          releaseTime = Math.max(rangeStart, Math.min(rangeEnd, releaseTime));
+          var center = (dragPayload.odMin + dragPayload.doMin) / 2;
+          var delta = releaseTime - center;
+          var newOd = dragPayload.odMin + delta;
+          var newDo = dragPayload.doMin + delta;
+          newOd = snapMinuty(newOd);
+          newDo = snapMinuty(newDo);
+          newOd = Math.max(rangeStart, Math.min(rangeEnd - MIN_DELKA_MINUTY, newOd));
+          newDo = Math.max(newOd + MIN_DELKA_MINUTY, Math.min(rangeEnd, newDo));
+          newOd = Math.min(newOd, newDo - MIN_DELKA_MINUTY);
+          onSegmentMoveTime(dragPayload.den, dragPayload.zamestnanecId, dragPayload.segIndex, minutyToHhmm(newOd), minutyToHhmm(newDo));
+        }
+        draggedSegment = null;
+        dragPayload = null;
+        dragAxisEl = null;
       });
       container.addEventListener('dragover', function (ev) {
         var row = ev.target.closest('.navrh-graf-rada');
@@ -555,6 +659,28 @@
         ev.preventDefault();
         ev.dataTransfer.dropEffect = 'move';
         row.classList.add('drag-over');
+        if (moveTimeTooltipEl && dragPayload && dragAxisEl) {
+          var rangeStart = parseInt(container.dataset.rangeStart, 10) || 0;
+          var rangeEnd = parseInt(container.dataset.rangeEnd, 10) || rangeStart + 600;
+          var rangeLen = Math.max(1, rangeEnd - rangeStart);
+          var rect = dragAxisEl.getBoundingClientRect();
+          var ratio = (ev.clientX - rect.left) / Math.max(1, rect.width);
+          var releaseTime = rangeStart + ratio * rangeLen;
+          releaseTime = snapMinuty(releaseTime);
+          releaseTime = Math.max(rangeStart, Math.min(rangeEnd, releaseTime));
+          var center = (dragPayload.odMin + dragPayload.doMin) / 2;
+          var delta = releaseTime - center;
+          var newOd = dragPayload.odMin + delta;
+          var newDo = dragPayload.doMin + delta;
+          newOd = snapMinuty(newOd);
+          newDo = snapMinuty(newDo);
+          newOd = Math.max(rangeStart, Math.min(rangeEnd - MIN_DELKA_MINUTY, newOd));
+          newDo = Math.max(newOd + MIN_DELKA_MINUTY, Math.min(rangeEnd, newDo));
+          newOd = Math.min(newOd, newDo - MIN_DELKA_MINUTY);
+          moveTimeTooltipEl.textContent = minutyToHhmm(newOd) + '–' + minutyToHhmm(newDo);
+          moveTimeTooltipEl.style.left = (ev.clientX + 12) + 'px';
+          moveTimeTooltipEl.style.top = (ev.clientY + 12) + 'px';
+        }
       });
       container.addEventListener('dragleave', function (ev) {
         var row = ev.target.closest('.navrh-graf-rada');
@@ -564,6 +690,7 @@
         var row = ev.target.closest('.navrh-graf-rada');
         if (!row) return;
         ev.preventDefault();
+        droppedOnRow = true;
         row.classList.remove('drag-over');
         var json = ev.dataTransfer.getData('application/json');
         if (!json) return;
@@ -571,8 +698,10 @@
           var payload = JSON.parse(json);
           var tid = row.getAttribute('data-trida-id') || null;
           var bid = row.getAttribute('data-budova-id') || null;
+          var targetDen = row.getAttribute('data-den');
+          targetDen = (targetDen != null && targetDen !== '') ? parseInt(targetDen, 10) : (parseInt(container.dataset.currentDen, 10) || payload.den);
           if (payload.den != null && payload.zamestnanecId && payload.segIndex != null) {
-            onSegmentDrop(payload, tid, bid);
+            onSegmentDrop(payload, tid, bid, targetDen);
           }
         } catch (e) { /* ignore */ }
       });
