@@ -181,6 +181,9 @@
     var zamestnanci = (data && data.zamestnanci) || [];
     var onSegmentClick = (opts && opts.onSegmentClick);
     var onSegmentDrop = (opts && opts.onSegmentDrop);
+    var vybraneTridyIds = (opts && opts.vybraneTridyIds) !== undefined ? opts.vybraneTridyIds : null;
+    var vybraniZamestnanciIds = (opts && opts.vybraniZamestnanciIds) !== undefined ? opts.vybraniZamestnanciIds : null;
+    var vybraneTypyUmisteni = (opts && opts.vybraneTypyUmisteni) !== undefined ? opts.vybraneTypyUmisteni : null;
     var proDen = (prirazeni || []).filter(function (p) { return p.den === den; });
 
     if (proDen.length === 0) {
@@ -249,13 +252,18 @@
         var segs = p.segmenty || [];
         for (var si = 0; si < segs.length; si += 1) {
           var seg = segs[si];
+          if (vybraneTypyUmisteni != null) {
+            var segTyp = seg.typUmisteni || 'pedagogove';
+            if (!vybraneTypyUmisteni[segTyp]) continue;
+          }
           var segBudova = seg.budovaId || null;
           var segTrida = seg.tridaId || null;
           var budovaSegmentu = segTrida ? findBudovaIdForTrida(budovy, segTrida) : segBudova;
           if (budovaSegmentu !== b.id) continue;
           var item = {
             od: seg.od, do: seg.do, zamestnanecId: p.zamestnanecId, jmeno: jmeno,
-            tridaId: segTrida || null, budovaId: segBudova || null, segIndex: si
+            tridaId: segTrida || null, budovaId: segBudova || null, segIndex: si,
+            typUmisteni: seg.typUmisteni || null
           };
           if (segTrida) {
             if (!tridaSegments[segTrida]) tridaSegments[segTrida] = [];
@@ -285,13 +293,16 @@
       var canEdit = typeof onSegmentClick === 'function' || typeof onSegmentDrop === 'function';
       for (var ri = 0; ri < rady.length; ri += 1) {
         var rada = rady[ri];
+        if (vybraneTridyIds !== null && rada.tridaId != null && !vybraneTridyIds[rada.tridaId]) continue;
+        var itemsFiltered = rada.items;
+        if (vybraniZamestnanciIds != null) itemsFiltered = itemsFiltered.filter(function (it) { return vybraniZamestnanciIds[it.zamestnanecId]; });
         var labelHtml = escapeHtml(rada.label);
         if (rada.tridaId != null && varovaniTridy.indexOf(rada.tridaId) >= 0) {
           var chybyT = (chybyTridyDen[rada.tridaId] || []);
           var dataChybyT = chybyT.length ? ' data-chyby="' + escapeAttr(JSON.stringify(chybyT)) + '"' : '';
           labelHtml = '<span class="navrh-graf-varovani-icon navrh-graf-varovani-popup"' + dataChybyT + '>' + escapeHtml(varovaniIcon) + '</span> ' + labelHtml;
         }
-        var lanes = assignLanes(rada.items);
+        var lanes = assignLanes(itemsFiltered);
         var dataTrida = rada.tridaId != null ? ' data-trida-id="' + escapeAttr(rada.tridaId) + '"' : '';
         var dataBudova = rada.budovaId != null ? ' data-budova-id="' + escapeAttr(rada.budovaId) + '"' : '';
         html.push('<div class="navrh-graf-rada" data-den="' + den + '"' + dataTrida + dataBudova + '>');
@@ -308,7 +319,10 @@
             var title = it.jmeno + ', ' + (it.od || '') + '–' + (it.do || '');
             var dataAttrs = canEdit ? ' data-den="' + den + '" data-zam-id="' + escapeAttr(it.zamestnanecId) + '" data-seg-index="' + (it.segIndex != null ? it.segIndex : '') + '"' : '';
             var dragAttr = canEdit && typeof onSegmentDrop === 'function' ? ' draggable="true"' : '';
-            html.push('<span class="navrh-graf-segment" style="left:' + left + '%;width:' + w + '%;background:' + barva + ';" title="' + escapeAttr(title) + '"' + dataAttrs + dragAttr + '>' + escapeHtml(it.jmeno) + '</span>');
+            var segmentClass = 'navrh-graf-segment';
+            if (it.typUmisteni === 'asistenti') segmentClass += ' navrh-graf-segment-asistenti';
+            var bgStyle = it.typUmisteni === 'asistenti' ? 'background-color:' + barva : 'background:' + barva;
+            html.push('<span class="' + segmentClass + '" style="left:' + left + '%;width:' + w + '%;' + bgStyle + ';" title="' + escapeAttr(title) + '"' + dataAttrs + dragAttr + '>' + escapeHtml(it.jmeno) + '</span>');
           }
           html.push('</div>');
         }
@@ -332,12 +346,42 @@
   }
 
   /**
-   * Vrátí HTML řádky pro jednu legendu (pro režim inline – jedna legenda pro všechny dny).
-   * @param {Object} barvyMap - id → barva (z mapBarev)
-   * @param {Array} zamestnanci
-   * @returns {string[]}
+   * Vrátí množinu id zaměstnanců, kteří mají alespoň jednu směnu v zobrazeném rozsahu (dny, budovy, třídy).
+   * @param {Array} prirazeni
+   * @param {number|number[]} days - jeden den nebo pole 1–5
+   * @param {Object} vybraneBudovaIdsSet - { budovaId: true }
+   * @param {Array} vsechnyBudovy - všechny budovy (pro findBudovaIdForTrida)
+   * @param {Object|null} vybraneTridyIds - null = všechny třídy, jinak { id: true }
    */
-  function buildLegendaHtml(barvyMap, zamestnanci) {
+  function getZamestnanciIdsInView(prirazeni, days, vybraneBudovaIdsSet, vsechnyBudovy, vybraneTridyIds) {
+    var daysArr = Array.isArray(days) ? days : [days];
+    var out = {};
+    for (var pi = 0; pi < (prirazeni || []).length; pi += 1) {
+      var p = prirazeni[pi];
+      if (daysArr.indexOf(p.den) < 0) continue;
+      var segs = p.segmenty || [];
+      for (var si = 0; si < segs.length; si += 1) {
+        var seg = segs[si];
+        var bid = seg.tridaId ? findBudovaIdForTrida(vsechnyBudovy, seg.tridaId) : seg.budovaId;
+        if (!bid || !vybraneBudovaIdsSet[bid]) continue;
+        if (seg.tridaId != null && vybraneTridyIds !== null && !vybraneTridyIds[seg.tridaId]) continue;
+        out[p.zamestnanecId] = true;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Vrátí HTML legendy (s volitelnými checkboxy u jmen).
+   * @param {Object} barvyMap - id → barva
+   * @param {Array} zamestnanci
+   * @param {Object} [opts] - vybraniZamestnanciIds (null = všichni zaškrtnuti), zamestnanciInView (pro disabled), onZamestnanciChange
+   */
+  function buildLegendaHtml(barvyMap, zamestnanci, opts) {
+    opts = opts || {};
+    var vybrani = opts.vybraniZamestnanciIds;
+    var inView = opts.zamestnanciInView || {};
+    var hasCheckboxes = typeof opts.onZamestnanciChange === 'function';
     var out = [];
     out.push('<div class="navrh-graf-legenda">');
     out.push('<span class="navrh-graf-legenda-nadpis">Legenda:</span> ');
@@ -346,7 +390,10 @@
     for (var oi = 0; oi < orderedIds.length; oi += 1) {
       var zid = orderedIds[oi];
       if (!barvyMap[zid]) continue;
-      out.push('<span class="navrh-graf-legenda-položka"><span class="navrh-graf-legenda-barvicka" style="background:' + barvyMap[zid] + '"></span> ' + escapeHtml(jmenoZamestnance(zamestnanci, zid)) + '</span>');
+      var checked = (vybrani == null || vybrani[zid]) ? ' checked' : '';
+      var disabled = !inView[zid] ? ' disabled' : '';
+      var cb = hasCheckboxes ? '<input type="checkbox" class="navrh-graf-legenda-input" data-zam-id="' + escapeAttr(zid) + '"' + checked + disabled + '> ' : '';
+      out.push('<label class="navrh-graf-legenda-položka"><span class="navrh-graf-legenda-barvicka" style="background:' + barvyMap[zid] + '"></span> ' + cb + escapeHtml(jmenoZamestnance(zamestnanci, zid)) + '</label>');
     }
     out.push('</div>');
     return out;
@@ -372,12 +419,21 @@
     var onDenChange = opts.onDenChange;
     var onRezimChange = opts.onRezimChange;
     var onBudovyChange = opts.onBudovyChange;
+    var onTridyChange = opts.onTridyChange;
+    var onZamestnanciChange = opts.onZamestnanciChange;
     var vsechnyBudovy = opts.vsechnyBudovy || [];
     var vybraneBudovyIds = opts.vybraneBudovyIds || [];
+    var vsechnyTridy = opts.vsechnyTridy || [];
+    var vybraneTridyIds = opts.vybraneTridyIds !== undefined ? opts.vybraneTridyIds : null;
+    var vybraniZamestnanciIds = opts.vybraniZamestnanciIds !== undefined ? opts.vybraniZamestnanciIds : null;
+    var vybraneTypyUmisteni = opts.vybraneTypyUmisteni !== undefined ? opts.vybraneTypyUmisteni : null;
+    var onTypyUmisteniChange = opts.onTypyUmisteniChange;
     var rezim = (opts.rezim === 'inline') ? 'inline' : 'taby';
     var budovy = (data && data.budovy) || [];
     var zamestnanci = (data && data.zamestnanci) || [];
     var den = vybranyDen >= 1 && vybranyDen <= 5 ? vybranyDen : 1;
+    var vybraneBudovaIdsSet = {};
+    for (var vbi = 0; vbi < vybraneBudovyIds.length; vbi += 1) vybraneBudovaIdsSet[vybraneBudovyIds[vbi]] = true;
 
     if (!prirazeni || prirazeni.length === 0) {
       container.innerHTML = '';
@@ -408,6 +464,33 @@
       html.push('</div>');
     }
 
+    /* Checkboxy tříd (jen třídy z vybraných budov) */
+    if (vsechnyTridy.length > 0 && typeof onTridyChange === 'function') {
+      var vybraneTridySet = {};
+      if (vybraneTridyIds) for (var vti in vybraneTridyIds) if (vybraneTridyIds.hasOwnProperty(vti) && vybraneTridyIds[vti]) vybraneTridySet[vti] = true;
+      var tridyVsechny = (vybraneTridyIds == null);
+      html.push('<div class="navrh-graf-tridy" role="group" aria-label="Zobrazené třídy">');
+      html.push('<span class="navrh-graf-tridy-label">Třídy:</span>');
+      for (var tri = 0; tri < vsechnyTridy.length; tri += 1) {
+        var tr = vsechnyTridy[tri];
+        var tChecked = (tridyVsechny || vybraneTridySet[tr.id]) ? ' checked' : '';
+        html.push('<label class="navrh-graf-tridy-checkbox"><input type="checkbox" class="navrh-graf-tridy-input" data-trida-id="' + escapeAttr(tr.id) + '"' + tChecked + '> ' + escapeHtml(tr.nazev || tr.id) + '</label>');
+      }
+      html.push('</div>');
+    }
+
+    /* Checkboxy typu úvazku (pedagogové, asistenti, školnice) */
+    if (typeof onTypyUmisteniChange === 'function') {
+      var typyAll = (vybraneTypyUmisteni == null);
+      var typySet = { pedagogove: typyAll || !!(vybraneTypyUmisteni && vybraneTypyUmisteni.pedagogove), asistenti: typyAll || !!(vybraneTypyUmisteni && vybraneTypyUmisteni.asistenti), skolnice: typyAll || !!(vybraneTypyUmisteni && vybraneTypyUmisteni.skolnice) };
+      html.push('<div class="navrh-graf-typy-umisteni" role="group" aria-label="Typ úvazku">');
+      html.push('<span class="navrh-graf-typy-label">Typ úvazku:</span>');
+      html.push('<label class="navrh-graf-typy-checkbox"><input type="checkbox" class="navrh-graf-typy-input" data-typ-umisteni="pedagogove"' + (typySet.pedagogove ? ' checked' : '') + '> Pedagogové</label>');
+      html.push('<label class="navrh-graf-typy-checkbox"><input type="checkbox" class="navrh-graf-typy-input" data-typ-umisteni="asistenti"' + (typySet.asistenti ? ' checked' : '') + '> Asistenti</label>');
+      html.push('<label class="navrh-graf-typy-checkbox"><input type="checkbox" class="navrh-graf-typy-input" data-typ-umisteni="skolnice"' + (typySet.skolnice ? ' checked' : '') + '> Školnice</label>');
+      html.push('</div>');
+    }
+
     /* Ovládací prvky: režim (Taby / Inline) a taby pro dny (jen v režimu Taby) */
     html.push('<div class="navrh-graf-ovladaci">');
     html.push('<div class="navrh-graf-rezim" role="group" aria-label="Režim zobrazení">');
@@ -423,22 +506,33 @@
     }
     html.push('</div>');
 
+    /* Legenda nad grafy (s checkboxy u učitelů) */
+    var barvyMapTop = mapBarev(prirazeni || [], zamestnanci);
+    var daysView = rezim === 'taby' ? den : [1, 2, 3, 4, 5];
+    var zamestnanciInView = getZamestnanciIdsInView(prirazeni, daysView, vybraneBudovaIdsSet, vsechnyBudovy, vybraneTridyIds);
+    var legendaHtml = buildLegendaHtml(barvyMapTop, zamestnanci, {
+      vybraniZamestnanciIds: vybraniZamestnanciIds,
+      zamestnanciInView: zamestnanciInView,
+      onZamestnanciChange: onZamestnanciChange
+    });
+
+    var optsContent = Object.assign({}, opts, { skipLegenda: true });
     if (rezim === 'taby') {
+      html = html.concat(legendaHtml);
       container.dataset.currentDen = String(den);
-      var jeden = buildObsahJednohoDne(den, prirazeni, data, range, opts);
+      var jeden = buildObsahJednohoDne(den, prirazeni, data, range, optsContent);
       html = html.concat(jeden.html);
     } else {
       html.push('<div class="navrh-graf-inline">');
-      var barvyMapInline = mapBarev(prirazeni || [], zamestnanci);
+      html = html.concat(legendaHtml);
       for (var d2 = 1; d2 <= 5; d2 += 1) {
-        var optsDen = Object.assign({}, opts || {}, { skipLegenda: true, barvyMap: barvyMapInline });
+        var optsDen = Object.assign({}, optsContent, { barvyMap: barvyMapTop });
         html.push('<section class="navrh-graf-inline-den" data-den="' + d2 + '" aria-labelledby="navrh-graf-inline-heading-' + d2 + '">');
         html.push('<h3 id="navrh-graf-inline-heading-' + d2 + '" class="navrh-graf-inline-nadpis">' + escapeHtml(NAZVY_DNU[d2]) + '</h3>');
         var jeden2 = buildObsahJednohoDne(d2, prirazeni, data, range, optsDen);
         html = html.concat(jeden2.html);
         html.push('</section>');
       }
-      html = html.concat(buildLegendaHtml(barvyMapInline, zamestnanci));
       html.push('</div>');
     }
 
@@ -456,6 +550,45 @@
           var ids = [];
           for (var c = 0; c < checked.length; c += 1) ids.push(checked[c].getAttribute('data-budova-id'));
           onBudovyChange(ids);
+        });
+      }
+    }
+    /* Checkboxy tříd */
+    if (typeof onTridyChange === 'function') {
+      var tridyInputs = container.querySelectorAll('.navrh-graf-tridy-input');
+      for (var txi = 0; txi < tridyInputs.length; txi += 1) {
+        tridyInputs[txi].addEventListener('change', function () {
+          var checked = container.querySelectorAll('.navrh-graf-tridy-input:checked');
+          var ids = [];
+          for (var c = 0; c < checked.length; c += 1) ids.push(checked[c].getAttribute('data-trida-id'));
+          onTridyChange(ids);
+        });
+      }
+    }
+    /* Checkboxy typu úvazku */
+    if (typeof onTypyUmisteniChange === 'function') {
+      var typyInputs = container.querySelectorAll('.navrh-graf-typy-input');
+      for (var tyi = 0; tyi < typyInputs.length; tyi += 1) {
+        typyInputs[tyi].addEventListener('change', function () {
+          var checked = container.querySelectorAll('.navrh-graf-typy-input:checked');
+          var sel = { pedagogove: false, asistenti: false, skolnice: false };
+          for (var c = 0; c < checked.length; c += 1) {
+            var t = checked[c].getAttribute('data-typ-umisteni');
+            if (t && sel.hasOwnProperty(t)) sel[t] = true;
+          }
+          onTypyUmisteniChange((sel.pedagogove && sel.asistenti && sel.skolnice) ? null : sel);
+        });
+      }
+    }
+    /* Checkboxy v legendě (učitelé) */
+    if (typeof onZamestnanciChange === 'function') {
+      var legendaInputs = container.querySelectorAll('.navrh-graf-legenda-input');
+      for (var lxi = 0; lxi < legendaInputs.length; lxi += 1) {
+        legendaInputs[lxi].addEventListener('change', function () {
+          var checked = container.querySelectorAll('.navrh-graf-legenda-input:checked');
+          var ids = [];
+          for (var c = 0; c < checked.length; c += 1) ids.push(checked[c].getAttribute('data-zam-id'));
+          onZamestnanciChange(ids);
         });
       }
     }

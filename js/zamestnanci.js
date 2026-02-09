@@ -22,16 +22,93 @@
     };
   }
 
-  /**
-   * Z formuláře vrátí úvazek v minutách za týden (hodiny * 60 + minuty).
-   */
-  function formNaMinuty() {
-    var h = parseInt(document.getElementById('zamestnanci-hodiny').value, 10) || 0;
-    var min = parseInt(document.getElementById('zamestnanci-minuty').value, 10) || 0;
+  /** Z jednoho řádku role/úvazek vrátí úvazek v minutách (hodiny * 60 + minuty). */
+  function radkaNaMinuty(hodinyEl, minutyEl) {
+    var h = parseInt(hodinyEl && hodinyEl.value ? hodinyEl.value : 0, 10) || 0;
+    var min = parseInt(minutyEl && minutyEl.value ? minutyEl.value : 0, 10) || 0;
     if (h < 0) h = 0;
     if (min < 0) min = 0;
     if (min > 59) min = 59;
     return h * 60 + min;
+  }
+
+  /** Z formuláře vrátí pole { role, uvazekMinutyTyden } z řádků role/úvazek. */
+  function formNaRoleUvazky() {
+    var container = document.getElementById('zamestnanci-role-uvazky-seznam');
+    if (!container) return [{ role: (Model && Model.ROLE ? Model.ROLE.UCITELKA : 'učitelka'), uvazekMinutyTyden: 0 }];
+    var rows = container.querySelectorAll('.role-uvazky-radek');
+    var out = [];
+    for (var i = 0; i < rows.length; i += 1) {
+      var sel = rows[i].querySelector('.role-uvazky-role');
+      var hInp = rows[i].querySelector('.role-uvazky-hodiny');
+      var mInp = rows[i].querySelector('.role-uvazky-minuty');
+      var role = (sel && sel.value) ? sel.value : (Model && Model.ROLE ? Model.ROLE.UCITELKA : 'učitelka');
+      var min = radkaNaMinuty(hInp, mInp);
+      out.push({ role: role, uvazekMinutyTyden: min });
+    }
+    return out.length > 0 ? out : [{ role: (Model && Model.ROLE ? Model.ROLE.UCITELKA : 'učitelka'), uvazekMinutyTyden: 0 }];
+  }
+
+  /** Přidá jeden řádek role/úvazek do formuláře. */
+  function pridalRadekRoleUvazky(role, uvazekMinutyTyden) {
+    var container = document.getElementById('zamestnanci-role-uvazky-seznam');
+    if (!container) return;
+    var uv = minutyNaHodinyMinuty(uvazekMinutyTyden != null ? uvazekMinutyTyden : 0);
+    var roleSeznam = (Model && Model.ROLE_SEZNAM) ? Model.ROLE_SEZNAM : ['učitelka', 'asistentka pedagoga', 'školník/školnice', 'ředitelka', 'zástupkyně'];
+    var row = document.createElement('div');
+    row.className = 'role-uvazky-radek';
+    var sel = document.createElement('select');
+    sel.className = 'role-uvazky-role';
+    sel.setAttribute('aria-label', 'Role');
+    var i, opt;
+    for (i = 0; i < roleSeznam.length; i += 1) {
+      opt = document.createElement('option');
+      opt.value = roleSeznam[i];
+      opt.textContent = roleSeznam[i];
+      if (roleSeznam[i] === (role || '')) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    var hInp = document.createElement('input');
+    hInp.type = 'number';
+    hInp.className = 'role-uvazky-hodiny';
+    hInp.min = 0;
+    hInp.max = 168;
+    hInp.value = uv.hodiny;
+    hInp.setAttribute('aria-label', 'Hodiny týdně');
+    var mInp = document.createElement('input');
+    mInp.type = 'number';
+    mInp.className = 'role-uvazky-minuty';
+    mInp.min = 0;
+    mInp.max = 59;
+    mInp.value = uv.minuty;
+    mInp.setAttribute('aria-label', 'Minuty týdně');
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-mala role-uvazky-odebrat';
+    btn.textContent = 'Odebrat';
+    btn.addEventListener('click', function () {
+      if (container.querySelectorAll('.role-uvazky-radek').length <= 1) return;
+      row.remove();
+    });
+    row.appendChild(sel);
+    row.appendChild(document.createTextNode(' '));
+    row.appendChild(hInp);
+    row.appendChild(document.createTextNode(' h '));
+    row.appendChild(mInp);
+    row.appendChild(document.createTextNode(' min '));
+    row.appendChild(btn);
+    container.appendChild(row);
+  }
+
+  /** Vyplní seznam rolí/úvazků ve formuláři podle z.roleUvazky. */
+  function vykresliRoleUvazkyFormular(roleUvazky) {
+    var container = document.getElementById('zamestnanci-role-uvazky-seznam');
+    if (!container) return;
+    container.innerHTML = '';
+    var list = Array.isArray(roleUvazky) && roleUvazky.length > 0 ? roleUvazky : [{ role: (Model && Model.ROLE ? Model.ROLE.UCITELKA : 'učitelka'), uvazekMinutyTyden: 0 }];
+    for (var i = 0; i < list.length; i += 1) {
+      pridalRadekRoleUvazky(list[i].role, list[i].uvazekMinutyTyden);
+    }
   }
 
   /** Vrátí všechny budovy jako pole { id, nazev }. */
@@ -132,7 +209,17 @@
   function toggleTridaWrapper() {
     var kmenova = document.getElementById('zamestnanci-kmenova');
     var wrap = document.getElementById('zamestnanci-trida-wrapper');
-    if (wrap) wrap.hidden = !(kmenova && kmenova.checked);
+    var roleUvazky = (Model && Model.normalizujRoleUvazky) ? Model.normalizujRoleUvazky(formNaRoleUvazky()) : formNaRoleUvazky();
+    var maAsistentku = false;
+    if (Array.isArray(roleUvazky)) {
+      for (var r = 0; r < roleUvazky.length; r++) {
+        if (roleUvazky[r].role === (Model && Model.ROLE && Model.ROLE.ASISTENTKA) && (roleUvazky[r].uvazekMinutyTyden || 0) > 0) {
+          maAsistentku = true;
+          break;
+        }
+      }
+    }
+    if (wrap) wrap.hidden = !(kmenova && kmenova.checked) && !maAsistentku;
   }
 
   // --- Nedostupnost – dočasný stav při úpravě formuláře ---
@@ -252,10 +339,8 @@
   function vyplnFormular(z) {
     document.getElementById('zamestnanci-form-id').value = z ? z.id : '';
     document.getElementById('zamestnanci-jmeno').value = z ? z.jmeno : '';
-    var uv = minutyNaHodinyMinuty(z ? z.uvazekMinutyTyden : 0);
-    document.getElementById('zamestnanci-hodiny').value = uv.hodiny;
-    document.getElementById('zamestnanci-minuty').value = uv.minuty;
-    document.getElementById('zamestnanci-role').value = z ? z.role : (Model && Model.ROLE ? Model.ROLE.UCITELKA : 'učitelka');
+    var roleUvazky = (z && Array.isArray(z.roleUvazky) && z.roleUvazky.length > 0) ? z.roleUvazky : [{ role: (Model && Model.ROLE ? Model.ROLE.UCITELKA : 'učitelka'), uvazekMinutyTyden: 0 }];
+    vykresliRoleUvazkyFormular(roleUvazky);
     var kateg = (z && z.kmenovaVykryvaci === 'vykrývací') ? 'vykrývací' : 'kmenová';
     var kmenovaEl = document.getElementById('zamestnanci-kmenova');
     var vykryvaciEl = document.getElementById('zamestnanci-vykryvaci');
@@ -330,18 +415,27 @@
     { key: 'jmeno', dir: 1 }
   ];
 
+  var getUvazek = (Model && Model.getUvazekMinutyZamestnance) ? Model.getUvazekMinutyZamestnance : function (z) {
+    if (Array.isArray(z.roleUvazky) && z.roleUvazky.length > 0) {
+      var s = 0;
+      for (var i = 0; i < z.roleUvazky.length; i += 1) s += (z.roleUvazky[i].uvazekMinutyTyden != null ? parseInt(z.roleUvazky[i].uvazekMinutyTyden, 10) : 0) || 0;
+      return s;
+    }
+    return (z.uvazekMinutyTyden != null) ? parseInt(z.uvazekMinutyTyden, 10) || 0 : 0;
+  };
+  var getPrimaryRole = (Model && Model.getPrimaryRole) ? Model.getPrimaryRole : function (z) {
+    if (Array.isArray(z.roleUvazky) && z.roleUvazky.length > 0) return z.roleUvazky[0].role || '';
+    return z.role || '';
+  };
+
   function getCompareForKey(key) {
     switch (key) {
       case 'jmeno':
         return function (a, b) { return (a.jmeno || '').localeCompare(b.jmeno || '', 'cs'); };
       case 'uvazek':
-        return function (a, b) {
-          var ua = (a.uvazekMinutyTyden != null) ? a.uvazekMinutyTyden : 0;
-          var ub = (b.uvazekMinutyTyden != null) ? b.uvazekMinutyTyden : 0;
-          return ua - ub;
-        };
+        return function (a, b) { return getUvazek(a) - getUvazek(b); };
       case 'role':
-        return function (a, b) { return indexRole(a.role) - indexRole(b.role); };
+        return function (a, b) { return indexRole(getPrimaryRole(a)) - indexRole(getPrimaryRole(b)); };
       case 'kategorie':
         return function (a, b) {
           var ka = (a.kmenovaVykryvaci === 'vykrývací') ? 1 : 0;
@@ -467,17 +561,30 @@
       '<th>Akce</th>',
       '</tr></thead><tbody>'
     ];
-    var i, z, uv, kategText, nedostText, prechodText, prirazenoText, btnUpravit, btnSmazat;
+    var i, z, uv, roleText, kategText, nedostText, prechodText, prirazenoText, btnUpravit, btnSmazat, ru;
     for (i = 0; i < list.length; i += 1) {
       z = list[i];
-      uv = minutyNaHodinyMinuty(z.uvazekMinutyTyden);
+      uv = minutyNaHodinyMinuty(getUvazek(z));
+      roleText = '';
+      if (Array.isArray(z.roleUvazky) && z.roleUvazky.length > 0) {
+        var parts = [];
+        for (var ri = 0; ri < z.roleUvazky.length; ri += 1) {
+          ru = z.roleUvazky[ri];
+          var ruMin = (ru.uvazekMinutyTyden != null ? parseInt(ru.uvazekMinutyTyden, 10) : 0) || 0;
+          var ruh = minutyNaHodinyMinuty(ruMin);
+          parts.push(escapeHtml(ru.role || '') + (ruMin > 0 ? ' ' + ruh.hodiny + ' h' + (ruh.minuty > 0 ? ' ' + ruh.minuty + ' min' : '') : ''));
+        }
+        roleText = parts.join(', ');
+      }
+      if (!roleText && z.role) roleText = escapeHtml(z.role);
+      if (!roleText) roleText = '—';
       kategText = (z.kmenovaVykryvaci === 'vykrývací') ? 'Vykrývací' : ('Kmenová' + (z.tridaId ? ' (' + escapeHtml(nazevTridy(z.tridaId)) + ')' : ''));
       nedostText = souhrNedostupnosti(z.nedostupnost);
       prechodText = souhrPrechodBudovy(z.prechodMeziBudovami);
       prirazenoText = souhrPrirazenoJen(z);
       btnUpravit = '<button type="button" class="btn btn-mala" data-akce="upravit" data-id="' + escapeAttr(z.id) + '">Upravit</button>';
       btnSmazat = '<button type="button" class="btn btn-mala" data-akce="smazat" data-id="' + escapeAttr(z.id) + '">Smazat</button>';
-      html.push('<tr><td>' + escapeHtml(z.jmeno || '') + '</td><td>' + uv.hodiny + ' h ' + uv.minuty + ' min</td><td>' + escapeHtml(z.role || '') + '</td><td>' + kategText + '</td><td class="td-nedostupnost">' + (nedostText ? escapeHtml(nedostText) : '<span class="hint">—</span>') + '</td><td>' + escapeHtml(prechodText) + '</td><td>' + (prirazenoText ? escapeHtml(prirazenoText) : '<span class="hint">—</span>') + '</td><td>' + btnUpravit + ' ' + btnSmazat + '</td></tr>');
+      html.push('<tr><td>' + escapeHtml(z.jmeno || '') + '</td><td>' + uv.hodiny + ' h ' + uv.minuty + ' min</td><td>' + roleText + '</td><td>' + kategText + '</td><td class="td-nedostupnost">' + (nedostText ? escapeHtml(nedostText) : '<span class="hint">—</span>') + '</td><td>' + escapeHtml(prechodText) + '</td><td>' + (prirazenoText ? escapeHtml(prirazenoText) : '<span class="hint">—</span>') + '</td><td>' + btnUpravit + ' ' + btnSmazat + '</td></tr>');
     }
     html.push('</tbody></table>');
     el.innerHTML = html.join('');
@@ -498,21 +605,25 @@
   }
 
   /**
-   * Zobrazí formulář (pro přidání nebo úpravu).
+   * Zobrazí formulář v popup modalu (pro přidání nebo úpravu).
    * @param {Object|null} z - zaměstnanec při úpravě, null při přidání
    */
   function zobrazFormular(z) {
     vyplnFormular(z);
-    var f = document.getElementById('zamestnanci-formular');
-    if (f) f.hidden = false;
+    var modal = document.getElementById('zamestnanci-modal');
+    if (modal) {
+      modal.hidden = false;
+      var firstInput = document.getElementById('zamestnanci-jmeno');
+      if (firstInput) firstInput.focus();
+    }
   }
 
   /**
-   * Skryje formulář.
+   * Skryje popup s formulářem.
    */
   function skryjFormular() {
-    var f = document.getElementById('zamestnanci-formular');
-    if (f) f.hidden = true;
+    var modal = document.getElementById('zamestnanci-modal');
+    if (modal) modal.hidden = true;
   }
 
   /**
@@ -523,24 +634,19 @@
     var idEl = document.getElementById('zamestnanci-form-id');
     var id = (idEl && idEl.value) ? idEl.value.trim() : '';
     var jmeno = (document.getElementById('zamestnanci-jmeno') && document.getElementById('zamestnanci-jmeno').value) ? document.getElementById('zamestnanci-jmeno').value.trim() : '';
-    var minuty = formNaMinuty();
-    var roleEl = document.getElementById('zamestnanci-role');
-    var role = roleEl ? roleEl.value : (Model && Model.ROLE ? Model.ROLE.UCITELKA : 'učitelka');
+    var roleUvazky = (Model && Model.normalizujRoleUvazky) ? Model.normalizujRoleUvazky(formNaRoleUvazky()) : formNaRoleUvazky();
     var kmenovaEl = document.getElementById('zamestnanci-kmenova');
     var kateg = (kmenovaEl && kmenovaEl.checked) ? 'kmenová' : 'vykrývací';
     var tridaEl = document.getElementById('zamestnanci-trida');
-    var tridaId = (tridaEl && tridaEl.value && kateg === 'kmenová') ? tridaEl.value.trim() : null;
+    var tridaId = (tridaEl && tridaEl.value) ? tridaEl.value.trim() : null;
 
     if (!Storage || !Storage.replaceData) return;
     if (!Model || !Model.vytvorZamestnance) return;
 
-    // Normalizovat nedostupnost z formuláře
     var nedost = (Model && Model.normalizujNedostupnost) ? Model.normalizujNedostupnost(formNedostupnost) : formNedostupnost.slice();
-    // Přechod mezi budovami (C5)
     var prechodEl = document.getElementById('zamestnanci-prechod-budovy');
     var prechod = (prechodEl && prechodEl.value) ? prechodEl.value : 'výchozí';
     if (Model && Model.normalizujPrechodBudovy) prechod = Model.normalizujPrechodBudovy(prechod);
-    // Přiřazen pouze do (B1e)
     var prirazenoEl = document.getElementById('zamestnanci-prirazeno-jen');
     var prirazenoVal = (prirazenoEl && prirazenoEl.value) ? prirazenoEl.value.trim() : '';
     var prirazenoJen = (prirazenoVal && (prirazenoVal.indexOf('b:') === 0 || prirazenoVal.indexOf('t:') === 0)) ? prirazenoVal : null;
@@ -556,21 +662,22 @@
         for (i = 0; i < zam.length; i += 1) {
           if (zam[i].id === id) {
             zam[i].jmeno = jmeno;
-            zam[i].uvazekMinutyTyden = minuty;
-            zam[i].role = role;
+            zam[i].roleUvazky = roleUvazky;
             zam[i].kmenovaVykryvaci = kateg;
             zam[i].tridaId = tridaId;
             zam[i].nedostupnost = nedost;
             zam[i].prechodMeziBudovami = prechod;
             zam[i].prirazenoJen = prirazenoJen;
             zam[i].barva = barva;
+            if (zam[i].hasOwnProperty('uvazekMinutyTyden')) delete zam[i].uvazekMinutyTyden;
+            if (zam[i].hasOwnProperty('role')) delete zam[i].role;
             break;
           }
         }
         return d;
       });
     } else {
-      var novy = Model.vytvorZamestnance(jmeno, minuty, role, kateg, tridaId, nedost, prechod, prirazenoJen);
+      var novy = Model.vytvorZamestnance(jmeno, roleUvazky, null, kateg, tridaId, nedost, prechod, prirazenoJen);
       if (barva) novy.barva = barva;
       Storage.replaceData(function (d) {
         d.zamestnanci = d.zamestnanci || [];
@@ -648,15 +755,40 @@
       btnZrusit.addEventListener('click', skryjFormular);
     }
 
+    var modal = document.getElementById('zamestnanci-modal');
+    if (modal) {
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) skryjFormular();
+      });
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var m = document.getElementById('zamestnanci-modal');
+        if (m && !m.hidden) skryjFormular();
+      }
+    });
+
     var form = document.getElementById('zamestnanci-form');
     if (form) {
       form.addEventListener('submit', odeslatFormular);
+    }
+
+    var btnPridatRoli = document.getElementById('zamestnanci-pridat-roli');
+    if (btnPridatRoli) {
+      btnPridatRoli.addEventListener('click', function () {
+        pridalRadekRoleUvazky(Model && Model.ROLE ? Model.ROLE.UCITELKA : 'učitelka', 0);
+      });
     }
 
     var kmenovaEl = document.getElementById('zamestnanci-kmenova');
     var vykryvaciEl = document.getElementById('zamestnanci-vykryvaci');
     if (kmenovaEl) kmenovaEl.addEventListener('change', toggleTridaWrapper);
     if (vykryvaciEl) vykryvaciEl.addEventListener('change', toggleTridaWrapper);
+    var roleUvazkyContainer = document.getElementById('zamestnanci-role-uvazky-seznam');
+    if (roleUvazkyContainer) {
+      roleUvazkyContainer.addEventListener('change', toggleTridaWrapper);
+      roleUvazkyContainer.addEventListener('input', toggleTridaWrapper);
+    }
 
     // Nedostupnost – tlačítko „Přidat"
     var btnNedostPridat = document.getElementById('nedostupnost-btn-pridat');

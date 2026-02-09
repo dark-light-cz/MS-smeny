@@ -50,13 +50,14 @@
       }
     },
     {
-      name: 'vytvorZamestnance vytvoří objekt s id, jmeno, uvazekMinutyTyden, role',
+      name: 'vytvorZamestnance vytvoří objekt s id, jmeno, roleUvazky',
       run: function () {
         var z = M.vytvorZamestnance('Jan Novák', 600, M.ROLE.UCITELKA);
         T.assert(z.id && z.id.length > 0, 'má id');
         T.assert(z.jmeno === 'Jan Novák', 'jméno');
-        T.assert(z.uvazekMinutyTyden === 600, 'úvazek 600 min');
-        T.assert(z.role === M.ROLE.UCITELKA, 'role');
+        T.assert(Array.isArray(z.roleUvazky) && z.roleUvazky.length === 1, 'roleUvazky má jeden záznam');
+        T.assert(z.roleUvazky[0].role === M.ROLE.UCITELKA && z.roleUvazky[0].uvazekMinutyTyden === 600, 'úvazek 600 min, role učitelka');
+        T.assert(M.getUvazekMinutyZamestnance(z) === 600, 'celkový úvazek 600 min');
       }
     },
     {
@@ -64,8 +65,8 @@
       run: function () {
         var z = M.vytvorZamestnance();
         T.assert(z.jmeno === '', 'prázdné jméno');
-        T.assert(z.uvazekMinutyTyden === 0, 'úvazek 0');
-        T.assert(z.role === M.ROLE.UCITELKA, 'výchozí role učitelka');
+        T.assert(Array.isArray(z.roleUvazky) && z.roleUvazky.length === 1 && z.roleUvazky[0].uvazekMinutyTyden === 0, 'úvazek 0');
+        T.assert(M.getPrimaryRole(z) === M.ROLE.UCITELKA, 'výchozí role učitelka');
       }
     },
     {

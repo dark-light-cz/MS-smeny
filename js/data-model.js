@@ -27,6 +27,27 @@
   ];
 
   /**
+   * Typy umísťování: Pedagogové (učitelka, ředitelka, zástupkyně), Asistenti, Školnice.
+   * Každý typ umísťování bere v úvahu pouze úvazky v příslušných rolích.
+   */
+  var TYPY_UMISTENI = {
+    PEDAGOGOVE: 'pedagogove',
+    ASISTENTI: 'asistenti',
+    SKOLNICE: 'skolnice'
+  };
+  var ROLE_PRO_PEDAGOGOVE = [ROLE.UCITELKA, ROLE.REDITELKA, ROLE.ZASTUPKYNE];
+  var ROLE_PRO_ASISTENTI = [ROLE.ASISTENTKA];
+  var ROLE_PRO_SKOLNICE = [ROLE.SKOLNIK];
+
+  function rolePatriDoUmisteni(role, typUmisteni) {
+    if (!role || typeof role !== 'string') return false;
+    var seznam = typUmisteni === TYPY_UMISTENI.ASISTENTI ? ROLE_PRO_ASISTENTI
+      : typUmisteni === TYPY_UMISTENI.SKOLNICE ? ROLE_PRO_SKOLNICE
+      : ROLE_PRO_PEDAGOGOVE;
+    return seznam.indexOf(role) >= 0;
+  }
+
+  /**
    * Vygeneruje jednoduché unikátní id (pro použití v modelu).
    * @returns {string}
    */
@@ -183,18 +204,108 @@
   }
 
   /**
-   * Struktura zaměstnance: id, jméno, úvazek, role, kmenová/vykrývací, přiřazená třída, nedostupnost, přechod mezi budovami, přiřazen pouze do (B1e), barva (hex pro graf návrhu, volitelné).
-   * kmenovaVykryvaci: 'kmenová' | 'vykrývací'. tridaId: id třídy (pouze u kmenové).
-   * nedostupnost: pole objektů { den: 1–5 (Po–Pá), od: "HH:mm", do: "HH:mm" } – časová období v týdnu, kdy zaměstnanec nemůže pracovat.
-   * prechodMeziBudovami: 'výchozí' | 'zakázat' | 'povolit' – lokální nastavení přechodu mezi budovami v jednom dni.
-   * prirazenoJen: null | 'b:budovaId' | 't:tridaId' – zaměstnanec smí být přiřazen pouze do této budovy nebo pouze do této třídy (B1e).
+   * Struktura zaměstnance: id, jméno, roleUvazky (pole rolí s úvazky), kmenová/vykrývací, přiřazená třída, nedostupnost, přechod mezi budovami, přiřazen pouze do (B1e), barva.
+   * roleUvazky: Array<{ role: string, uvazekMinutyTyden: number }> – každý zaměstnanec může mít více rolí s různými úvazky (např. učitelka 10 h + asistentka 6 h).
+   * Zpětná kompatibilita: při načtení starých dat (uvazekMinutyTyden, role) se převedou na roleUvazky pomocí normalizujZamestnance.
    */
-  function vytvorZamestnance(jmeno, uvazekMinutyTyden, role, kmenovaVykryvaci, tridaId, nedostupnost, prechodMeziBudovami, prirazenoJen) {
+  function normalizujRoleUvazky(roleUvazky) {
+    if (!Array.isArray(roleUvazky) || roleUvazky.length === 0) return [{ role: ROLE.UCITELKA, uvazekMinutyTyden: 0 }];
+    return roleUvazky
+      .filter(function (r) { return r && typeof r.role === 'string' && r.role.trim(); })
+      .map(function (r) {
+        var min = (r.uvazekMinutyTyden != null && r.uvazekMinutyTyden !== '') ? parseInt(r.uvazekMinutyTyden, 10) : 0;
+        return { role: r.role.trim(), uvazekMinutyTyden: isNaN(min) || min < 0 ? 0 : min };
+      });
+  }
+
+  /**
+   * Normalizuje zaměstnance při načtení: pokud chybí roleUvazky ale jsou uvazekMinutyTyden/role (starý formát), doplní roleUvazky.
+   * @param {Object} z - zaměstnanec
+   * @returns {Object} zaměstnanec s roleUvazky
+   */
+  function normalizujZamestnance(z) {
+    if (!z || typeof z !== 'object') return z;
+    if (Array.isArray(z.roleUvazky) && z.roleUvazky.length > 0) {
+      z.roleUvazky = normalizujRoleUvazky(z.roleUvazky);
+      return z;
+    }
+    var min = (z.uvazekMinutyTyden != null && z.uvazekMinutyTyden !== '') ? parseInt(z.uvazekMinutyTyden, 10) : 0;
+    z.roleUvazky = [{ role: (z.role && typeof z.role === 'string') ? z.role : ROLE.UCITELKA, uvazekMinutyTyden: isNaN(min) || min < 0 ? 0 : min }];
+    return z;
+  }
+
+  /**
+   * Celkový úvazek zaměstnance v minutách za týden (součet všech rolí).
+   * @param {Object} z - zaměstnanec (s roleUvazky nebo starý formát uvazekMinutyTyden)
+   * @returns {number}
+   */
+  function getUvazekMinutyZamestnance(z) {
+    if (!z) return 0;
+    if (Array.isArray(z.roleUvazky) && z.roleUvazky.length > 0) {
+      var sum = 0;
+      for (var i = 0; i < z.roleUvazky.length; i += 1) sum += (z.roleUvazky[i].uvazekMinutyTyden != null ? parseInt(z.roleUvazky[i].uvazekMinutyTyden, 10) : 0) || 0;
+      return sum;
+    }
+    return (z.uvazekMinutyTyden != null && z.uvazekMinutyTyden !== '') ? parseInt(z.uvazekMinutyTyden, 10) || 0 : 0;
+  }
+
+  /**
+   * Úvazek zaměstnance v minutách za týden pouze pro daný typ umísťování (Pedagogové / Asistenti / Školnice).
+   * Pro umísťování pedagogů se sčítají jen role: učitelka, ředitelka, zástupkyně.
+   * @param {Object} z - zaměstnanec
+   * @param {string} typUmisteni - 'pedagogove' | 'asistenti' | 'skolnice'
+   * @returns {number}
+   */
+  function getUvazekMinutyZamestnanceProUmisteni(z, typUmisteni) {
+    if (!z) return 0;
+    if (Array.isArray(z.roleUvazky) && z.roleUvazky.length > 0) {
+      var sum = 0;
+      for (var i = 0; i < z.roleUvazky.length; i += 1) {
+        var r = z.roleUvazky[i];
+        if (!rolePatriDoUmisteni(r.role, typUmisteni)) continue;
+        sum += (r.uvazekMinutyTyden != null ? parseInt(r.uvazekMinutyTyden, 10) : 0) || 0;
+      }
+      return sum;
+    }
+    var role = (z.role && typeof z.role === 'string') ? z.role : ROLE.UCITELKA;
+    if (!rolePatriDoUmisteni(role, typUmisteni)) return 0;
+    return (z.uvazekMinutyTyden != null && z.uvazekMinutyTyden !== '') ? parseInt(z.uvazekMinutyTyden, 10) || 0 : 0;
+  }
+
+  /**
+   * Hlavní (primární) role zaměstnance – role s největším úvazkem; při shodě první.
+   * @param {Object} z - zaměstnanec
+   * @returns {string}
+   */
+  function getPrimaryRole(z) {
+    if (!z) return ROLE.UCITELKA;
+    if (Array.isArray(z.roleUvazky) && z.roleUvazky.length > 0) {
+      var best = z.roleUvazky[0];
+      var bestMin = (best.uvazekMinutyTyden != null ? parseInt(best.uvazekMinutyTyden, 10) : 0) || 0;
+      for (var i = 1; i < z.roleUvazky.length; i += 1) {
+        var m = (z.roleUvazky[i].uvazekMinutyTyden != null ? parseInt(z.roleUvazky[i].uvazekMinutyTyden, 10) : 0) || 0;
+        if (m > bestMin) { best = z.roleUvazky[i]; bestMin = m; }
+      }
+      return best.role || ROLE.UCITELKA;
+    }
+    return (z.role && typeof z.role === 'string') ? z.role : ROLE.UCITELKA;
+  }
+
+  /**
+   * Vytvoří nového zaměstnance. roleUvazky: pole { role, uvazekMinutyTyden }. Pro zpětnou kompatibilitu lze volat i (jmeno, uvazekMinutyTyden, role, ...).
+   */
+  function vytvorZamestnance(jmeno, uvazekMinutyTydenOrRoleUvazky, role, kmenovaVykryvaci, tridaId, nedostupnost, prechodMeziBudovami, prirazenoJen) {
+    var roleUvazky;
+    if (Array.isArray(uvazekMinutyTydenOrRoleUvazky)) {
+      roleUvazky = normalizujRoleUvazky(uvazekMinutyTydenOrRoleUvazky);
+    } else {
+      var min = (uvazekMinutyTydenOrRoleUvazky != null && uvazekMinutyTydenOrRoleUvazky !== '') ? parseInt(uvazekMinutyTydenOrRoleUvazky, 10) : 0;
+      roleUvazky = [{ role: role || ROLE.UCITELKA, uvazekMinutyTyden: isNaN(min) || min < 0 ? 0 : min }];
+    }
     return {
       id: generujId(),
       jmeno: jmeno || '',
-      uvazekMinutyTyden: uvazekMinutyTyden != null ? uvazekMinutyTyden : 0,
-      role: role || ROLE.UCITELKA,
+      roleUvazky: roleUvazky,
       kmenovaVykryvaci: kmenovaVykryvaci === 'vykrývací' ? 'vykrývací' : 'kmenová',
       tridaId: (kmenovaVykryvaci === 'kmenová' && tridaId) ? tridaId : null,
       nedostupnost: normalizujNedostupnost(nedostupnost),
@@ -249,6 +360,13 @@
     normalizujNedostupnost: normalizujNedostupnost,
     normalizujPrechodBudovy: normalizujPrechodBudovy,
     normalizujPrirazenoJen: normalizujPrirazenoJen,
+    normalizujZamestnance: normalizujZamestnance,
+    normalizujRoleUvazky: normalizujRoleUvazky,
+    getUvazekMinutyZamestnance: getUvazekMinutyZamestnance,
+    getUvazekMinutyZamestnanceProUmisteni: getUvazekMinutyZamestnanceProUmisteni,
+    getPrimaryRole: getPrimaryRole,
+    TYPY_UMISTENI: TYPY_UMISTENI,
+    rolePatriDoUmisteni: rolePatriDoUmisteni,
     PRECHOD_BUDOVY_HODNOTY: PRECHOD_BUDOVY_HODNOTY,
     STRIDANI_REZIMY: STRIDANI_REZIMY
   };

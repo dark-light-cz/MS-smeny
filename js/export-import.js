@@ -86,7 +86,9 @@
         if (t && t.id) validTridyIds[t.id] = true;
       });
     });
+    var normZam = Model && Model.normalizujZamestnance ? Model.normalizujZamestnance : function (z) { return z; };
     var zamestnanci = (data.zamestnanci || []).map(function (z) {
+      var zNorm = normZam(typeof z === 'object' && z !== null ? Object.assign({}, z) : {});
       var k = z.kmenovaVykryvaci === 'vykrývací' ? 'vykrývací' : 'kmenová';
       var tid = (k === 'kmenová' && z.tridaId) ? z.tridaId : null;
       var pj = normPrirazenoJen(z.prirazenoJen);
@@ -103,8 +105,7 @@
       return {
         id: z.id,
         jmeno: z.jmeno != null ? z.jmeno : '',
-        uvazekMinutyTyden: z.uvazekMinutyTyden != null ? z.uvazekMinutyTyden : 0,
-        role: z.role != null ? z.role : 'učitelka',
+        roleUvazky: Array.isArray(zNorm.roleUvazky) && zNorm.roleUvazky.length > 0 ? zNorm.roleUvazky.slice() : [{ role: 'učitelka', uvazekMinutyTyden: 0 }],
         kmenovaVykryvaci: k,
         tridaId: tid,
         nedostupnost: normNedost(z.nedostupnost),

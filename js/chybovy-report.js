@@ -27,16 +27,19 @@
     var tridaIdToLabel = {};
     var counts = { reditelka: 0, zastupkyne: 0, ucitelka: 0, asistentka: 0, skolnik: 0 };
 
+    var getPrimaryRole = (global.MSemenyDataModel && typeof global.MSemenyDataModel.getPrimaryRole === 'function')
+      ? global.MSemenyDataModel.getPrimaryRole
+      : function (z) { return z.role || ''; };
     var order = ['ředitelka', 'zástupkyně', 'učitelka', 'asistentka pedagoga', 'školník/školnice'];
     var sorted = zamestnanci.slice().sort(function (a, b) {
-      var ia = order.indexOf(a.role || '');
-      var ib = order.indexOf(b.role || '');
+      var ia = order.indexOf(getPrimaryRole(a));
+      var ib = order.indexOf(getPrimaryRole(b));
       if (ia !== ib) return ia - ib;
       return (a.jmeno || '').localeCompare(b.jmeno || '');
     });
     for (var i = 0; i < sorted.length; i += 1) {
       var z = sorted[i];
-      var prefix = ROLE_PREFIX[z.role] || 'osoba';
+      var prefix = ROLE_PREFIX[getPrimaryRole(z)] || 'osoba';
       if (counts[prefix] == null) counts[prefix] = 0;
       counts[prefix] += 1;
       zamIdToLabel[z.id] = prefix + counts[prefix];
@@ -132,11 +135,20 @@
 
     var zamestnanci = (data && data.zamestnanci) || [];
     lines.push('### Zaměstnanci');
+    var getUvazek = (global.MSemenyDataModel && typeof global.MSemenyDataModel.getUvazekMinutyZamestnance === 'function')
+      ? global.MSemenyDataModel.getUvazekMinutyZamestnance
+      : function (z) { return (z.uvazekMinutyTyden != null && z.uvazekMinutyTyden !== '') ? parseInt(z.uvazekMinutyTyden, 10) : 0; };
     for (var i = 0; i < zamestnanci.length; i += 1) {
       var z = zamestnanci[i];
       var label = anon.zamIdToLabel[z.id] || ('osoba' + (i + 1));
-      var uvazek = (z.uvazekMinutyTyden != null && z.uvazekMinutyTyden !== '') ? parseInt(z.uvazekMinutyTyden, 10) : 0;
-      lines.push('- ' + label + ': úvazek ' + uvazek + ' min/týden, role „' + (z.role || '') + '"');
+      var uvazek = getUvazek(z);
+      var roleText = '';
+      if (Array.isArray(z.roleUvazky) && z.roleUvazky.length > 0) {
+        roleText = z.roleUvazky.map(function (r) { return (r.role || '') + ' ' + (r.uvazekMinutyTyden != null ? r.uvazekMinutyTyden : 0) + ' min'; }).join(', ');
+      } else {
+        roleText = (z.role || '') + ' „' + (z.uvazekMinutyTyden != null ? z.uvazekMinutyTyden : 0) + ' min"';
+      }
+      lines.push('- ' + label + ': úvazek celkem ' + uvazek + ' min/týden, role a úvazky: ' + roleText);
     }
     lines.push('');
 

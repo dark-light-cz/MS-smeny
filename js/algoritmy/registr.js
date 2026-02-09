@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var VYCHOZI_ID = 'zakladni';
+  var VYCHOZI_ID = 'parove-tridy';
 
   var algoritmy = [];
 

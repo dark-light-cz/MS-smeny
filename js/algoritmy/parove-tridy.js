@@ -10,6 +10,13 @@
 (function (global) {
   'use strict';
 
+  var getUvazekMinuty = (global.MSemenyDataModel && typeof global.MSemenyDataModel.getUvazekMinutyZamestnance === 'function')
+    ? global.MSemenyDataModel.getUvazekMinutyZamestnance
+    : function (z) { return (z && z.uvazekMinutyTyden != null) ? parseInt(z.uvazekMinutyTyden, 10) || 0 : 0; };
+  var getUvazekMinutyProUmisteni = (global.MSemenyDataModel && typeof global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni === 'function')
+    ? global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni
+    : null;
+
   var DOPOLEDNI_OD = '07:45';
   var DOPOLEDNI_DO = '12:00';
   var ODOPOLEDNI_OD = '10:00';
@@ -104,13 +111,15 @@
   /**
    * Pro danou třídu vrátí seznam kandidátů (zaměstnanců), kteří smí a mohou pracovat v této třídě.
    * Seřazeno: kmenové přiřazené k této třídě (sestupně úvazek), pak ostatní (sestupně úvazek).
+   * @param {function} getUvazek - funkce (z) => úvazek v minutách pro aktuální typ umísťování
    */
-  function getCandidatesForTrida(tridaId, budovaId, zamestnanci, pravidla, omezeni, tridaBudovaMap) {
+  function getCandidatesForTrida(tridaId, budovaId, zamestnanci, pravidla, omezeni, tridaBudovaMap, getUvazek) {
+    getUvazek = getUvazek || getUvazekMinuty;
     var list = [];
     var neDohromadyByZam = {};
     for (var i = 0; i < zamestnanci.length; i++) {
       var z = zamestnanci[i];
-      var uv = parseInt(z.uvazekMinutyTyden, 10) || 0;
+      var uv = getUvazek(z);
       if (uv <= 0) continue;
       if (!canAssignToLocation(z, tridaId, budovaId)) continue;
       var forbidden = getNeDohromady(omezeni, z.id);
@@ -179,7 +188,8 @@
   }
 
   /** Fáze 1: Páry na třídu – dopolední 7:45–12, odpolední 10–16, střídání dnů. Každá učitelka je ukotvená v jedné třídě na celý týden (nejvýše jedna dvojice/třída). */
-  function phase1(assignmentMap, budovy, zamestnanci, pravidla, omezeni, outAssignedZamToTrida) {
+  function phase1(assignmentMap, budovy, zamestnanci, pravidla, omezeni, outAssignedZamToTrida, getUvazek) {
+    getUvazek = getUvazek || getUvazekMinuty;
     var tridaBudova = {};
     var d, t, b, i;
     for (b = 0; b < budovy.length; b++) {
@@ -202,15 +212,15 @@
         var trida = tridy[t];
         var tridaId = trida.id;
         var budovaId = budova.id;
-        var cand = getCandidatesForTrida(tridaId, budovaId, zamestnanci, pravidla, omezeni, tridaBudova);
+        var cand = getCandidatesForTrida(tridaId, budovaId, zamestnanci, pravidla, omezeni, tridaBudova, getUvazek);
         var listWithoutUsed = cand.list.filter(function (c) { return !assignedZamToTrida[c.zam.id]; });
         var pair = pickPair(listWithoutUsed, cand.neDohromadyByZam);
         if (!pair || pair.length < 2) continue;
 
         var zamA = pair[0];
         var zamB = pair[1];
-        var uvazekA = parseInt(zamA.uvazekMinutyTyden, 10) || 0;
-        var uvazekB = parseInt(zamB.uvazekMinutyTyden, 10) || 0;
+        var uvazekA = getUvazek(zamA);
+        var uvazekB = getUvazek(zamB);
         assignedZamToTrida[zamA.id] = tridaId;
         assignedZamToTrida[zamB.id] = tridaId;
         var dopOd = timeToMinuty(DOPOLEDNI_OD);
@@ -438,7 +448,8 @@
   }
 
   /** Fáze 2: Prodloužení směn – primárně prodloužit dopolední (7:45→7:00) a odpolední (16:00→17:00) u někoho, kdo už v budově ten den pracuje. Přednost mají ti, kteří dané prodloužení tento týden ještě neměli (max. 2× ranní a 2× odpolední, nikdo 3×). */
-  function phase2(assignmentMap, budovy, zamestnanci, pravidla, assignedSum) {
+  function phase2(assignmentMap, budovy, zamestnanci, pravidla, assignedSum, getUvazek) {
+    getUvazek = getUvazek || getUvazekMinuty;
     var ranniOd = timeToMinuty(RANNI_EXT_OD);
     var ranniDo = timeToMinuty(RANNI_EXT_DO);
     var vecOd = timeToMinuty(VECERNI_OD);
@@ -453,11 +464,11 @@
 
         canRanni = canRanni.filter(function (zamId) {
           var z = zamestnanci.filter(function (x) { return x.id === zamId; })[0];
-          return z && (parseInt(z.uvazekMinutyTyden, 10) || 0) - (assignedSum[zamId] || 0) >= MIN_RANNI_EXT && isAvailable(z, d, ranniOd, ranniDo);
+          return z && getUvazek(z) - (assignedSum[zamId] || 0) >= MIN_RANNI_EXT && isAvailable(z, d, ranniOd, ranniDo);
         });
         canVecerni = canVecerni.filter(function (zamId) {
           var z = zamestnanci.filter(function (x) { return x.id === zamId; })[0];
-          return z && (parseInt(z.uvazekMinutyTyden, 10) || 0) - (assignedSum[zamId] || 0) >= MIN_VECERNI && isAvailable(z, d, vecOd, vecDo);
+          return z && getUvazek(z) - (assignedSum[zamId] || 0) >= MIN_VECERNI && isAvailable(z, d, vecOd, vecDo);
         });
 
         canRanni.sort(function (a, b) {
@@ -502,7 +513,8 @@
   }
 
   /** Fáze 3a: Doplnění chybějících směn (dopolední/odpolední) zbývajícími učitelkami, které zatím nejsou přiřazené. Preferuje přiřazení do jedné třídy. Respektuje pravidla.minDelkaBlokuMinuty. */
-  function phase3a(assignmentMap, budovy, zamestnanci, pravidla, omezeni, assignedZamToTrida, assignedSum) {
+  function phase3a(assignmentMap, budovy, zamestnanci, pravidla, omezeni, assignedZamToTrida, assignedSum, getUvazek) {
+    getUvazek = getUvazek || getUvazekMinuty;
     var minDelka = (pravidla.minDelkaBlokuMinuty != null && pravidla.minDelkaBlokuMinuty !== '')
       ? parseInt(pravidla.minDelkaBlokuMinuty, 10) : 120;
     if (isNaN(minDelka) || minDelka < 0) minDelka = 120;
@@ -531,14 +543,14 @@
         if (!canAssignToLocation(z, gap.tridaId, gap.budovaId)) continue;
         if (hasOverlappingSegmentOnDay(assignmentMap, gap.den, z.id, gap.odMin, gap.doMin)) continue;
         if (!isAvailable(z, gap.den, gap.odMin, gap.doMin)) continue;
-        var rem = (parseInt(z.uvazekMinutyTyden, 10) || 0) - (assignedSum[z.id] || 0);
+        var rem = getUvazek(z) - (assignedSum[z.id] || 0);
         if (gap.slot === 'dopoledni') {
           if (rem < gap.lengthMin) continue;
         } else {
           if (rem < minDelka) continue;
         }
         var alreadyInThisClass = tridaByDoplnujiciZam[z.id] === gap.tridaId;
-        var uvazek = parseInt(z.uvazekMinutyTyden, 10) || 0;
+        var uvazek = getUvazek(z);
         candidates.push({ z: z, alreadyInThisClass: alreadyInThisClass, rem: rem, uvazek: uvazek });
       }
 
@@ -575,9 +587,10 @@
   }
 
   /** Fáze 3: Doplnění 7:00–7:45 a 16:00–17:00 vykrývacími jen tam, kde po fázi 2 stále chybí. Vždy přiřadit do konkrétní třídy (ne „Budova společně“). */
-  function phase3(assignmentMap, budovy, zamestnanci, pravidla, assignedSum) {
+  function phase3(assignmentMap, budovy, zamestnanci, pravidla, assignedSum, getUvazek) {
+    getUvazek = getUvazek || getUvazekMinuty;
     var vykryvaci = zamestnanci.filter(function (z) {
-      return z.kmenovaVykryvaci === 'vykrývací' && (parseInt(z.uvazekMinutyTyden, 10) || 0) > 0;
+      return z.kmenovaVykryvaci === 'vykrývací' && getUvazek(z) > 0;
     });
     if (vykryvaci.length === 0) return;
 
@@ -612,7 +625,7 @@
           if (!canAssignToLocation(z, tridaIdFallback, budovaId)) continue;
           var budovaNaDen = getBudovaZamNaDen(assignmentMap, d, z.id, budovy);
           if (budovaNaDen !== null && budovaNaDen !== budovaId && maZakazPrechodu(z, pravidla)) continue;
-          var rem = (parseInt(z.uvazekMinutyTyden, 10) || 0) - (assignedSum[z.id] || 0);
+          var rem = getUvazek(z) - (assignedSum[z.id] || 0);
           if (!hasRanni && rem >= MIN_RANNI_EXT && isAvailable(z, d, ranniOd, ranniDo)) {
             addSegment(assignmentMap, d, z.id, RANNI_EXT_OD, RANNI_EXT_DO, tridaIdFallback, budovaId);
             assignedSum[z.id] = (assignedSum[z.id] || 0) + MIN_RANNI_EXT;
@@ -650,8 +663,12 @@
   }
 
   function vypocet(data) {
+    var typUmisteni = (data.typUmisteni === 'asistenti' || data.typUmisteni === 'skolnice') ? data.typUmisteni : 'pedagogove';
+    var getUvazek = getUvazekMinutyProUmisteni
+      ? function (z) { return getUvazekMinutyProUmisteni(z, typUmisteni); }
+      : getUvazekMinuty;
     var zamestnanci = (data.zamestnanci || []).filter(function (z) {
-      return z && z.id && (z.uvazekMinutyTyden == null || parseInt(z.uvazekMinutyTyden, 10) > 0);
+      return z && z.id && getUvazek(z) > 0;
     });
     var budovy = data.budovy || [];
     var pravidla = data.pravidla || {};
@@ -673,21 +690,21 @@
 
     var assignmentMap = {};
     var assignedZamToTrida = {};
-    phase1(assignmentMap, budovy, zamestnanci, pravidla, omezeni, assignedZamToTrida);
+    phase1(assignmentMap, budovy, zamestnanci, pravidla, omezeni, assignedZamToTrida, getUvazek);
 
     var assignedSum = sumAssignedMinutes(assignmentMap, zamestnanci);
-    phase2(assignmentMap, budovy, zamestnanci, pravidla, assignedSum);
+    phase2(assignmentMap, budovy, zamestnanci, pravidla, assignedSum, getUvazek);
     assignedSum = sumAssignedMinutes(assignmentMap, zamestnanci);
-    phase3a(assignmentMap, budovy, zamestnanci, pravidla, omezeni, assignedZamToTrida, assignedSum);
+    phase3a(assignmentMap, budovy, zamestnanci, pravidla, omezeni, assignedZamToTrida, assignedSum, getUvazek);
     assignedSum = sumAssignedMinutes(assignmentMap, zamestnanci);
-    phase3(assignmentMap, budovy, zamestnanci, pravidla, assignedSum);
+    phase3(assignmentMap, budovy, zamestnanci, pravidla, assignedSum, getUvazek);
 
     var prirazeni = buildPrirazeni(assignmentMap);
     var varovani = [];
     assignedSum = sumAssignedMinutes(assignmentMap, zamestnanci);
     for (var z = 0; z < zamestnanci.length; z++) {
       var zam = zamestnanci[z];
-      var uv = parseInt(zam.uvazekMinutyTyden, 10) || 0;
+      var uv = getUvazek(zam);
       var asg = assignedSum[zam.id] || 0;
       if (asg < uv) varovani.push('Nevyčerpaný úvazek: ' + (zam.jmeno || zam.id) + ' (chybí ' + (uv - asg) + ' min).');
       if (asg > uv) varovani.push('Přečerpaný úvazek: ' + (zam.jmeno || zam.id) + ' (+' + (asg - uv) + ' min).');

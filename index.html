@@ -42,94 +42,6 @@
       <div class="zamestnanci-akce">
         <button type="button" id="zamestnanci-pridat" class="btn btn-primarni">Přidat zaměstnance</button>
       </div>
-      <div id="zamestnanci-formular" class="zamestnanci-formular" hidden>
-        <form id="zamestnanci-form" aria-labelledby="zamestnanci-form-nadpis">
-          <h3 id="zamestnanci-form-nadpis" class="visually-hidden">Formulář zaměstnance</h3>
-          <input type="hidden" id="zamestnanci-form-id" value="">
-          <p>
-            <label for="zamestnanci-jmeno">Jméno</label>
-            <input type="text" id="zamestnanci-jmeno" required>
-          </p>
-          <p>
-            <label for="zamestnanci-hodiny">Úvazek za týden</label>
-            <input type="number" id="zamestnanci-hodiny" min="0" max="168" value="0" aria-describedby="zamestnanci-uvazek-hint"> h
-            <input type="number" id="zamestnanci-minuty" min="0" max="59" value="0" aria-describedby="zamestnanci-uvazek-hint"> min
-            <span id="zamestnanci-uvazek-hint" class="hint">(hodiny a minuty týdně)</span>
-          </p>
-          <p>
-            <label for="zamestnanci-role">Role</label>
-            <select id="zamestnanci-role">
-              <option value="učitelka">učitelka</option>
-              <option value="asistentka pedagoga">asistentka pedagoga</option>
-              <option value="školník/školnice">školník/školnice</option>
-              <option value="ředitelka">ředitelka</option>
-              <option value="zástupkyně">zástupkyně</option>
-            </select>
-          </p>
-          <p>
-            <span class="label-inline">Kategorie</span>
-            <label><input type="radio" name="zamestnanci-kategorie" value="kmenová" id="zamestnanci-kmenova"> Kmenová</label>
-            <label><input type="radio" name="zamestnanci-kategorie" value="vykrývací" id="zamestnanci-vykryvaci"> Vykrývací</label>
-          </p>
-          <p id="zamestnanci-trida-wrapper" class="zamestnanci-trida-wrapper">
-            <label for="zamestnanci-trida">Přiřazená třída</label>
-            <select id="zamestnanci-trida">
-              <option value="">— žádná —</option>
-              <!-- Možnosti doplní JS z budov a tříd -->
-            </select>
-            <span class="hint">Pouze u kmenové: třída, ke které je zaměstnanec přiřazen</span>
-          </p>
-          <fieldset class="nedostupnost-fieldset">
-            <legend>Nedostupnost v rámci týdne</legend>
-            <p class="hint">Období, kdy zaměstnanec nemůže pracovat (např. jiná práce, rodinné důvody, vyhrazený čas pro vedení). Výpočet směn tyto intervaly bude respektovat.</p>
-            <div id="nedostupnost-seznam" class="nedostupnost-seznam">
-              <!-- Seznam bloků nedostupnosti vykresluje JS -->
-            </div>
-            <div class="nedostupnost-pridat">
-              <label for="nedostupnost-den">Den</label>
-              <select id="nedostupnost-den">
-                <option value="1">Pondělí</option>
-                <option value="2">Úterý</option>
-                <option value="3">Středa</option>
-                <option value="4">Čtvrtek</option>
-                <option value="5">Pátek</option>
-              </select>
-              <label for="nedostupnost-od">Od</label>
-              <input type="time" id="nedostupnost-od" value="07:00">
-              <label for="nedostupnost-do">Do</label>
-              <input type="time" id="nedostupnost-do" value="17:00">
-              <button type="button" id="nedostupnost-btn-pridat" class="btn btn-mala">Přidat</button>
-              <button type="button" id="nedostupnost-btn-cely-den" class="btn btn-mala" title="Přidá nedostupnost na celý den (7:00–17:00)">Celý den</button>
-            </div>
-          </fieldset>
-          <p>
-            <label for="zamestnanci-prechod-budovy">Přechod mezi budovami</label>
-            <select id="zamestnanci-prechod-budovy">
-              <option value="výchozí">Výchozí (dle globálního nastavení)</option>
-              <option value="zakázat">Zakázat</option>
-              <option value="povolit">Povolit</option>
-            </select>
-            <span class="hint">Lokální nastavení: zda tento zaměstnanec smí v jednom dni pracovat ve více budovách. „Výchozí" respektuje globální pravidlo.</span>
-          </p>
-          <p>
-            <label for="zamestnanci-prirazeno-jen">Přiřazen pouze do (B1e)</label>
-            <select id="zamestnanci-prirazeno-jen">
-              <option value="">— žádné —</option>
-              <!-- Možnosti doplní JS z budov a tříd -->
-            </select>
-            <span class="hint">Volitelně: zaměstnanec smí být v návrhu směn přiřazen jen do této budovy nebo jen do této třídy.</span>
-          </p>
-          <p>
-            <label for="zamestnanci-barva">Barva v grafu návrhu</label>
-            <input type="color" id="zamestnanci-barva" value="#4a90d9" title="Barva pro zobrazení v grafu návrhu směn">
-            <span class="hint">Používá se v legendě a blocích na záložce Návrh směn.</span>
-          </p>
-          <p class="form-akce">
-            <button type="submit" class="btn btn-primarni">Uložit</button>
-            <button type="button" id="zamestnanci-form-zrusit" class="btn">Zrušit</button>
-          </p>
-        </form>
-      </div>
       <div id="zamestnanci-seznam" class="zamestnanci-seznam" aria-live="polite">
         <!-- Seznam vykresluje JS -->
       </div>
@@ -473,6 +385,12 @@
           <h3 id="navrh-segment-modal-nadpis">Upravit blok přiřazení</h3>
           <form id="navrh-segment-form">
             <p><label>Zaměstnanec:</label> <span id="navrh-segment-jmeno"></span></p>
+            <p id="navrh-segment-typ-wrapper"><label for="navrh-segment-typ">Typ úvazku:</label>
+              <select id="navrh-segment-typ">
+                <option value="pedagogove">Pedagog</option>
+                <option value="asistenti">Asistentka</option>
+                <option value="skolnice">Školnice</option>
+              </select></p>
             <p><label for="navrh-segment-den">Den:</label>
               <select id="navrh-segment-den"></select></p>
             <p><label for="navrh-segment-od">Čas od:</label> <input type="time" id="navrh-segment-od">
@@ -493,6 +411,12 @@
           <h3 id="navrh-doplnit-modal-nadpis">Doplnit úvazek</h3>
           <form id="navrh-doplnit-form">
             <p><label>Zaměstnanec:</label> <span id="navrh-doplnit-jmeno"></span></p>
+            <p id="navrh-doplnit-typ-wrapper"><label for="navrh-doplnit-typ">Typ úvazku:</label>
+              <select id="navrh-doplnit-typ">
+                <option value="pedagogove">Pedagog</option>
+                <option value="asistenti">Asistentka</option>
+                <option value="skolnice">Školnice</option>
+              </select></p>
             <p><label for="navrh-doplnit-den">Den:</label> <select id="navrh-doplnit-den"></select></p>
             <p><label for="navrh-doplnit-od">Čas od:</label> <input type="time" id="navrh-doplnit-od">
               <label for="navrh-doplnit-do">Čas do:</label> <input type="time" id="navrh-doplnit-do" readonly></p>
@@ -506,6 +430,91 @@
       </div>
     </section>
   </main>
+  <!-- Popup pro přidání/úpravu zaměstnance -->
+  <div id="zamestnanci-modal" class="zamestnanci-modal" role="dialog" aria-labelledby="zamestnanci-form-nadpis" aria-modal="true" hidden>
+    <div class="zamestnanci-modal-obal">
+      <h3 id="zamestnanci-form-nadpis">Formulář zaměstnance</h3>
+      <form id="zamestnanci-form" aria-labelledby="zamestnanci-form-nadpis">
+        <input type="hidden" id="zamestnanci-form-id" value="">
+        <p>
+          <label for="zamestnanci-jmeno">Jméno</label>
+          <input type="text" id="zamestnanci-jmeno" required>
+        </p>
+        <fieldset class="role-uvazky-fieldset">
+          <legend>Role a úvazky</legend>
+          <p class="hint">Zaměstnanec může mít více rolí s různými úvazky (např. učitelka 10 h + asistentka 6 h).</p>
+          <div id="zamestnanci-role-uvazky-seznam" class="role-uvazky-seznam" aria-label="Seznam rolí a úvazků">
+            <!-- Řádky doplní JS -->
+          </div>
+          <p>
+            <button type="button" id="zamestnanci-pridat-roli" class="btn btn-mala">Přidat roli</button>
+          </p>
+        </fieldset>
+        <p>
+          <span class="label-inline">Kategorie</span>
+          <label><input type="radio" name="zamestnanci-kategorie" value="kmenová" id="zamestnanci-kmenova"> Kmenová</label>
+          <label><input type="radio" name="zamestnanci-kategorie" value="vykrývací" id="zamestnanci-vykryvaci"> Vykrývací</label>
+        </p>
+        <p id="zamestnanci-trida-wrapper" class="zamestnanci-trida-wrapper">
+          <label for="zamestnanci-trida">Přiřazená třída</label>
+          <select id="zamestnanci-trida">
+            <option value="">— žádná —</option>
+            <!-- Možnosti doplní JS z budov a tříd -->
+          </select>
+          <span class="hint">U kmenové: třída; u asistentek: povinné přiřazení třídy (výpočet směn vyžaduje)</span>
+        </p>
+        <fieldset class="nedostupnost-fieldset">
+          <legend>Nedostupnost v rámci týdne</legend>
+          <p class="hint">Období, kdy zaměstnanec nemůže pracovat (např. jiná práce, rodinné důvody, vyhrazený čas pro vedení). Výpočet směn tyto intervaly bude respektovat.</p>
+          <div id="nedostupnost-seznam" class="nedostupnost-seznam">
+            <!-- Seznam bloků nedostupnosti vykresluje JS -->
+          </div>
+          <div class="nedostupnost-pridat">
+            <label for="nedostupnost-den">Den</label>
+            <select id="nedostupnost-den">
+              <option value="1">Pondělí</option>
+              <option value="2">Úterý</option>
+              <option value="3">Středa</option>
+              <option value="4">Čtvrtek</option>
+              <option value="5">Pátek</option>
+            </select>
+            <label for="nedostupnost-od">Od</label>
+            <input type="time" id="nedostupnost-od" value="07:00">
+            <label for="nedostupnost-do">Do</label>
+            <input type="time" id="nedostupnost-do" value="17:00">
+            <button type="button" id="nedostupnost-btn-pridat" class="btn btn-mala">Přidat</button>
+            <button type="button" id="nedostupnost-btn-cely-den" class="btn btn-mala" title="Přidá nedostupnost na celý den (7:00–17:00)">Celý den</button>
+          </div>
+        </fieldset>
+        <p>
+          <label for="zamestnanci-prechod-budovy">Přechod mezi budovami</label>
+          <select id="zamestnanci-prechod-budovy">
+            <option value="výchozí">Výchozí (dle globálního nastavení)</option>
+            <option value="zakázat">Zakázat</option>
+            <option value="povolit">Povolit</option>
+          </select>
+          <span class="hint">Lokální nastavení: zda tento zaměstnanec smí v jednom dni pracovat ve více budovách. „Výchozí" respektuje globální pravidlo.</span>
+        </p>
+        <p>
+          <label for="zamestnanci-prirazeno-jen">Přiřazen pouze do (B1e)</label>
+          <select id="zamestnanci-prirazeno-jen">
+            <option value="">— žádné —</option>
+            <!-- Možnosti doplní JS z budov a tříd -->
+          </select>
+          <span class="hint">Volitelně: zaměstnanec smí být v návrhu směn přiřazen jen do této budovy nebo jen do této třídy.</span>
+        </p>
+        <p>
+          <label for="zamestnanci-barva">Barva v grafu návrhu</label>
+          <input type="color" id="zamestnanci-barva" value="#4a90d9" title="Barva pro zobrazení v grafu návrhu směn">
+          <span class="hint">Používá se v legendě a blocích na záložce Návrh směn.</span>
+        </p>
+        <p class="form-akce">
+          <button type="submit" class="btn btn-primarni">Uložit</button>
+          <button type="button" id="zamestnanci-form-zrusit" class="btn">Zrušit</button>
+        </p>
+      </form>
+    </div>
+  </div>
   <footer>
     <p>Projekt v přípravě.</p>
   </footer>
@@ -521,6 +530,7 @@
   <script src="js/algoritmy/zakladni.js"></script>
   <script src="js/algoritmy/parove-tridy.js"></script>
   <script src="js/algoritmy/registr.js"></script>
+  <script src="js/umisteni-asistentek.js"></script>
   <script src="js/vypocet-smen.js"></script>
   <script src="js/validace-navrhu.js"></script>
   <script src="js/navrh-smen-ui.js"></script>

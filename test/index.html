@@ -22,13 +22,13 @@
   <!-- DOM scaffold pro testy zaměstnanců (B1d) – potřeba před načtením zamestnanci.js, aby init() připnula listenery -->
   <div id="test-scaffold-zamestnanci" hidden>
     <button type="button" id="zamestnanci-pridat"></button>
-    <div id="zamestnanci-formular" hidden>
+    <div id="zamestnanci-modal" hidden>
+      <div class="zamestnanci-modal-obal">
       <form id="zamestnanci-form">
         <input type="hidden" id="zamestnanci-form-id" value="">
         <input type="text" id="zamestnanci-jmeno" value="">
-        <input type="number" id="zamestnanci-hodiny" value="0">
-        <input type="number" id="zamestnanci-minuty" value="0">
-        <select id="zamestnanci-role"><option value="učitelka">učitelka</option></select>
+        <div id="zamestnanci-role-uvazky-seznam" class="role-uvazky-seznam"></div>
+        <button type="button" id="zamestnanci-pridat-roli">Přidat roli</button>
         <input type="radio" name="zamestnanci-kategorie" value="kmenová" id="zamestnanci-kmenova">
         <input type="radio" name="zamestnanci-kategorie" value="vykrývací" id="zamestnanci-vykryvaci">
         <p id="zamestnanci-trida-wrapper"><select id="zamestnanci-trida"><option value="">—</option></select></p>
@@ -51,6 +51,7 @@
         </select>
         <button type="button" id="zamestnanci-form-zrusit">Zrušit</button>
       </form>
+      </div>
     </div>
     <div id="zamestnanci-seznam"></div>
   </div>

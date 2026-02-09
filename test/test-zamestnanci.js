@@ -31,9 +31,9 @@
           M.vytvorZamestnance('Cécile', 300, M.ROLE.ASISTENTKA)
         ];
         var sorted = Z.seradZamestnance(list);
-        T.assert(sorted[0].jmeno === 'Béla' && sorted[0].role === M.ROLE.REDITELKA, 'první ředitelka');
-        T.assert(sorted[1].jmeno === 'Anna' && sorted[1].role === M.ROLE.UCITELKA, 'druhá učitelka');
-        T.assert(sorted[2].jmeno === 'Cécile' && sorted[2].role === M.ROLE.ASISTENTKA, 'třetí asistentka');
+        T.assert(sorted[0].jmeno === 'Béla' && M.getPrimaryRole(sorted[0]) === M.ROLE.REDITELKA, 'první ředitelka');
+        T.assert(sorted[1].jmeno === 'Anna' && M.getPrimaryRole(sorted[1]) === M.ROLE.UCITELKA, 'druhá učitelka');
+        T.assert(sorted[2].jmeno === 'Cécile' && M.getPrimaryRole(sorted[2]) === M.ROLE.ASISTENTKA, 'třetí asistentka');
         var list2 = [
           M.vytvorZamestnance('Dana', 480, M.ROLE.UCITELKA),
           M.vytvorZamestnance('Alena', 480, M.ROLE.UCITELKA)
@@ -114,8 +114,9 @@
         var data = S.getData();
         T.assert(data.zamestnanci.length === 1, 'jedna osoba');
         T.assert(data.zamestnanci[0].jmeno === 'Test B1', 'jméno');
-        T.assert(data.zamestnanci[0].uvazekMinutyTyden === 480, 'úvazek 480 min');
-        T.assert(data.zamestnanci[0].role === M.ROLE.UCITELKA, 'role');
+        var ru = data.zamestnanci[0].roleUvazky;
+        T.assert(Array.isArray(ru) && ru.length === 1 && ru[0].role === M.ROLE.UCITELKA && ru[0].uvazekMinutyTyden === 480, 'roleUvazky: učitelka 480 min');
+        T.assert(M.getUvazekMinutyZamestnance && M.getUvazekMinutyZamestnance(data.zamestnanci[0]) === 480, 'celkový úvazek 480 min');
       }
     },
     {

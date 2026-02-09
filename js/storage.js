@@ -24,6 +24,12 @@
         var parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object' && Array.isArray(parsed.zamestnanci) && Array.isArray(parsed.budovy)) {
           data = parsed;
+          var Model = global.MSemenyDataModel;
+          if (Model && typeof Model.normalizujZamestnance === 'function') {
+            for (var zi = 0; zi < data.zamestnanci.length; zi += 1) {
+              Model.normalizujZamestnance(data.zamestnanci[zi]);
+            }
+          }
           return data;
         }
       }

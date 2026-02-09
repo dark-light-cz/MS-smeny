@@ -17,6 +17,12 @@
   var grafVybranyDen = 1;
   /** ID vybraných budov pro zobrazení v grafu (null = všechny, jinak objekt { id: true }). */
   var grafVybraneBudovyIds = null;
+  /** ID vybraných tříd (jen z vybraných budov); null = všechny, jinak { id: true }. */
+  var grafVybraneTridyIds = null;
+  /** ID vybraných zaměstnanců v legendě; null = všichni, jinak { id: true }. */
+  var grafVybraniZamestnanciIds = null;
+  /** Vybrané typy úvazku pro zobrazení v grafu; null = všechny, jinak { pedagogove: true, asistenti: true, skolnice: true }. */
+  var grafVybraneTypyUmisteni = null;
 
   var GRAF_NASTAVENI_KEY = 'ms-smeny-graf-nastaveni';
   /** Klíč pro uložení aktuálního návrhu (prirazeni) do sessionStorage – po refresh se obnoví. */
@@ -139,12 +145,19 @@
     return '';
   }
 
+  /** Popisek typu umísťování pro tabulku. */
+  function typUmisteniLabel(typUmisteni) {
+    if (typUmisteni === 'asistenti') return 'Asistentka';
+    if (typUmisteni === 'skolnice') return 'Školnice';
+    return 'Pedagog';
+  }
+
   /**
    * Vrátí seznam řádků návrhu (pro tabulku i CSV). Bez DOM.
    * Nový formát: jeden řádek = jeden segment jednoho zaměstnance.
    * @param {Array} prirazeni - z vypocetSmen (nový formát: { den, zamestnanecId, segmenty })
    * @param {Object} data - konfigurace (pro názvy)
-   * @returns {Array<{ den, denLabel, zamestnanec, cas, misto }>}
+   * @returns {Array<{ den, denLabel, zamestnanec, typUvazku, cas, misto }>}
    */
   function getNavrhRows(prirazeni, data) {
     var budovy = (data && data.budovy) || [];
@@ -161,6 +174,7 @@
           den: p.den,
           denLabel: NAZVY_DNU[p.den] || '',
           zamestnanec: jmeno,
+          typUvazku: typUmisteniLabel(seg.typUmisteni),
           cas: (seg.od || '') + '–' + (seg.do || ''),
           misto: mistoLabel(budovy, seg),
           // Pomocné pro řazení
@@ -198,7 +212,7 @@
 
     var html = [
       '<table class="tabulka-navrh">',
-      '<thead><tr><th>Den</th><th>Zaměstnanec</th><th>Čas</th><th>Místo</th></tr></thead>',
+      '<thead><tr><th>Den</th><th>Zaměstnanec</th><th>Typ úvazku</th><th>Čas</th><th>Místo</th></tr></thead>',
       '<tbody>'
     ];
     for (var i = 0; i < rows.length; i += 1) {
@@ -206,6 +220,7 @@
       html.push('<tr>');
       html.push('<td>' + escapeHtml(row.denLabel) + '</td>');
       html.push('<td>' + escapeHtml(row.zamestnanec) + '</td>');
+      html.push('<td>' + escapeHtml(row.typUvazku) + '</td>');
       html.push('<td>' + escapeHtml(row.cas) + '</td>');
       html.push('<td>' + escapeHtml(row.misto) + '</td>');
       html.push('</tr>');
@@ -355,12 +370,13 @@
       var p = result.polozky[i];
       var trClass = p.typ === 'chyba' ? ' class="validace-chyba"' : ' class="validace-varovani"';
       var kontextHtml = escapeHtml(p.kontext);
-      if (p.pravidlo === 'Nevyčerpaný úvazek' && p.zamestnanecId) {
+      if ((p.pravidlo === 'Nevyčerpaný úvazek' || p.pravidlo === 'Přečerpaný úvazek') && p.zamestnanecId) {
         var colonIdx = p.kontext.indexOf(': ');
         if (colonIdx >= 0) {
           var jmenoPart = p.kontext.slice(0, colonIdx);
           var restPart = p.kontext.slice(colonIdx);
-          kontextHtml = '<span class="validace-jmeno-link" data-zam-id="' + escapeAttr(p.zamestnanecId) + '" role="button" tabindex="0">' + escapeHtml(jmenoPart) + '</span>' + escapeHtml(restPart);
+          var dataTyp = (p.typUmisteni != null && p.typUmisteni !== '') ? ' data-typ-umisteni="' + escapeAttr(p.typUmisteni) + '"' : '';
+          kontextHtml = '<span class="validace-jmeno-link" data-zam-id="' + escapeAttr(p.zamestnanecId) + '"' + dataTyp + ' role="button" tabindex="0">' + escapeHtml(jmenoPart) + '</span>' + escapeHtml(restPart);
         }
       } else if (p.pravidlo === 'Překryv směn' && p.seg1Label != null && p.seg2Label != null) {
         var jmenoPrekryv = jmenoZamestnance(lastNavrhResult.data.zamestnanci, p.zamestnanecId);
@@ -374,13 +390,15 @@
     for (var li = 0; li < linkEls.length; li += 1) {
       linkEls[li].addEventListener('click', function () {
         var zamId = this.getAttribute('data-zam-id');
-        if (zamId) openDoplnitModal(zamId);
+        var typU = this.getAttribute('data-typ-umisteni') || null;
+        if (zamId) openDoplnitModal(zamId, typU);
       });
       linkEls[li].addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           var zamId = this.getAttribute('data-zam-id');
-          if (zamId) openDoplnitModal(zamId);
+          var typU = this.getAttribute('data-typ-umisteni') || null;
+          if (zamId) openDoplnitModal(zamId, typU);
         }
       });
     }
@@ -505,16 +523,41 @@
       budovy.forEach(function (b) { if (b.id) grafVybraneBudovyIds[b.id] = true; });
     }
     var vybraneIds = grafVybraneBudovyIds == null ? [] : Object.keys(grafVybraneBudovyIds).filter(function (id) { return grafVybraneBudovyIds[id]; });
-    var dataProGraf = data ? { zamestnanci: data.zamestnanci || [], budovy: vybraneIds.length === 0 ? budovy : budovy.filter(function (b) { return grafVybraneBudovyIds[b.id]; }) } : {};
+    var budovyProGraf = vybraneIds.length === 0 ? budovy : budovy.filter(function (b) { return grafVybraneBudovyIds[b.id]; });
+    var dataProGraf = data ? { zamestnanci: data.zamestnanci || [], budovy: budovyProGraf } : {};
+    var vsechnyTridy = [];
+    for (var bi = 0; bi < budovyProGraf.length; bi += 1) {
+      var b = budovyProGraf[bi];
+      if (b.tridy) for (var ti = 0; ti < b.tridy.length; ti += 1) {
+        var t = b.tridy[ti];
+        if (t.id) vsechnyTridy.push({ id: t.id, nazev: t.nazev || '(bez názvu)', budovaId: b.id });
+      }
+    }
     var validaceVarovani = buildValidaceVarovaniProGraf(prirazeni || [], data || {});
     var opts = Object.assign({}, grafOpts || {}, {
       validaceVarovani: validaceVarovani,
       rezim: grafRezim,
       vsechnyBudovy: budovy,
       vybraneBudovyIds: vybraneIds.length > 0 ? vybraneIds : budovy.map(function (b) { return b.id; }),
+      vsechnyTridy: vsechnyTridy,
+      vybraneTridyIds: grafVybraneTridyIds,
+      vybraniZamestnanciIds: grafVybraniZamestnanciIds,
+      vybraneTypyUmisteni: grafVybraneTypyUmisteni,
+      onTypyUmisteniChange: function (selected) {
+        grafVybraneTypyUmisteni = selected;
+        if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
+      },
       onBudovyChange: function (selectedIds) {
         grafVybraneBudovyIds = {};
         (selectedIds || []).forEach(function (id) { grafVybraneBudovyIds[id] = true; });
+        if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
+      },
+      onTridyChange: function (selectedIds) {
+        grafVybraneTridyIds = selectedIds.length === 0 ? {} : (function () { var o = {}; selectedIds.forEach(function (id) { o[id] = true; }); return o; })();
+        if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
+      },
+      onZamestnanciChange: function (selectedIds) {
+        grafVybraniZamestnanciIds = selectedIds.length === 0 ? null : (function () { var o = {}; selectedIds.forEach(function (id) { o[id] = true; }); return o; })();
         if (lastNavrhResult) zobrazGraf(lastNavrhResult.prirazeni, lastNavrhResult.data, grafOpts);
       },
       onDenChange: function (d) {
@@ -615,6 +658,30 @@
     }
     odInput.value = seg.od || '';
     doInput.value = seg.do || '';
+    var typSelect = document.getElementById('navrh-segment-typ');
+    var typWrapper = document.getElementById('navrh-segment-typ-wrapper');
+    var zam = lastNavrhResult.data.zamestnanci.find(function (z) { return z.id === zamestnanecId; });
+    var getUvazekProUmisteni = (global.MSemenyDataModel && typeof global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni === 'function')
+      ? global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni
+      : null;
+    if (typSelect) {
+      typSelect.innerHTML = '';
+      var firstTyp = null;
+      for (var to = 0; to < TYPY_UMISTENI_OPTIONS.length; to += 1) {
+        var o = TYPY_UMISTENI_OPTIONS[to];
+        var uvazekTyp = getUvazekProUmisteni ? getUvazekProUmisteni(zam, o.value) : (global.MSemenyDataModel && global.MSemenyDataModel.getUvazekMinutyZamestnance ? global.MSemenyDataModel.getUvazekMinutyZamestnance(zam) : 0);
+        if (!getUvazekProUmisteni || (uvazekTyp != null && uvazekTyp > 0)) {
+          var opt = document.createElement('option');
+          opt.value = o.value;
+          opt.textContent = o.label;
+          typSelect.appendChild(opt);
+          if (firstTyp === null) firstTyp = o.value;
+        }
+      }
+      var segTyp = (seg.typUmisteni && typSelect.querySelector('option[value="' + seg.typUmisteni + '"]')) ? seg.typUmisteni : firstTyp;
+      if (segTyp) typSelect.value = segTyp;
+      if (typWrapper) typWrapper.hidden = (typSelect.options.length <= 1);
+    }
     mistoSelect.innerHTML = '';
     var budovy = lastNavrhResult.data.budovy || [];
     for (var bi = 0; bi < budovy.length; bi += 1) {
@@ -673,6 +740,7 @@
     var odInput = document.getElementById('navrh-segment-od');
     var doInput = document.getElementById('navrh-segment-do');
     var mistoSelect = document.getElementById('navrh-segment-misto');
+    var typSelect = document.getElementById('navrh-segment-typ');
     if (!denSelect || !odInput || !doInput || !mistoSelect) return;
     var prirazeni = clonePrirazeni(lastNavrhResult.prirazeni);
     var p = prirazeni.find(function (x) { return x.den === segmentEditState.den && x.zamestnanecId === segmentEditState.zamestnanecId; });
@@ -680,6 +748,7 @@
     var seg = p.segmenty[segmentEditState.segIndex];
     seg.od = odInput.value || seg.od;
     seg.do = doInput.value || seg.do;
+    if (typSelect && typSelect.value) seg.typUmisteni = typSelect.value;
     var val = mistoSelect.value || '';
     if (val.indexOf('t:') === 0) {
       seg.tridaId = val.slice(2);
@@ -729,13 +798,21 @@
   /* ---------- D12: Doplnění nevyčerpaného úvazku ---------- */
   var doplnitModalZamId = null;
 
-  function openDoplnitModal(zamestnanecId) {
+  var TYPY_UMISTENI_OPTIONS = [
+    { value: 'pedagogove', label: 'Pedagog' },
+    { value: 'asistenti', label: 'Asistentka' },
+    { value: 'skolnice', label: 'Školnice' }
+  ];
+
+  function openDoplnitModal(zamestnanecId, predvyplnenyTypUmisteni) {
     if (!lastNavrhResult || !zamestnanecId) return;
     var zam = lastNavrhResult.data.zamestnanci.find(function (z) { return z.id === zamestnanecId; });
     if (!zam) return;
     doplnitModalZamId = zamestnanecId;
     var modal = document.getElementById('navrh-doplnit-modal');
     var jmenoEl = document.getElementById('navrh-doplnit-jmeno');
+    var typSelect = document.getElementById('navrh-doplnit-typ');
+    var typWrapper = document.getElementById('navrh-doplnit-typ-wrapper');
     var denSelect = document.getElementById('navrh-doplnit-den');
     var odInput = document.getElementById('navrh-doplnit-od');
     var doInput = document.getElementById('navrh-doplnit-do');
@@ -743,6 +820,27 @@
     if (!modal || !jmenoEl || !denSelect || !odInput || !doInput || !tridaSelect) return;
 
     jmenoEl.textContent = zam.jmeno || '(bez jména)';
+    var getUvazekProUmisteni = (global.MSemenyDataModel && typeof global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni === 'function')
+      ? global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni
+      : null;
+    if (typSelect) {
+      typSelect.innerHTML = '';
+      var firstTyp = null;
+      for (var to = 0; to < TYPY_UMISTENI_OPTIONS.length; to += 1) {
+        var o = TYPY_UMISTENI_OPTIONS[to];
+        var uvazekTyp = getUvazekProUmisteni ? getUvazekProUmisteni(zam, o.value) : (getUvazekProUmisteni ? 0 : (global.MSemenyDataModel ? global.MSemenyDataModel.getUvazekMinutyZamestnance(zam) : 0));
+        if (!getUvazekProUmisteni || uvazekTyp > 0) {
+          var opt = document.createElement('option');
+          opt.value = o.value;
+          opt.textContent = o.label;
+          typSelect.appendChild(opt);
+          if (!firstTyp) firstTyp = o.value;
+        }
+      }
+      var vybranyTyp = (predvyplnenyTypUmisteni && typSelect.querySelector('option[value="' + predvyplnenyTypUmisteni + '"]')) ? predvyplnenyTypUmisteni : firstTyp;
+      if (vybranyTyp) typSelect.value = vybranyTyp;
+      if (typWrapper) typWrapper.hidden = typSelect.options.length <= 1;
+    }
     denSelect.innerHTML = '';
     for (var d = 1; d <= 5; d += 1) {
       var opt = document.createElement('option');
@@ -803,15 +901,30 @@
     var doInput = document.getElementById('navrh-doplnit-do');
     var tridaSelect = document.getElementById('navrh-doplnit-trida');
     var denSelect = document.getElementById('navrh-doplnit-den');
+    var typSelect = document.getElementById('navrh-doplnit-typ');
     if (!odInput || !doInput || !tridaSelect || !denSelect) return;
     var tridaId = tridaSelect.value || null;
     var odStr = odInput.value || '';
     if (!odStr || !tridaId) { doInput.value = ''; return; }
+    var typ = (typSelect && typSelect.value) ? typSelect.value : 'pedagogove';
     var Validace = global.MSemenyValidaceNavrhu;
-    var sum = Validace && Validace.sumMinutyPerZamestnanec ? Validace.sumMinutyPerZamestnanec(lastNavrhResult.prirazeni) : {};
-    var vNavrhu = sum[doplnitModalZamId] || 0;
+    var sumPoType = (Validace && Validace.sumMinutyPerZamestnanecPoType) ? Validace.sumMinutyPerZamestnanecPoType(lastNavrhResult.prirazeni) : {};
+    var byZam = sumPoType[doplnitModalZamId] || {};
+    var vNavrhu = byZam[typ] != null ? byZam[typ] : (Validace && Validace.sumMinutyPerZamestnanec ? (Validace.sumMinutyPerZamestnanec(lastNavrhResult.prirazeni)[doplnitModalZamId] || 0) : 0);
     var zam = lastNavrhResult.data.zamestnanci.find(function (z) { return z.id === doplnitModalZamId; });
-    var uvazek = (zam && zam.uvazekMinutyTyden != null && zam.uvazekMinutyTyden !== '') ? parseInt(zam.uvazekMinutyTyden, 10) : 0;
+    var getUvazekProUmisteni = (global.MSemenyDataModel && typeof global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni === 'function')
+      ? global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni
+      : null;
+    var uvazek;
+    if (getUvazekProUmisteni) {
+      uvazek = getUvazekProUmisteni(zam, typ);
+    } else if (global.MSemenyDataModel && global.MSemenyDataModel.getUvazekMinutyZamestnance) {
+      uvazek = global.MSemenyDataModel.getUvazekMinutyZamestnance(zam);
+    } else if (zam && zam.uvazekMinutyTyden != null && zam.uvazekMinutyTyden !== '') {
+      uvazek = parseInt(zam.uvazekMinutyTyden, 10);
+    } else {
+      uvazek = 0;
+    }
     if (isNaN(uvazek)) uvazek = 0;
     var zbyvajici = Math.max(0, uvazek - vNavrhu);
     var maxBlok = Math.min(zbyvajici, 8 * 60);
@@ -850,12 +963,15 @@
       p = { den: den, zamestnanecId: doplnitModalZamId, segmenty: [] };
       prirazeni.push(p);
     }
+    var typSelect = document.getElementById('navrh-doplnit-typ');
+    var typUmisteni = (typSelect && typSelect.value) ? typSelect.value : 'pedagogove';
     var budovaId = findBudovaIdForTrida(lastNavrhResult.data.budovy, tridaId);
     p.segmenty.push({
       od: odInput.value,
       do: doInput.value,
       tridaId: tridaId,
-      budovaId: budovaId || undefined
+      budovaId: budovaId || undefined,
+      typUmisteni: typUmisteni
     });
     applyNavrhChange(prirazeni);
     closeDoplnitModal();
@@ -925,8 +1041,10 @@
     if (doplnitZrusit) doplnitZrusit.addEventListener('click', closeDoplnitModal);
     var doplnitOd = document.getElementById('navrh-doplnit-od');
     var doplnitTrida = document.getElementById('navrh-doplnit-trida');
+    var doplnitTyp = document.getElementById('navrh-doplnit-typ');
     if (doplnitOd) doplnitOd.addEventListener('change', updateDoplnitCasDo);
     if (doplnitTrida) doplnitTrida.addEventListener('change', updateDoplnitCasDo);
+    if (doplnitTyp) doplnitTyp.addEventListener('change', updateDoplnitCasDo);
 
     var el = document.getElementById('navrh-vysledek');
     if (el && !el.innerHTML.trim()) {

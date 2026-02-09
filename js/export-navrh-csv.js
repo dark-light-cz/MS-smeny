@@ -30,15 +30,16 @@
   function navrhToCsv(prirazeni, data) {
     var UI = global.MSemenyNavrhSmenUI;
     if (!UI || !UI.getNavrhRows) {
-      return 'Den;Zaměstnanec;Čas;Místo\n';
+      return 'Den;Zaměstnanec;Typ úvazku;Čas;Místo\n';
     }
     var rows = UI.getNavrhRows(prirazeni || [], data || {});
-    var lines = ['Den;Zaměstnanec;Čas;Místo'];
+    var lines = ['Den;Zaměstnanec;Typ úvazku;Čas;Místo'];
     for (var i = 0; i < rows.length; i += 1) {
       var r = rows[i];
       lines.push(
         csvEscape(r.denLabel) + ';' +
         csvEscape(r.zamestnanec) + ';' +
+        csvEscape(r.typUvazku) + ';' +
         csvEscape(r.cas) + ';' +
         csvEscape(r.misto)
       );

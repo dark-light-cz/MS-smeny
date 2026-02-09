@@ -18,24 +18,49 @@
     return '(?)';
   }
 
+  var TYPY_UMISTENI = (global.MSemenyDataModel && global.MSemenyDataModel.TYPY_UMISTENI)
+    ? global.MSemenyDataModel.TYPY_UMISTENI
+    : { PEDAGOGOVE: 'pedagogove', ASISTENTI: 'asistenti', SKOLNICE: 'skolnice' };
+
   /**
    * Spočítá součet minut v návrhu pro každého zaměstnance (podle zamestnanecId).
    * @param {Array} prirazeni - [{ den, zamestnanecId, segmenty: [{ od, do }] }]
    * @returns {Object} mapa zamestnanecId -> celkové minuty
    */
   function sumMinutyPerZamestnanec(prirazeni) {
+    var byType = sumMinutyPerZamestnanecPoType(prirazeni);
+    var sum = {};
+    for (var zamId in byType) {
+      if (!Object.prototype.hasOwnProperty.call(byType, zamId)) continue;
+      var t = byType[zamId];
+      sum[zamId] = (t.pedagogove || 0) + (t.asistenti || 0) + (t.skolnice || 0);
+    }
+    return sum;
+  }
+
+  /**
+   * Spočítá součet minut v návrhu pro každého zaměstnance a typ umísťování (pedagogové / asistenti / školnice).
+   * Segment bez typUmisteni se počítá jako pedagogove.
+   * @param {Array} prirazeni - [{ den, zamestnanecId, segmenty: [{ od, do, typUmisteni? }] }]
+   * @returns {Object} mapa zamestnanecId -> { pedagogove, asistenti, skolnice }
+   */
+  function sumMinutyPerZamestnanecPoType(prirazeni) {
     var sum = {};
     for (var i = 0; i < (prirazeni || []).length; i += 1) {
       var p = prirazeni[i];
       var id = p.zamestnanecId;
       if (!id) continue;
-      if (!sum[id]) sum[id] = 0;
+      if (!sum[id]) sum[id] = { pedagogove: 0, asistenti: 0, skolnice: 0 };
       var segs = p.segmenty || [];
       for (var j = 0; j < segs.length; j += 1) {
         var seg = segs[j];
         var odM = timeToMinuty(seg.od);
         var doM = timeToMinuty(seg.do);
-        if (doM > odM) sum[id] += (doM - odM);
+        var minuty = (doM > odM) ? (doM - odM) : 0;
+        var typ = seg.typUmisteni === TYPY_UMISTENI.ASISTENTI ? 'asistenti'
+          : seg.typUmisteni === TYPY_UMISTENI.SKOLNICE ? 'skolnice'
+          : 'pedagogove';
+        sum[id][typ] = (sum[id][typ] || 0) + minuty;
       }
     }
     return sum;
@@ -53,34 +78,62 @@
     prirazeni = prirazeni || [];
 
     var minutyPerZam = sumMinutyPerZamestnanec(prirazeni);
+    var minutyPerZamPoType = sumMinutyPerZamestnanecPoType(prirazeni);
+    var getUvazekProUmisteni = (typeof global.MSemenyDataModel !== 'undefined' && global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni)
+      ? global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni
+      : null;
+    var typyProKontrolu = [TYPY_UMISTENI.PEDAGOGOVE, TYPY_UMISTENI.ASISTENTI, TYPY_UMISTENI.SKOLNICE];
+    var typLabel = function (t) {
+      if (t === TYPY_UMISTENI.ASISTENTI) return 'asistentka';
+      if (t === TYPY_UMISTENI.SKOLNICE) return 'školnice';
+      return 'pedagog';
+    };
 
     if (prirazeni.length > 0) {
 
     for (var i = 0; i < zamestnanci.length; i += 1) {
       var z = zamestnanci[i];
       var id = z.id;
-      var uvazek = (z.uvazekMinutyTyden != null && z.uvazekMinutyTyden !== '') ? parseInt(z.uvazekMinutyTyden, 10) : 0;
-      if (isNaN(uvazek)) uvazek = 0;
-      var vNavrhu = minutyPerZam[id] || 0;
-
-      if (vNavrhu > uvazek) {
-        polozky.push({
-          typ: 'chyba',
-          pravidlo: 'Přečerpaný úvazek',
-          kontext: jmenoZamestnance(zamestnanci, id) + ': v návrhu ' + vNavrhu + ' min, úvazek max ' + uvazek + ' min',
-          zamestnanecId: id
-        });
-      } else if (uvazek > 0 && vNavrhu < uvazek) {
-        var zbyvaMin = uvazek - vNavrhu;
-        var zbyvaH = Math.floor(zbyvaMin / 60);
-        var zbyvaM = zbyvaMin % 60;
-        var zbyvaText = zbyvaH + ':' + (zbyvaM < 10 ? '0' : '') + zbyvaM;
-        polozky.push({
-          typ: 'varovani',
-          pravidlo: 'Nevyčerpaný úvazek',
-          kontext: jmenoZamestnance(zamestnanci, id) + ': v návrhu ' + vNavrhu + ' min, úvazek ' + uvazek + ' min, což odpovídá ' + zbyvaText,
-          zamestnanecId: id
-        });
+      if (!getUvazekProUmisteni) {
+        var uvazek = (global.MSemenyDataModel && global.MSemenyDataModel.getUvazekMinutyZamestnance)
+          ? global.MSemenyDataModel.getUvazekMinutyZamestnance(z)
+          : ((z.uvazekMinutyTyden != null && z.uvazekMinutyTyden !== '') ? parseInt(z.uvazekMinutyTyden, 10) : 0);
+        if (isNaN(uvazek)) uvazek = 0;
+        var vNavrhu = minutyPerZam[id] || 0;
+        if (vNavrhu > uvazek) {
+          polozky.push({ typ: 'chyba', pravidlo: 'Přečerpaný úvazek', kontext: jmenoZamestnance(zamestnanci, id) + ': v návrhu ' + vNavrhu + ' min, úvazek max ' + uvazek + ' min', zamestnanecId: id });
+        } else if (uvazek > 0 && vNavrhu < uvazek) {
+          var zbyvaMin = uvazek - vNavrhu;
+          polozky.push({ typ: 'varovani', pravidlo: 'Nevyčerpaný úvazek', kontext: jmenoZamestnance(zamestnanci, id) + ': v návrhu ' + vNavrhu + ' min, úvazek ' + uvazek + ' min, což odpovídá ' + Math.floor(zbyvaMin / 60) + ':' + ((zbyvaMin % 60) < 10 ? '0' : '') + (zbyvaMin % 60), zamestnanecId: id });
+        }
+        continue;
+      }
+      for (var ti = 0; ti < typyProKontrolu.length; ti += 1) {
+        var typU = typyProKontrolu[ti];
+        var uvazek = getUvazekProUmisteni(z, typU);
+        if (isNaN(uvazek)) uvazek = 0;
+        if (uvazek <= 0) continue;
+        var byType = minutyPerZamPoType[id] || {};
+        var vNavrhu = byType[typU] || 0;
+        if (vNavrhu > uvazek) {
+          polozky.push({
+            typ: 'chyba',
+            pravidlo: 'Přečerpaný úvazek',
+            kontext: jmenoZamestnance(zamestnanci, id) + ' (' + typLabel(typU) + '): v návrhu ' + vNavrhu + ' min, úvazek max ' + uvazek + ' min',
+            zamestnanecId: id,
+            typUmisteni: typU
+          });
+        } else if (vNavrhu < uvazek) {
+          var zbyvaMin = uvazek - vNavrhu;
+          var zbyvaText = Math.floor(zbyvaMin / 60) + ':' + ((zbyvaMin % 60) < 10 ? '0' : '') + (zbyvaMin % 60);
+          polozky.push({
+            typ: 'varovani',
+            pravidlo: 'Nevyčerpaný úvazek',
+            kontext: jmenoZamestnance(zamestnanci, id) + ' (' + typLabel(typU) + '): v návrhu ' + vNavrhu + ' min, úvazek ' + uvazek + ' min, což odpovídá ' + zbyvaText,
+            zamestnanecId: id,
+            typUmisteni: typU
+          });
+        }
       }
     }
 
@@ -281,8 +334,13 @@
     return '';
   }
 
+  /** Zda se segment započítává do min/max na třídu a budovu (jen pedagogické úvazky, asistenti a školnice se ignorují). */
+  function segmentPatriDoMinMaxPedagog(seg) {
+    return seg.typUmisteni !== TYPY_UMISTENI.ASISTENTI && seg.typUmisteni !== TYPY_UMISTENI.SKOLNICE;
+  }
+
   /**
-   * Pro každou minutu v [odMin, doMin) spočítá počet osob v dané třídě; vrátí min a max z těchto počtů (D10b).
+   * Pro každou minutu v [odMin, doMin) spočítá počet osob v dané třídě (jen pedagogické segmenty); vrátí min a max (D10b).
    */
   function minMaxPocetOsobVTridVCase(prirazeni, den, tridaId, odMin, doMin) {
     var minCount = Infinity;
@@ -294,6 +352,7 @@
         if (p.den !== den) continue;
         for (var si = 0; si < (p.segmenty || []).length; si += 1) {
           var seg = p.segmenty[si];
+          if (!segmentPatriDoMinMaxPedagog(seg)) continue;
           if (seg.tridaId !== tridaId) continue;
           var segOd = timeToMinuty(seg.od);
           var segDo = timeToMinuty(seg.do);
@@ -323,7 +382,7 @@
   }
 
   /**
-   * Pro každou minutu v [odMin, doMin) spočítá počet osob v dané budově (včetně přes třídy); vrátí min a max (D10b).
+   * Pro každou minutu v [odMin, doMin) spočítá počet osob v dané budově (jen pedagogické segmenty); vrátí min a max (D10b).
    */
   function minMaxPocetOsobVBudoveVCase(prirazeni, den, budovaId, budovy, odMin, doMin) {
     var minCount = Infinity;
@@ -335,6 +394,7 @@
         if (p.den !== den) continue;
         for (var si = 0; si < (p.segmenty || []).length; si += 1) {
           var seg = p.segmenty[si];
+          if (!segmentPatriDoMinMaxPedagog(seg)) continue;
           var inBudova = (seg.budovaId === budovaId) || (seg.tridaId && tridaJeVBudove(budovy, seg.tridaId) === budovaId);
           if (!inBudova) continue;
           var segOd = timeToMinuty(seg.od);
@@ -350,6 +410,7 @@
 
   global.MSemenyValidaceNavrhu = {
     validujNavrh: validujNavrh,
-    sumMinutyPerZamestnanec: sumMinutyPerZamestnanec
+    sumMinutyPerZamestnanec: sumMinutyPerZamestnanec,
+    sumMinutyPerZamestnanecPoType: sumMinutyPerZamestnanecPoType
   };
 })(typeof window !== 'undefined' ? window : this);

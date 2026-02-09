@@ -9,6 +9,13 @@
 (function (global) {
   'use strict';
 
+  var getUvazekMinuty = (global.MSemenyDataModel && typeof global.MSemenyDataModel.getUvazekMinutyZamestnance === 'function')
+    ? global.MSemenyDataModel.getUvazekMinutyZamestnance
+    : function (z) { return (z && z.uvazekMinutyTyden != null) ? parseInt(z.uvazekMinutyTyden, 10) || 0 : 0; };
+  var getUvazekMinutyProUmisteni = (global.MSemenyDataModel && typeof global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni === 'function')
+    ? global.MSemenyDataModel.getUvazekMinutyZamestnanceProUmisteni
+    : null;
+
   var STEP = 15; // granularita posunu začátku směny (minuty)
 
   /* === Utility funkce === */
@@ -1056,8 +1063,12 @@
    *   [{ den: 1–5, zamestnanecId: string, segmenty: [{ od, do, budovaId, tridaId }] }]
    */
   function vypocetSmen(data) {
+    var typUmisteni = (data.typUmisteni === 'asistenti' || data.typUmisteni === 'skolnice') ? data.typUmisteni : 'pedagogove';
+    var getUvazek = getUvazekMinutyProUmisteni
+      ? function (z) { return getUvazekMinutyProUmisteni(z, typUmisteni); }
+      : getUvazekMinuty;
     var zamestnanci = (data.zamestnanci || []).filter(function (z) {
-      return z && z.id && (z.uvazekMinutyTyden == null || z.uvazekMinutyTyden > 0);
+      return z && z.id && getUvazek(z) > 0;
     });
     var budovy = data.budovy || [];
     var pravidla = data.pravidla || {};
@@ -1096,7 +1107,7 @@
     // Minuty se rozdělí proporčně podle dostupného času v jednotlivých dnech.
     var empWeekly = {};
     for (var ew = 0; ew < zamestnanci.length; ew++) {
-      empWeekly[zamestnanci[ew].id] = parseInt(zamestnanci[ew].uvazekMinutyTyden, 10) || 0;
+      empWeekly[zamestnanci[ew].id] = getUvazek(zamestnanci[ew]);
     }
 
     var prirazeni = [];

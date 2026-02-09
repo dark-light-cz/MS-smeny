@@ -169,42 +169,98 @@ header {
   margin-bottom: 1rem;
 }
 
-.zamestnanci-formular {
-  margin-bottom: 1.5rem;
+/* Popup pro přidání/úpravu zaměstnance */
+.zamestnanci-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+}
+.zamestnanci-modal[hidden] {
+  display: none !important;
 }
 
-.zamestnanci-formular p {
+.zamestnanci-modal-obal {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  max-width: 720px;
+  width: 100%;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+.zamestnanci-modal-obal h3 {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+}
+
+.zamestnanci-modal-obal form p {
   margin: 0.5rem 0;
 }
 
-.zamestnanci-formular label {
+.zamestnanci-modal-obal label {
   display: inline-block;
   min-width: 10em;
 }
 
-.zamestnanci-formular input[type="number"] {
+.zamestnanci-modal-obal input[type="number"] {
   width: 4em;
 }
 
-.zamestnanci-formular .form-akce {
+.zamestnanci-modal-obal .form-akce {
   margin-top: 1rem;
 }
 
-.zamestnanci-formular .form-akce .btn {
+.zamestnanci-modal-obal .form-akce .btn {
   margin-right: 0.5rem;
 }
 
-.zamestnanci-formular .label-inline {
+.zamestnanci-modal-obal .label-inline {
   margin-right: 0.75rem;
 }
 
-.zamestnanci-formular .zamestnanci-trida-wrapper .hint {
+.zamestnanci-modal-obal .zamestnanci-trida-wrapper .hint {
   display: block;
   margin-top: 0.25rem;
+}
+
+.role-uvazky-fieldset {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.role-uvazky-fieldset legend {
+  font-weight: 600;
+}
+
+.role-uvazky-seznam {
+  margin: 0.5rem 0;
+}
+
+.role-uvazky-radek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.role-uvazky-radek select.role-uvazky-role {
+  min-width: 10rem;
+}
+
+.role-uvazky-radek input.role-uvazky-hodiny,
+.role-uvazky-radek input.role-uvazky-minuty {
+  width: 3.5rem;
 }
 
 .hint {
@@ -731,6 +787,64 @@ header {
   margin: 0;
 }
 
+.navrh-graf-tridy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.navrh-graf-tridy-label {
+  font-weight: 600;
+  margin-right: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.navrh-graf-tridy-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.navrh-graf-tridy-input {
+  margin: 0;
+}
+
+.navrh-graf-typy-umisteni {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.navrh-graf-typy-label {
+  font-weight: 600;
+  margin-right: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.navrh-graf-typy-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.navrh-graf-typy-input {
+  margin: 0;
+}
+
 .navrh-graf-ovladaci {
   display: flex;
   flex-wrap: wrap;
@@ -935,6 +1049,28 @@ header {
   padding: 0 4px;
   line-height: 1.6;
   box-sizing: border-box;
+  /* Čitelnost popisku na všech barvách: bílý obrys + jemný stín (halo) */
+  text-shadow:
+    0 0 2px #fff,
+    0 0 4px #fff,
+    1px 0 1px #fff,
+    -1px 0 1px #fff,
+    0 1px 1px #fff,
+    0 -1px 1px #fff,
+    1px 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* Úvazky asistentek: stejná barva jako osoba (background-color z inline), výrazné šrafování pro odlišení od pedagogů */
+.navrh-graf-segment-asistenti {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0,
+    transparent 4px,
+    rgba(0, 0, 0, 0.42) 4px,
+    rgba(0, 0, 0, 0.42) 7px
+  );
+  border: 1px dashed rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
 }
 
 .navrh-graf-segment:hover {
@@ -1032,9 +1168,9 @@ header {
 }
 
 .navrh-graf-legenda {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-border);
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
   font-size: 0.9rem;
   display: flex;
   flex-wrap: wrap;
@@ -1051,6 +1187,20 @@ header {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  cursor: pointer;
+}
+
+.navrh-graf-legenda-položka:has(.navrh-graf-legenda-input:disabled) {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.navrh-graf-legenda-input {
+  margin: 0;
+}
+
+.navrh-graf-legenda-input:disabled {
+  cursor: not-allowed;
 }
 
 .navrh-graf-legenda-barvicka {
