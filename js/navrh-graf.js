@@ -541,6 +541,18 @@
     container.dataset.rangeStart = String(range.start);
     container.dataset.rangeEnd = String(range.end);
 
+    /* Před přidáním nových listenerů odstranit předchozí (z minulého převykreslení) a skrýt případné tooltipy */
+    if (container._navrhGrafDragCleanup) {
+      container._navrhGrafDragCleanup();
+      container._navrhGrafDragCleanup = null;
+    }
+    if (container._navrhGrafResizeCleanup) {
+      container._navrhGrafResizeCleanup();
+      container._navrhGrafResizeCleanup = null;
+    }
+    var dragResizeTooltips = document.querySelectorAll('.navrh-graf-resize-tooltip');
+    for (var tti = 0; tti < dragResizeTooltips.length; tti += 1) dragResizeTooltips[tti].style.display = 'none';
+
     /* Checkboxy budov: při změně vrátit seznam vybraných id */
     if (typeof onBudovyChange === 'function') {
       var budovyInputs = container.querySelectorAll('.navrh-graf-budovy-input');
@@ -723,9 +735,21 @@
       var dragPayload = null;
       var dragAxisEl = null;
       var droppedOnRow = false;
-      var moveTimeTooltipEl = null;
+      var moveTimeTooltipEl = (function () {
+        var existing = document.querySelector('.navrh-graf-resize-tooltip');
+        if (existing) return existing;
+        var el = document.createElement('div');
+        el.className = 'navrh-graf-resize-tooltip';
+        el.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(el);
+        return el;
+      })();
 
-      container.addEventListener('dragstart', function (ev) {
+      function hideMoveTooltip() {
+        moveTimeTooltipEl.style.display = 'none';
+      }
+
+      function onDragStart(ev) {
         var seg = ev.target.closest('.navrh-graf-segment');
         if (!seg || !seg.hasAttribute('data-den')) return;
         droppedOnRow = false;
@@ -737,6 +761,9 @@
         var widthPct = parseFloat(seg.style.width) || 0;
         var odMin = rangeStart + (leftPct / 100) * rangeLen;
         var doMin = rangeStart + ((leftPct + widthPct) / 100) * rangeLen;
+        var sourceRow = seg.closest('.navrh-graf-rada');
+        var sourceTridaId = sourceRow ? (sourceRow.getAttribute('data-trida-id') || null) : null;
+        var sourceBudovaId = sourceRow ? (sourceRow.getAttribute('data-budova-id') || null) : null;
         dragPayload = {
           den: parseInt(seg.getAttribute('data-den'), 10),
           zamestnanecId: seg.getAttribute('data-zam-id'),
@@ -744,49 +771,67 @@
           odMin: odMin,
           doMin: doMin
         };
-        dragAxisEl = seg.parentElement;
-        ev.dataTransfer.setData('application/json', JSON.stringify({ den: dragPayload.den, zamestnanecId: dragPayload.zamestnanecId, segIndex: dragPayload.segIndex }));
+        var daySection = seg.closest('.navrh-graf-inline-den');
+        dragAxisEl = (daySection ? daySection.querySelector('.navrh-graf-osa-pruh') : null) || container.querySelector('.navrh-graf-osa-pruh') || seg.parentElement;
+        ev.dataTransfer.setData('application/json', JSON.stringify({
+          den: dragPayload.den,
+          zamestnanecId: dragPayload.zamestnanecId,
+          segIndex: dragPayload.segIndex,
+          sourceTridaId: sourceTridaId,
+          sourceBudovaId: sourceBudovaId
+        }));
         ev.dataTransfer.effectAllowed = 'move';
         seg.classList.add('dragging');
         if (typeof onSegmentMoveTime === 'function') {
-          if (!moveTimeTooltipEl) {
-            moveTimeTooltipEl = document.createElement('div');
-            moveTimeTooltipEl.className = 'navrh-graf-resize-tooltip';
-            moveTimeTooltipEl.setAttribute('aria-hidden', 'true');
-            document.body.appendChild(moveTimeTooltipEl);
-          }
           moveTimeTooltipEl.textContent = minutyToHhmm(odMin) + '–' + minutyToHhmm(doMin);
           moveTimeTooltipEl.style.display = 'block';
         }
-      });
-      container.addEventListener('dragend', function (ev) {
-        if (draggedSegment) draggedSegment.classList.remove('dragging');
-        if (moveTimeTooltipEl) moveTimeTooltipEl.style.display = 'none';
-        if (!droppedOnRow && dragPayload && dragAxisEl && typeof onSegmentMoveTime === 'function') {
-          var rangeStart = parseInt(container.dataset.rangeStart, 10) || 0;
-          var rangeEnd = parseInt(container.dataset.rangeEnd, 10) || rangeStart + 600;
-          var rangeLen = Math.max(1, rangeEnd - rangeStart);
-          var rect = dragAxisEl.getBoundingClientRect();
-          var ratio = (ev.clientX - rect.left) / Math.max(1, rect.width);
-          var releaseTime = rangeStart + ratio * rangeLen;
-          releaseTime = snapMinuty(releaseTime);
-          releaseTime = Math.max(rangeStart, Math.min(rangeEnd, releaseTime));
-          var center = (dragPayload.odMin + dragPayload.doMin) / 2;
-          var delta = releaseTime - center;
-          var newOd = dragPayload.odMin + delta;
-          var newDo = dragPayload.doMin + delta;
-          newOd = snapMinuty(newOd);
-          newDo = snapMinuty(newDo);
-          newOd = Math.max(rangeStart, Math.min(rangeEnd - MIN_DELKA_MINUTY, newOd));
-          newDo = Math.max(newOd + MIN_DELKA_MINUTY, Math.min(rangeEnd, newDo));
-          newOd = Math.min(newOd, newDo - MIN_DELKA_MINUTY);
-          onSegmentMoveTime(dragPayload.den, dragPayload.zamestnanecId, dragPayload.segIndex, minutyToHhmm(newOd), minutyToHhmm(newDo));
+      }
+
+      function onDragEnd(ev) {
+        if (draggedSegment) {
+          try { draggedSegment.classList.remove('dragging'); } catch (e) { /* uzel už může být mimo DOM */ }
         }
+        hideMoveTooltip();
+        var payload = dragPayload;
+        var wasDroppedOnRow = droppedOnRow;
         draggedSegment = null;
         dragPayload = null;
         dragAxisEl = null;
-      });
-      container.addEventListener('dragover', function (ev) {
+        if (!wasDroppedOnRow && payload && typeof onSegmentMoveTime === 'function') {
+          var daySection = container.querySelector('.navrh-graf-inline-den[data-den="' + payload.den + '"]');
+          var timeAxisBar = (daySection ? daySection.querySelector('.navrh-graf-osa-pruh') : null) || container.querySelector('.navrh-graf-osa-pruh');
+          if (timeAxisBar) {
+            var rangeStart = parseInt(container.dataset.rangeStart, 10) || 0;
+            var rangeEnd = parseInt(container.dataset.rangeEnd, 10) || rangeStart + 600;
+            var rangeLen = Math.max(1, rangeEnd - rangeStart);
+            var rect = timeAxisBar.getBoundingClientRect();
+            var ratio = (ev.clientX - rect.left) / Math.max(1, rect.width);
+            var releaseTime = rangeStart + ratio * rangeLen;
+            releaseTime = snapMinuty(releaseTime);
+            releaseTime = Math.max(rangeStart, Math.min(rangeEnd, releaseTime));
+            var center = (payload.odMin + payload.doMin) / 2;
+            var delta = releaseTime - center;
+            var newOd = payload.odMin + delta;
+            var newDo = payload.doMin + delta;
+            newOd = snapMinuty(newOd);
+            newDo = snapMinuty(newDo);
+            newOd = Math.max(rangeStart, Math.min(rangeEnd - MIN_DELKA_MINUTY, newOd));
+            newDo = Math.max(newOd + MIN_DELKA_MINUTY, Math.min(rangeEnd, newDo));
+            newOd = Math.min(newOd, newDo - MIN_DELKA_MINUTY);
+            var den = payload.den;
+            var zamId = payload.zamestnanecId;
+            var segIdx = payload.segIndex;
+            var odStr = minutyToHhmm(newOd);
+            var doStr = minutyToHhmm(newDo);
+            setTimeout(function () {
+              onSegmentMoveTime(den, zamId, segIdx, odStr, doStr);
+            }, 0);
+          }
+        }
+      }
+
+      function onDragover(ev) {
         var row = ev.target.closest('.navrh-graf-rada');
         if (!row) return;
         ev.preventDefault();
@@ -814,17 +859,20 @@
           moveTimeTooltipEl.style.left = (ev.clientX + 12) + 'px';
           moveTimeTooltipEl.style.top = (ev.clientY + 12) + 'px';
         }
-      });
-      container.addEventListener('dragleave', function (ev) {
+      }
+
+      function onDragleave(ev) {
         var row = ev.target.closest('.navrh-graf-rada');
         if (row && !row.contains(ev.relatedTarget)) row.classList.remove('drag-over');
-      });
-      container.addEventListener('drop', function (ev) {
+      }
+
+      function onDrop(ev) {
         var row = ev.target.closest('.navrh-graf-rada');
         if (!row) return;
         ev.preventDefault();
-        droppedOnRow = true;
+        ev.stopPropagation();
         row.classList.remove('drag-over');
+        hideMoveTooltip();
         var json = ev.dataTransfer.getData('application/json');
         if (!json) return;
         try {
@@ -833,16 +881,49 @@
           var bid = row.getAttribute('data-budova-id') || null;
           var targetDen = row.getAttribute('data-den');
           targetDen = (targetDen != null && targetDen !== '') ? parseInt(targetDen, 10) : (parseInt(container.dataset.currentDen, 10) || payload.den);
+          var sameRow = (tid === (payload.sourceTridaId || null) && bid === (payload.sourceBudovaId || null) && targetDen === payload.den);
+          if (sameRow) {
+            droppedOnRow = false;
+            return;
+          }
+          droppedOnRow = true;
           if (payload.den != null && payload.zamestnanecId && payload.segIndex != null) {
-            onSegmentDrop(payload, tid, bid, targetDen);
+            var p = { den: payload.den, zamestnanecId: payload.zamestnanecId, segIndex: payload.segIndex };
+            setTimeout(function () {
+              onSegmentDrop(p, tid, bid, targetDen);
+            }, 0);
           }
         } catch (e) { /* ignore */ }
-      });
+      }
+
+      container.addEventListener('dragstart', onDragStart);
+      container.addEventListener('dragend', onDragEnd);
+      container.addEventListener('dragover', onDragover);
+      container.addEventListener('dragleave', onDragleave);
+      container.addEventListener('drop', onDrop);
+
+      container._navrhGrafDragCleanup = function () {
+        container.removeEventListener('dragstart', onDragStart);
+        container.removeEventListener('dragend', onDragEnd);
+        container.removeEventListener('dragover', onDragover);
+        container.removeEventListener('dragleave', onDragleave);
+        container.removeEventListener('drop', onDrop);
+        hideMoveTooltip();
+      };
     }
 
     /* Změna délky směny tažením okraje (D11b): kurzor na okraji, mousedown→resize, mřížka 5 min, tooltip */
     var resizeState = null;
-    var resizeTooltipEl = null;
+    var resizeTooltipEl = (function () {
+      var existing = document.querySelector('.navrh-graf-resize-tooltip');
+      return existing || null;
+    })();
+    if (!resizeTooltipEl) {
+      resizeTooltipEl = document.createElement('div');
+      resizeTooltipEl.className = 'navrh-graf-resize-tooltip';
+      resizeTooltipEl.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(resizeTooltipEl);
+    }
 
     function edgeZone(seg, clientX) {
       var rect = seg.getBoundingClientRect();
@@ -856,20 +937,20 @@
       for (var i = 0; i < all.length; i += 1) all[i].classList.remove('navrh-graf-segment-resize-edge');
     }
 
-    container.addEventListener('mousemove', function (ev) {
+    function onResizeMousemove(ev) {
       if (resizeState) return;
       clearResizeCursor();
       var seg = ev.target.closest('.navrh-graf-segment');
       if (!seg || !seg.hasAttribute('data-den')) return;
       var edge = edgeZone(seg, ev.clientX);
       if (edge) seg.classList.add('navrh-graf-segment-resize-edge');
-    });
+    }
 
-    container.addEventListener('mouseleave', function () {
+    function onResizeMouseleave() {
       if (!resizeState) clearResizeCursor();
-    });
+    }
 
-    container.addEventListener('mousedown', function (ev) {
+    function onResizeMousedown(ev) {
       if (resizeState || typeof onSegmentResize !== 'function') return;
       var seg = ev.target.closest('.navrh-graf-segment');
       if (!seg || !seg.hasAttribute('data-den')) return;
@@ -900,12 +981,6 @@
         newOd: startOdMin,
         newDo: startDoMin
       };
-      if (!resizeTooltipEl) {
-        resizeTooltipEl = document.createElement('div');
-        resizeTooltipEl.className = 'navrh-graf-resize-tooltip';
-        resizeTooltipEl.setAttribute('aria-hidden', 'true');
-        document.body.appendChild(resizeTooltipEl);
-      }
       resizeTooltipEl.textContent = minutyToHhmm(startOdMin) + '–' + minutyToHhmm(startDoMin);
       resizeTooltipEl.style.display = 'block';
 
@@ -951,7 +1026,18 @@
       resizeTooltipEl.style.top = (ev.clientY + 12) + 'px';
       document.addEventListener('mousemove', onResizeMove);
       document.addEventListener('mouseup', onResizeUp);
-    });
+    }
+
+    container.addEventListener('mousemove', onResizeMousemove);
+    container.addEventListener('mouseleave', onResizeMouseleave);
+    container.addEventListener('mousedown', onResizeMousedown);
+
+    container._navrhGrafResizeCleanup = function () {
+      container.removeEventListener('mousemove', onResizeMousemove);
+      container.removeEventListener('mouseleave', onResizeMouseleave);
+      container.removeEventListener('mousedown', onResizeMousedown);
+      resizeTooltipEl.style.display = 'none';
+    };
   }
 
   function escapeHtml(str) {
